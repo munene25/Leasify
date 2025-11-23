@@ -1,0 +1,12 @@
+{{ subject }}
+
+Hi {{ user.get_full_name }},
+
+Thanks for creating an account. Verify your email by visiting the link below:
+
+{{ url }}
+
+If you didn't create this account, you can ignore this message.
+
+— {{ app_name }} Team
+Support: {{ support_email }}

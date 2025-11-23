@@ -1,0 +1,12 @@
+{{ subject }}
+
+Hi {{ user.get_full_name }},
+
+We received a request to reset your password. Use the link below to set a new password (expires in {{ expiry_hours }} hours):
+
+{{ url }}
+
+If you didn't request this, ignore this email — your password will remain the same.
+
+— {{ app_name }} Team
+Support: {{ support_email }}
