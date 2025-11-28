@@ -1,7 +1,7 @@
+from __future__ import annotations
 from datetime import date
 from django.db import models
-from decimal import Decimal
-from typing import Optional
+from rest_framework.exceptions import NotFound
 
 class Semester(models.Model):
     """
@@ -18,10 +18,13 @@ class Semester(models.Model):
         return f"Name: {self.name}"
 
     @classmethod
-    def current_semester(cls) -> Optional["Semester"]:
-        return cls.objects.filter(
+    def current_semester(cls) -> Semester:
+        try: 
+            return cls.objects.get(
             start_date__lte=date.today(), end_date__gte=date.today()
-        ).first()
+        )
+        except Semester.DoesNotExist:
+            raise NotFound({"current_semester": [f"Semester not found, please create a semester for this time period"]})
 
     @property
     def active(self):

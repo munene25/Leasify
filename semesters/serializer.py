@@ -21,6 +21,7 @@ class SemesterDetailSerializer(CamelCaseSerializer):
 class SemesterUpdateSerializer(CamelCaseSerializer):
     name = serializers.CharField(required=False)
     rent = serializers.DecimalField(required=False, decimal_places=2, max_digits=10)
+    update_apts = serializers.BooleanField(required=False)
 
 
 class SemesterCreateSerializer(CamelCaseSerializer):

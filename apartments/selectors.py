@@ -9,12 +9,15 @@ from semesters.models import Semester
 
 def apartment_overview():
     """
-    Return an overview of apartment occupancy for a given semester:
+    Return an overview of apartment occupancy for a the current semester:
     total, occupied, and vacant counts.
     """
     apartments = Apartment.objects.all()
     total_apartments = apartments.count()
-    available = apartments.filter(available=True).count()
+    available = apartment_available_units(
+        semester_id=Semester.current_semester().pk
+    ).count()
+
     return {
         "total_apartments": total_apartments,
         "available": available,
@@ -26,27 +29,21 @@ def apartment_list():
     return Apartment.objects.all()
 
 
-def apartment_get_by_id(*, apartment_id: int):
+def apartment_get_by_id(apartment_id: int):
     try:
         return Apartment.objects.get(pk=apartment_id)
     except Apartment.DoesNotExist:
         raise NotFound({"apartment_id": f"Apartment {apartment_id} not found"})
 
 
-def apartment_with_tenancies_from_today(*, apartment_id: int):
-    semesters = semester_selectors.semesters_get_all_from_today()
-    prefetch = models.Prefetch(
-        "tenancy_set",
-        queryset=Tenancy.objects.filter(semester__in=semesters),
-        to_attr="active_tenancies",
+def apartment_available_units(semester_id: int):
+    return (
+        Apartment.objects.filter(rentable=True)
+        .exclude(tenancy__semester_id=semester_id)
     )
-    try:
-        return Apartment.objects.prefetch_related(prefetch).get(id=apartment_id)
-    except:
-        raise NotFound({"apartment_id": [f"apartment {apartment_id} not found"]})
 
 
-def apartment_occupancy_in_semester(*, apartment_id, semester_id):
+def apartment_occupancy_in_semester(*, apartment_id: int, semester_id: int):
     try:
         return Apartment.objects.annotate(
             occupancy_count=models.Count(

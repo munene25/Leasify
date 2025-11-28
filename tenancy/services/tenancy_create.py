@@ -32,7 +32,6 @@ class TenancyCreateService:
     def _update_apartment(self):
         ApartmentUpdateService(
             apartment_id=self.apartment_id,
-            available=False,
         ).update()
 
     def _add_user_to_tenant_group(self):

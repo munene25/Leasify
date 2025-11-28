@@ -74,8 +74,9 @@ class SemesterService:
 
     @transaction.atomic
     def update(self, **kwargs: Any) -> Semester:
+        """ name, start and end date, rent, and a flag for changing all apartment rents in that semester as well if changing the rent"""
         if not self.semester:
-            raise ValidationError({"semester": ["Semester instance not provided"]})
+            raise ValidationError({"semester_id": ["Semester not provided"]})
 
         update_fields = {
             k: v for k, v in kwargs.items()
@@ -91,12 +92,12 @@ class SemesterService:
         if "rent" in update_fields:
             self._validate_rent(update_fields["rent"])
             if kwargs.get("update_apts"):
-                Apartment.objects.exclude(available=False).update(
+                Apartment.objects.exclude(rentable=False).update(
                     rent=update_fields["rent"]
                 )
 
         for field, value in update_fields.items():
             setattr(self.semester, field, value)
         self.semester.full_clean()
-        self.semester.save(update_fields=update_fields.keys())
+        self.semester.save(update_fields=list(update_fields.keys()))
         return self.semester

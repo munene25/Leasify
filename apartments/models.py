@@ -6,7 +6,7 @@ from semesters.models import Semester
 class Apartment(models.Model):
     """
     This is the base apartment with the block it belongs to, the unit number within the block
-    Rent is more closely tied to semester and is set on the Semester model
+    Apartment availability is a function of both apartment occupancy and the manual flag "available" set on the db.
     """
 
     class ApartmentChoices(models.TextChoices):
@@ -16,7 +16,9 @@ class Apartment(models.Model):
     block = models.CharField(max_length=10, choices=ApartmentChoices.choices)
     unit_number = models.PositiveSmallIntegerField()
     rent = models.DecimalField(decimal_places=2, max_digits=10, blank=False, null=False)
-    available = models.BooleanField(default=True)
+    rentable = models.BooleanField(
+        default=True, help_text="True = apartment is rentable currently"
+    )
 
     class Meta:
         unique_together = ("block", "unit_number")
@@ -30,7 +32,11 @@ class Apartment(models.Model):
 
     @property
     def current_tenant(self):
-        curr = self.tenancy_set.select_related("user").filter(semester=Semester.current_semester()).first()
+        curr = (
+            self.tenancy_set.select_related("user")
+            .filter(semester=Semester.current_semester())
+            .first()
+        )
         return curr if curr else None
 
     @property

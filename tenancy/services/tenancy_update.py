@@ -39,7 +39,7 @@ class TenancyUpdateService:
         apt = apartment_selectors.apartment_occupancy_in_semester(
             apartment_id=self.new_apt_id, semester_id=self.new_semester_id
         )
-        if apt.available:
+        if apt.rentable:
             return
         # If the apartment  is not available and occupied in that semester, raise error
         if apt.occupancy_count != 0:
@@ -47,13 +47,13 @@ class TenancyUpdateService:
             raise ValidationError({"apartment_id": [err]})
 
     def _update_new_apartment(self):
-        ApartmentUpdateService(apartment_id=self.new_apt_id, available=False).update()
+        ApartmentUpdateService(apartment_id=self.new_apt_id, rentable=False).update()
         self.tenancy.apartment_id = self.new_apt_id
 
     def _update_old_apartment(self):
         try:
             ApartmentUpdateService(
-                apartment_id=self.tenancy.apartment_id, available=True
+                apartment_id=self.tenancy.apartment_id, rentable=True
             ).update()
         except ValidationError:
             pass
