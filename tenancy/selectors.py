@@ -9,14 +9,16 @@ prefetch_user_apt_sem = Prefetch(
 
 
 def tenancy_get_by_user_id(*, user_id: int):
-    qs = Tenancy.objects.select_related("user").filter(user_id=user_id).first()
+    try:
+        return Tenancy.objects.select_related("user").get(user_id=user_id)
+    except Tenancy.DoesNotExist:
+        raise NotFound({"tenancy_id": ["tenancy not found"]})
 
-
-def tenancy_get_by_apartment_id(*, apartment_id: int):
+def tenancy_get_by_apartment_id(apartment_id: int):
     return Tenancy.objects.select_related("apartment").filter(apartment=apartment_id)
 
 
-def tenancy_get_by_id(*, tenancy_id: int):
+def tenancy_get_by_id(tenancy_id: int):
     try:
         return Tenancy.objects.select_related("apartment", "semester", "user").get(
             pk=tenancy_id

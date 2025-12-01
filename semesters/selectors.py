@@ -6,7 +6,7 @@ def semester_list():
     return Semester.objects.all()
 
 
-def semester_get_by_name(*, semester_name: str | None = None):
+def semester_get_by_name(semester_name: str | None = None):
     """
     Return a Semester instance filtered by the semester_name else 404
     """
@@ -16,7 +16,7 @@ def semester_get_by_name(*, semester_name: str | None = None):
         raise NotFound({"semester_id": f"Semester {semester_name} not found"})
 
 
-def semester_get_by_id(*, semester_id):
+def semester_get_by_id(semester_id):
     try:
         return Semester.objects.get(pk=semester_id)
     except Semester.DoesNotExist:

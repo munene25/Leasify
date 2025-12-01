@@ -1,7 +1,7 @@
 from users.models import User
 from apartments.models import Apartment
 from semesters.models import Semester
-from payments.models import Payment, Ledger
+from payments.models import Payment
 from tenancy.models import Tenancy
 from django.utils import timezone
 from django.db import connection, transaction, models

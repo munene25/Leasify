@@ -34,7 +34,7 @@ class ApartmentService:
         *,
         block: str,
         unit_number: int,
-        rent: Decimal | int | None = None,
+        rent: Decimal | None = None,
         rentable: bool = True,
     ) -> Apartment:
         # validate first
@@ -51,14 +51,15 @@ class ApartmentService:
         return apt
 
     @transaction.atomic
-    def update(self, **kwargs: Any) -> Apartment:
+    def update(self, **kwargs: dict[str, Any]) -> Apartment:
         if not self.apartment:
             raise ValidationError({"apartment_id": ["Apartment not provided"]})
 
         # pick only editable and changed fields
-        update_fields = {
+        update_fields: dict = {
             k: v
             for k, v in kwargs.items()
+            # no FK so this check is valid
             if k in self.EDITABLE_FIELDS and getattr(self.apartment, k) != v
         }
         if "block" in update_fields:
@@ -66,7 +67,8 @@ class ApartmentService:
 
         if not update_fields:
             return self.apartment
-
+        
+        # Since all editable attributes have no FKs 
         for k, v in update_fields.items():
             setattr(self.apartment, k, v)
         # model validation before saving

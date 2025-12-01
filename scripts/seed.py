@@ -6,7 +6,7 @@ import random
 from phonenumber_field.phonenumber import PhoneNumber
 from tenancy.services import TenancyCreateService
 from semesters.services import SemesterService
-from apartments.services import ApartmentCreateService
+from apartments.services import ApartmentService
 from payments.services import PaymentCreateService
 
 
@@ -43,7 +43,7 @@ def run():
             for name, (sm, sd), (em, ed) in periods:
                 sem_name = f"{name}-{year}"
                 start = date(year, sm, sd)
-                off_season = True if sm == "May" else False
+                off_season = True if sm == 5 else False
                 end = date(year, em, ed)
                 semesters.append(
                     {
@@ -55,22 +55,20 @@ def run():
                 )
         return semesters
 
-    sems = generate_semesters(2025, 2030)
-    semesters = [SemesterService().create(**s) for s in sems]
-    sem = Semester.current_semester()
-    semester_pk = getattr(sem, "pk")
+    semesters = [SemesterService().create(**s) for s in generate_semesters(2025, 2030)]
+    current_sem_pk = Semester.current_semester().pk
 
-    no_of_apts = 6
-    aps = [{"block": "OLD", "unit_number": i} for i in range(1, no_of_apts + 1)]
+    no_of_apts = 12
+    aps = [{"block": f"{"OLD" if i%2 == 1 else "NEW"}", "unit_number": i} for i in range(1, no_of_apts + 1)]
 
-    apartments = [ApartmentCreateService(**a).create() for a in aps]
+    apartments = [ApartmentService().create(**a) for a in aps]
 
     # Create tenants
     tenancies = [
         TenancyCreateService(
             user_id=i,
             apartment_id=i,
-            semester_id=semester_pk,
+            semester_id=current_sem_pk,
         ).create()
         for i in given_range
     ]
