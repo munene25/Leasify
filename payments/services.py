@@ -2,7 +2,6 @@ import uuid
 from rest_framework.exceptions import ValidationError
 from decimal import Decimal
 from .models import Payment
-from tenancy.services import TenancyCreateService
 from tenancy import selectors as tenancy_selectors
 from phonenumber_field.phonenumber import PhoneNumber
 from django.db import transaction
@@ -66,7 +65,7 @@ class PaymentCreateService:
         if not self.phone_number:
             self.phone_number = self.tenancy.user.phone_number
         elif isinstance(self.phone_number, str):
-            self.phone_number = self._phone_number_from_sting()
+            self.phone_number = self._phone_number_from_string()
         else:
             err = f"Invalid phone number"
             raise ValidationError({"phone_number": [err]})

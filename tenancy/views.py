@@ -5,11 +5,6 @@ from .serializer import (
     TenancyDetailSerializer,
     TenancyUpdateSerializer
 )
-from .services import (
-    TenancyCreateService,
-    TenancyUpdateService,
-    TenancyDeleteService
-)
 
 class TenancyListCreateView(APIView):
     pass

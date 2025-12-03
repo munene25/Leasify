@@ -1,6 +1,7 @@
 from users.models import User
 from apartments.models import Apartment
 from semesters.models import Semester
+from semesters.selectors import semester_current
 from payments.models import Payment
 from tenancy.models import Tenancy
 from django.utils import timezone
@@ -85,7 +86,7 @@ def run():
         tenancy = Tenancy.objects.create(
             user=homeless_user,
             apartment=empty_home,
-            semester=Semester.current_semester(),
+            semester=semester_current(),
         )
         return tenancy
 

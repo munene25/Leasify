@@ -1,26 +1,25 @@
-from utils.serializer import CamelCaseSerializer
 from rest_framework import serializers
 from tenancy.serializer import TenancyListSerializer
 
-class ApartmentListSerializer(CamelCaseSerializer):
-    apartment_id = serializers.IntegerField(source="id")
+class ApartmentListSerializer(serializers.Serializer):
+    apartment_id = serializers.IntegerField(source="pk")
     apartment_name = serializers.CharField()
     rent = serializers.DecimalField(max_digits=10, decimal_places=2)
     rentable = serializers.BooleanField()
 
-class ApartmentCreateSerializer(CamelCaseSerializer):
+class ApartmentCreateSerializer(serializers.Serializer):
     block = serializers.CharField(required=True)
     unit_number = serializers.IntegerField(required=True)
-    rent = serializers.DecimalField(max_digits=10, decimal_places=2, required=False)
+    rent = serializers.DecimalField(max_digits=10, decimal_places=2, required=True)
     rentable = serializers.BooleanField(required=False)
 
-class ApartmentUpdateSerializer(CamelCaseSerializer):
+class ApartmentUpdateSerializer(serializers.Serializer):
     block = serializers.CharField(required=False)
     unit_number = serializers.IntegerField(required=False)
     rent = serializers.DecimalField(max_digits=10, decimal_places=2, required=False)
     rentable = serializers.BooleanField(required=False)
 
-class ApartmentDetailSerializer(CamelCaseSerializer):
+class ApartmentDetailSerializer(serializers.Serializer):
     apartment_id = serializers.IntegerField(source="pk")
     block = serializers.CharField()
     unit_number = serializers.IntegerField()
@@ -29,7 +28,7 @@ class ApartmentDetailSerializer(CamelCaseSerializer):
     tenants = TenancyListSerializer(source="tenancy_set", many=True)
 
     
-class ApartmentOverviewSerializer(CamelCaseSerializer):
+class ApartmentOverviewSerializer(serializers.Serializer):
     total_apartments = serializers.IntegerField()
     rentable = serializers.IntegerField()
     vacant = serializers.IntegerField()

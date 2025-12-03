@@ -4,6 +4,8 @@ from django.db import models
 from tenancy.models import Tenancy
 from tenancy import selectors as tenancy_selectors
 
+def user_list():
+    return User.objects.all()
 
 def user_get_by_id(user_id):
     try:

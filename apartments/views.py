@@ -1,10 +1,11 @@
 from rest_framework.response import Response
+from typing import Any, Dict
 from rest_framework.views import APIView
-from rest_framework import serializers
 from rest_framework import status
-from semesters import selectors as semester_selectors
+from semesters.selectors import semester_current
+from semesters.models import Semester
 from . import selectors
-from . import services
+from .services import ApartmentService
 from .serializer import (
     ApartmentCreateSerializer,
     ApartmentDetailSerializer,
@@ -15,13 +16,14 @@ from .serializer import (
 
 
 class ApartmentListCreateView(APIView):
+    serializer_class = ApartmentCreateSerializer
+
     def _validate_input(self, data):
         serializer = self.serializer_class(data=data)
         serializer.is_valid(raise_exception=True)
-        return serializer.validated_data
-
-    serializer_class = ApartmentCreateSerializer
-
+        v = serializer.validated_data
+        return v if isinstance(v, dict) else {}
+    
     def get(self, request):
         apts = selectors.apartment_list()
         serializer = ApartmentListSerializer(apts, many=True)
@@ -29,13 +31,12 @@ class ApartmentListCreateView(APIView):
 
     def post(self, request):
         data = self._validate_input(request.data)
-        creator = services.ApartmentCreateService(**data)
-        creator.create()
+        ApartmentService().create(**data)
         return Response(status=status.HTTP_201_CREATED)
 
 
 class ApartmentDetailUpdateView(APIView):
-    def _validate_input(self, *, data):
+    def _validate_input(self, data):
         serializer = self.serializer_class(data=data)
         serializer.is_valid(raise_exception=True)
         return serializer.validated_data
@@ -49,21 +50,21 @@ class ApartmentDetailUpdateView(APIView):
 
     def patch(self, request, apartment_id):
         data = self._validate_input(data=request.data)
-        updater = services.ApartmentUpdateService(apartment_id=apartment_id, **data)
-        updater.update()
+        apt = selectors.apartment_get_for_update(apartment_id)
+        ApartmentService(apt).update(**data) # type: ignore
         return Response(status=status.HTTP_200_OK)
 
     def put(self, request, apartment_id):
         data = self._validate_input(data=request.data)
-        updater = services.ApartmentUpdateService(apartment_id=apartment_id, **data)
-        updater.update()
+        apt = selectors.apartment_get_for_update(apartment_id)
+        ApartmentService(apt).update(**data) # type: ignore
         return Response(status=status.HTTP_200_OK)
 
 
 class ApartmentOverviewView(APIView):
-    def get(self, request, semester_name=None):
-        semester = semester_selectors.semester_get_by_name(semester_name=semester_name)
-        overview = selectors.apartment_overview(semester=semester)
+    def get(self, request):
+        semester = semester_current()
+        overview = selectors.apartment_overview(semester.pk)
 
         serializer = ApartmentOverviewSerializer(instance=overview)
         return Response(

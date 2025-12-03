@@ -7,16 +7,14 @@ from semesters import selectors as semester_selectors
 from semesters.models import Semester
 
 
-def apartment_overview():
+def apartment_overview(semester_id: int):
     """
     Return an overview of apartment occupancy for a the current semester:
     total, occupied, and vacant counts.
     """
     apartments = Apartment.objects.all()
     total_apartments = apartments.count()
-    available = apartment_available_units(
-        semester_id=Semester.current_semester().pk
-    ).count()
+    available = apartment_available_units(semester_id=semester_id).count()
 
     return {
         "total_apartments": total_apartments,
@@ -29,6 +27,13 @@ def apartment_list():
     return Apartment.objects.all()
 
 
+def apartment_get_for_update(apartment_id: int):
+    try:
+        return Apartment.objects.select_for_update().get(pk=apartment_id)
+    except Apartment.DoesNotExist:
+        raise NotFound({"apartment_id": f"Apartment {apartment_id} not found"})
+
+
 def apartment_get_by_id(apartment_id: int):
     try:
         return Apartment.objects.get(pk=apartment_id)
@@ -37,9 +42,8 @@ def apartment_get_by_id(apartment_id: int):
 
 
 def apartment_available_units(semester_id: int):
-    return (
-        Apartment.objects.filter(rentable=True)
-        .exclude(tenancy__semester_id=semester_id)
+    return Apartment.objects.filter(rentable=True).exclude(
+        tenancy__semester_id=semester_id
     )
 
 

@@ -1,12 +1,14 @@
+from django.db.models import Prefetch, QuerySet
 from .models import Tenancy
 from rest_framework.exceptions import NotFound
-from django.db.models import Prefetch
 
 prefetch_user_apt_sem = Prefetch(
     "tenancy_set",
     Tenancy.objects.all().select_related("user", "apartment", "semester"),
 )
 
+def tenancy_list()-> QuerySet:
+    return Tenancy.objects.all()
 
 def tenancy_get_by_user_id(*, user_id: int):
     try:

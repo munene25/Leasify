@@ -1,6 +1,6 @@
 from django.db import models
 from django.core.exceptions import ValidationError
-from semesters.models import Semester
+from semesters.selectors import semester_current
 
 
 class Apartment(models.Model):
@@ -27,14 +27,14 @@ class Apartment(models.Model):
         return f"Block: {self.block} - Unit: {self.unit_number}"
 
     @property
-    def occupied(self):
-        return self.tenancy_set.filter(semester=Semester.current_semester()).exists()
+    def occupied(self) -> bool:
+        return self.tenancy_set.filter(semester=semester_current()).exists()
 
     @property
     def current_tenant(self):
         curr = (
             self.tenancy_set.select_related("user")
-            .filter(semester=Semester.current_semester())
+            .filter(semester=semester_current())
             .first()
         )
         return curr if curr else None

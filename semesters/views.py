@@ -18,7 +18,8 @@ class SemesterListCreateView(APIView):
     def _validate_input(self, data):
         serializer = self.serializer_class(data=data)
         serializer.is_valid(raise_exception=True)
-        return serializer.validated_data
+        v = serializer.validated_data
+        return v if isinstance(v, dict) else {}
     
     def get(self, request):
         sems = selectors.semester_list()
@@ -27,8 +28,7 @@ class SemesterListCreateView(APIView):
     
     def post(self, request):
         data = self._validate_input(data=request.data)
-        creator = services.SemesterCreateService(**data)
-        creator.create()
+        creator = services.SemesterService().create(**data)
         return Response(status=status.HTTP_201_CREATED)
     
 
