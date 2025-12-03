@@ -14,10 +14,10 @@ class ApartmentCreateSerializer(serializers.Serializer):
     rentable = serializers.BooleanField(required=False)
 
 class ApartmentUpdateSerializer(serializers.Serializer):
-    block = serializers.CharField(required=False)
-    unit_number = serializers.IntegerField(required=False)
-    rent = serializers.DecimalField(max_digits=10, decimal_places=2, required=False)
-    rentable = serializers.BooleanField(required=False)
+    block = serializers.CharField()
+    unit_number = serializers.IntegerField()
+    rent = serializers.DecimalField(max_digits=10, decimal_places=2, )
+    rentable = serializers.BooleanField()
 
 class ApartmentDetailSerializer(serializers.Serializer):
     apartment_id = serializers.IntegerField(source="pk")

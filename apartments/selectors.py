@@ -27,16 +27,17 @@ def apartment_list():
     return Apartment.objects.all()
 
 
-def apartment_get_for_update(apartment_id: int):
+def apartment_for_update(apartment_id: int):
     try:
-        return Apartment.objects.select_for_update().get(pk=apartment_id)
+        return Apartment.objects.select_for_update().prefetch_related("tenancy_set").get(pk=apartment_id)
     except Apartment.DoesNotExist:
         raise NotFound({"apartment_id": f"Apartment {apartment_id} not found"})
 
 
 def apartment_get_by_id(apartment_id: int):
+    # most of the time, apartment's tenancy_set is accessed therefore makes sense to include.
     try:
-        return Apartment.objects.get(pk=apartment_id)
+        return Apartment.objects.prefetch_related("tenancy_set").get(pk=apartment_id)
     except Apartment.DoesNotExist:
         raise NotFound({"apartment_id": f"Apartment {apartment_id} not found"})
 
