@@ -18,7 +18,7 @@ class SemesterDetailSerializer(serializers.Serializer):
     end_date = serializers.DateField()
     active = serializers.BooleanField()
     off_season = serializers.BooleanField()
-    created_at = serializers.DateField()
+    created_at = serializers.DateTimeField()
 
 class SemesterUpdateSerializer(serializers.Serializer):
     name = serializers.CharField(source="alt_name")

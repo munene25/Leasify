@@ -3,7 +3,6 @@ from utils import serializer
 from semesters.serializer import SemesterListSerializer
 from phonenumber_field.serializerfields import PhoneNumberField
 from users.selectors import user_list
-from tenancy.selectors import tenancy_list
 from apartments.selectors import apartment_list
 from semesters.selectors import semester_list
 
@@ -26,9 +25,9 @@ class TenancyDetailSerializer(serializer.Serializer):
     tenant_name = serializers.CharField()
     phone_number = PhoneNumberField()
     apartment_name = serializers.CharField()
-    date_joined = serializers.DateField()
     payment_status = serializers.CharField()
     balance = serializers.DecimalField(max_digits=10, decimal_places=2)
+    created_at = serializers.DateTimeField()
     semester = SemesterListSerializer()
 
 class TenancyUpdateSerializer(serializer.Serializer):

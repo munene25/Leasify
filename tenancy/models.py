@@ -15,7 +15,7 @@ class Tenancy(models.Model):
         Semester,
         on_delete=models.PROTECT, null=False, blank=False
     )
-    created_at = models.DateField(auto_now_add=True)
+    created_at = models.DateTimeField(auto_now_add=True)
     total_paid = models.DecimalField(
         decimal_places=2, max_digits=10, default=Decimal(0)
     )

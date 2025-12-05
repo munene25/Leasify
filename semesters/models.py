@@ -16,7 +16,7 @@ class Semester(models.Model):
     start_date = models.DateField()
     end_date = models.DateField()
     off_season = models.BooleanField()
-    created_at = models.DateField(auto_now_add=True)
+    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         ordering = ["-start_date"]

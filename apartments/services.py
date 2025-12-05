@@ -10,14 +10,10 @@ class ApartmentService:
         self.apartment_id = apartment_id
         self.EDITABLE_FIELDS = ("rent", "block", "unit_number", "rentable")
 
-    def _apartment_get_validated(self) -> Apartment:
+    def _apartment_get_locked(self) -> Apartment:
         if not self.apartment_id:
             raise ValidationError({"apartment_id": ["Apartment not provided"]})
         return apartment_for_update(self.apartment_id)
-    
-    def _validate_block(self, block: str) -> None:
-        if block not in Apartment.ApartmentChoices.values:
-            raise ValidationError({"block": ["Invalid block"]})
     
     @transaction.atomic
     def create(
@@ -28,7 +24,21 @@ class ApartmentService:
         rent: Decimal | int,
         rentable: bool = True,
     ) -> Apartment:
-        self._validate_block(block)
+        """
+        Create a new apartment, defaults to rentable allowing users to view or book apartment
+        
+        :param self: ApartmentService instance
+        :param block: The block set in apartment choices either "OLD" or "NEW"
+        :type block: str
+        :param unit_number: The unit_number of the apartment
+        :type unit_number: int
+        :param rent: the rent charged per semester for the unit/apartment
+        :type rent: Decimal | int
+        :param rentable: The ability of the apartment to be accessed and viewed by non-admin users and can be booked
+        :type rentable: bool
+        :return: The created apartment instance
+        :rtype: Apartment
+        """
         apt = Apartment(
             block=block,
             unit_number=unit_number,
@@ -42,9 +52,14 @@ class ApartmentService:
     @transaction.atomic
     def update(self, **kwargs: str | int) -> Apartment:
         """
-        Params: 'rent', 'block', 'unit_number', 'rentable'
+        params must be in the update fields to be able to execute
+        :param self: ApartmentService instance
+        :param kwargs: block: int, unit_number: int, rent: Decimal | int, renatble: bool
+        :type kwargs: str | int
+        :return: Description
+        :rtype: Apartment
         """
-        apartment = self._apartment_get_validated()
+        apartment = self._apartment_get_locked()
 
         # pick only editable and changed fields
         update_fields: dict = {
@@ -55,18 +70,19 @@ class ApartmentService:
         if not update_fields:
             return apartment
 
-        if "block" in update_fields:
-            self._validate_block(update_fields["block"])
+        for field, value in update_fields.items():
+            setattr(apartment, field, value)
 
-        for k, v in update_fields.items():
-            setattr(apartment, k, v)
         apartment.full_clean()
         apartment.save(update_fields=list(update_fields.keys()))
         return apartment
 
     @transaction.atomic
     def delete(self) -> None:
-        apartment = self._apartment_get_validated()
+        """
+        Delete an apartment if it has not been associated with a tenancy
+        """
+        apartment = self._apartment_get_locked()
         if getattr(apartment, "tenancy_set").exists():
             raise ValidationError({"apartment_id": ["Apartment is booked and cannot be deleted"]})
         apartment.delete()
