@@ -30,7 +30,7 @@ class ApartmentListCreateView(APIView, ValidateSerializerMixin):
         return Response(status=status.HTTP_201_CREATED)
 
 
-class ApartmentDetailUpdateView(APIView, ValidateSerializerMixin):    
+class ApartmentDetailUpdateDeleteView(APIView, ValidateSerializerMixin):    
     serializer_class = ApartmentUpdateSerializer
 
     def get(self, request, apartment_id):
@@ -40,19 +40,16 @@ class ApartmentDetailUpdateView(APIView, ValidateSerializerMixin):
 
     def patch(self, request, apartment_id):
         data = self.validate_input(data=request.data, partial=True)
-        apt = selectors.apartment_for_update(apartment_id)
-        ApartmentService(apt).update(**data)
+        ApartmentService(apartment_id).update(**data)
         return Response(status=status.HTTP_200_OK)
 
     def put(self, request, apartment_id):
         data = self.validate_input(data=request.data)
-        apt = selectors.apartment_for_update(apartment_id)
-        ApartmentService(apt).update(**data) 
+        ApartmentService(apartment_id).update(**data)
         return Response(status=status.HTTP_200_OK)
     
     def delete(self, request, apartment_id):
-        apt = selectors.apartment_for_update(apartment_id)
-        ApartmentService(apt).delete()
+        ApartmentService(apartment_id).delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 

@@ -36,19 +36,17 @@ def run():
     def generate_semesters(start_year=2025, end_year=2029):
         semesters = []
         periods = [
-            ("JAN-APR", (1, 1), (4, 30)),
-            ("MAY-AUG", (5, 1), (8, 31)),
-            ("SEP-DEC", (9, 1), (12, 31)),
+            ((1, 1), (4, 30)),
+            ((5, 1), (8, 31)),
+            ((9, 1), (12, 31)),
         ]
         for year in range(start_year, end_year + 1):
-            for name, (sm, sd), (em, ed) in periods:
-                sem_name = f"{name}-{year}"
+            for (sm, sd), (em, ed) in periods:
                 start = date(year, sm, sd)
                 off_season = True if sm == 5 else False
                 end = date(year, em, ed)
                 semesters.append(
                     {
-                        "name": sem_name,
                         "start_date": start,
                         "end_date": end,
                         "off_season": off_season,

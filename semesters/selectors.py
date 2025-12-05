@@ -5,15 +5,14 @@ from datetime import date
 def semester_list():
     return Semester.objects.all()
 
-
-def semester_get_by_name(semester_name: str):
+def semester_for_update(semester_id: int):
     """
     Return a Semester instance filtered by the semester_name else 404
     """
     try:
-        return Semester.objects.get(name=semester_name)
+        return Semester.objects.select_for_update().prefetch_related("tenancy_set").get(pk=semester_id)
     except Semester.DoesNotExist:
-        raise NotFound({"semester_id": f"Semester {semester_name} not found"})
+        raise NotFound({"semester_id": f"Semester {semester_id} not found"})
 
 
 def semester_get_by_id(semester_id):

@@ -2,17 +2,18 @@ from decimal import Decimal
 from django.db import transaction
 from rest_framework.exceptions import ValidationError
 from .models import Apartment
+from .selectors import apartment_for_update
 
 
 class ApartmentService:
-    def __init__(self, apartment: Apartment | None = None):
-        self.apartment = apartment
-        self.EDITABLE_FIELDS = {"rent", "block", "unit_number", "rentable"}
+    def __init__(self, apartment_id: int | None = None):
+        self.apartment_id = apartment_id
+        self.EDITABLE_FIELDS = ("rent", "block", "unit_number", "rentable")
 
     def _apartment_get_validated(self) -> Apartment:
-        if not self.apartment:
+        if not self.apartment_id:
             raise ValidationError({"apartment_id": ["Apartment not provided"]})
-        return self.apartment
+        return apartment_for_update(self.apartment_id)
     
     def _validate_block(self, block: str) -> None:
         if block not in Apartment.ApartmentChoices.values:
@@ -25,7 +26,7 @@ class ApartmentService:
         block: str,
         unit_number: int,
         rent: Decimal | int,
-        rentable: bool
+        rentable: bool = True,
     ) -> Apartment:
         self._validate_block(block)
         apt = Apartment(

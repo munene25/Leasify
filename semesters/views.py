@@ -9,17 +9,11 @@ from .serializer import (
     SemesterUpdateSerializer
 )
 from rest_framework.views import APIView
-from rest_framework.exceptions import ValidationError
+from mixins.validate_serializer import ValidateSerializerMixin
 
 
-class SemesterListCreateView(APIView):
+class SemesterListCreateView(APIView, ValidateSerializerMixin):
     serializer_class = SemesterCreateSerializer
-
-    def _validate_input(self, data):
-        serializer = self.serializer_class(data=data)
-        serializer.is_valid(raise_exception=True)
-        v = serializer.validated_data
-        return v if isinstance(v, dict) else {}
     
     def get(self, request):
         sems = selectors.semester_list()
@@ -27,34 +21,34 @@ class SemesterListCreateView(APIView):
         return Response(status=status.HTTP_200_OK, data=serializer.data)
     
     def post(self, request):
-        data = self._validate_input(data=request.data)
+        data = self.validate_input(data=request.data)
         creator = services.SemesterService().create(**data)
         return Response(status=status.HTTP_201_CREATED)
     
 
-class SemesterDetailUpdateView(APIView):
+class SemesterDetailUpdateDeleteView(APIView, ValidateSerializerMixin):
     serializer_class = SemesterUpdateSerializer
 
-    def _validate_input(self, data):
-        serializer = self.serializer_class(data=data)
-        serializer.is_valid(raise_exception=True)
-        return serializer.validated_data
-    
-    def get(self, request, semester_id):
+    def get(self, request, semester_id: int):
         semester = selectors.semester_get_by_id(semester_id=semester_id)
         serializer = SemesterDetailSerializer(instance=semester)
         return Response(
             status=status.HTTP_200_OK,
             data=serializer.data
         )
-    def patch(self, request, semester_id):
-        data = self._validate_input(data=request.data)
-        updater = services.SemesterUpdateService(semester_id=semester_id, **data)
-        updater.update()
+    def patch(self, request, semester_id: int):
+        data = self.validate_input(data=request.data, partial=True)
+        service = services.SemesterService(semester_id)
+        service.update(**data)
         return Response(status=status.HTTP_200_OK)
     
     def put(self, request, semester_id):
-        data = self._validate_input(data=request.data)
-        updater = services.SemesterUpdateService(semester_id=semester_id, **data)
-        updater.update()
+        data = self.validate_input(data=request.data)
+        service = services.SemesterService(semester_id)
+        service.update(**data)
         return Response(status=status.HTTP_200_OK)
+
+    def delete(self, request, semester_id: int):
+        service = services.SemesterService(semester_id)
+        service.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)

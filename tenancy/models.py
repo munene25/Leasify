@@ -9,25 +9,27 @@ from django.db import transaction
 class Tenancy(models.Model):
     user = models.ForeignKey(User, on_delete=models.PROTECT)
     apartment = models.ForeignKey(
-        Apartment, on_delete=models.PROTECT, null=True, blank=True
+        Apartment, on_delete=models.PROTECT, null=False, blank=False
     )
     semester = models.ForeignKey(
         Semester,
-        on_delete=models.PROTECT,
+        on_delete=models.PROTECT, null=False, blank=False
     )
-    date_joined = models.DateField(auto_now_add=True, null=False, blank=False)
+    created_at = models.DateField(auto_now_add=True)
     total_paid = models.DecimalField(
         decimal_places=2, max_digits=10, default=Decimal(0)
     )
 
+
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields=["user", "semester"], name="one_tenancy_per_user_per_semester"
+                fields=["user", "semester"],
+                name="unique_user_per_semester"
             ),
             models.UniqueConstraint(
                 fields=["apartment", "semester"],
-                name="one_tenancy_per_apartment_per_semester",
+                name="unique_apartment_per_semester",
             ),
         ]
 
@@ -68,19 +70,10 @@ class Tenancy(models.Model):
     @property
     def balance(self):
         """
-        On each instance with a select related, fetch balance.
+        On each tenancy instance get the balance based computed form joined apartment rent , fetch balance.
         """
         return self.apartment.rent - self.total_paid
 
-    @property
-    def payment_status(self):
-        """
-        On each instance with a select related, fetch payment_status.
-        """
-        if hasattr(self, "ledger"):
-            return self.ledger.payment_status
-        else:
-            return "unpaid"
 
     @property
     def tenant_name(self):
