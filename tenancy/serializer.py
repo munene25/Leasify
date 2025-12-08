@@ -31,6 +31,5 @@ class TenancyDetailSerializer(serializer.Serializer):
     semester = SemesterListSerializer()
 
 class TenancyUpdateSerializer(serializer.Serializer):
-    # All fields are optional
-    apartment_id = serializers.IntegerField(required=False)
-    semester_id = serializers.IntegerField(required=False)
+    apartment_id = serializers.IntegerField()
+    semester_id = serializers.IntegerField()

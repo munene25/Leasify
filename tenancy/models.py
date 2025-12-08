@@ -22,6 +22,7 @@ class Tenancy(models.Model):
 
 
     class Meta:
+        sorting = ["-created_at"]
         constraints = [
             models.UniqueConstraint(
                 fields=["user", "semester"],

@@ -2,7 +2,7 @@ import uuid
 from rest_framework.exceptions import ValidationError
 from decimal import Decimal
 from .models import Payment
-from tenancy import selectors as tenancy_selectors
+from ..tenancy.selectors import tenancy_get_by_id
 from phonenumber_field.phonenumber import PhoneNumber
 from django.db import transaction
 
@@ -29,7 +29,7 @@ class PaymentCreateService:
 
     def get_tenancy(self):
         # Need to verify tenant exists
-        self.tenancy = tenancy_selectors.tenancy_get_by_id(tenancy_id=self.tenancy_id)
+        self.tenancy = tenancy_get_by_id(tenancy_id=self.tenancy_id)
 
     def verify_transaction_type(self):
         if self.transaction_type not in Payment.TransactionChoices.values:
