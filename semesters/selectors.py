@@ -1,3 +1,4 @@
+from django.core.cache import cache
 from .models import Semester
 from rest_framework.exceptions import NotFound
 from datetime import date
@@ -25,9 +26,12 @@ def semesters_get_all_from_today():
     return Semester.objects.filter(end_date__gte=date.today()).only("id")
 
 def semester_current():
-   try: 
-        return Semester.objects.get(
-            start_date__lte=date.today(), end_date__gte=date.today()
-        )
-   except Semester.DoesNotExist:
-       raise NotFound({"current_semester": [f"Semester not found, please create a semester for this time period"]})
+    cache_key = "semester:semester_current"
+    if semester := cache.get(cache_key):
+       return semester
+    try: 
+        semester = Semester.objects.get(start_date__lte=date.today(), end_date__gte=date.today())
+        cache.set(cache_key, semester, timeout=3600)
+        return semester
+    except Semester.DoesNotExist:
+        raise NotFound({"current_semester": [f"Semester not found. Please create a semester for this time period"]})

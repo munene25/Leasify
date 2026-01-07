@@ -1,4 +1,18 @@
+# Django specific
 .env
 db.sqlite3
 __pycache__
 out.txt
+
+.venv/ 
+*.log
+local_settings.py
+media/
+staticfiles/
+
+# OS specific (WSL/Windows)
+.DS_Store
+Thumbs.db
+
+# Celery specific
+celerybeat-schedule

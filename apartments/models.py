@@ -29,10 +29,6 @@ class Apartment(models.Model):
     def __str__(self) -> str:
         return f"Block: {self.block} - Unit: {self.unit_number}"
 
-    def clean(self) -> None:
-        if self.block not in Apartment.ApartmentChoices.values:
-            raise ValidationError({"block": ["Invalid block name"]})
-
     @property
     def apartment_name(self) -> str:
         """

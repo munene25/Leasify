@@ -2,18 +2,17 @@ from django.db import models
 from users.models import User
 from apartments.models import Apartment
 from semesters.models import Semester
+from semesters.selectors import semester_current
 from payments.models import Payment
 from tenancy.models import Tenancy
-
+from django.db import connection
+import time
 
 def run():
-    current_tenant = Tenancy.objects.filter(
-        apartment=models.OuterRef("pk"), semester_id=3
-    )
-   
-    occupied_apts = Apartment.objects.annotate(
-        tenant=models.Subquery(current_tenant.values("total_paid"))
-    ).all()
+    print(semester_current())
+    time.sleep(5)
+    print(semester_current())
+    time.sleep(6)
+    print(semester_current())
 
-    for apt in occupied_apts:
-        print(apt, getattr(apt, "tenant"))
+    print(connection.queries)

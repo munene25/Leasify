@@ -21,6 +21,7 @@ class Semester(models.Model):
     class Meta:
         ordering = ["-start_date"]
         unique_together = ("start_date", "end_date")
+        
     @property
     def active(self):
         return self.start_date <= date.today() <= self.end_date

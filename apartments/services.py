@@ -45,7 +45,10 @@ class ApartmentService:
             rent=rent,
             rentable=rentable,
         )
-        apt.full_clean()
+        try:
+            apt.full_clean()
+        except ValidationError as exec:
+            raise ValidationError from exec
         apt.save()
         return apt
 
@@ -54,7 +57,7 @@ class ApartmentService:
         """
         params must be in the update fields to be able to execute
         :param self: ApartmentService instance
-        :param kwargs: block: int, unit_number: int, rent: Decimal | int, renatble: bool
+        :param kwargs: block: str, unit_number: int, rent: Decimal | int, renatble: bool
         :type kwargs: str | int
         :return: Description
         :rtype: Apartment
@@ -69,8 +72,12 @@ class ApartmentService:
         }
         if not update_fields:
             return apartment
+        
+        block = update_fields.get("block")
+        if block is not None:
+            update_fields["block"] = block.uppercase()
 
-        for field, value in update_fields.items():
+        for field, value in update_fields.items():   
             setattr(apartment, field, value)
 
         apartment.full_clean()

@@ -7,22 +7,33 @@ from django.db import transaction
 
 
 class Tenancy(models.Model):
-    user = models.ForeignKey(User, on_delete=models.PROTECT)
+    user = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        null=False,
+        blank=False
+    )
     apartment = models.ForeignKey(
-        Apartment, on_delete=models.PROTECT, null=False, blank=False
+        Apartment,
+        on_delete=models.PROTECT,
+        null=False,
+        blank=False
     )
     semester = models.ForeignKey(
         Semester,
-        on_delete=models.PROTECT, null=False, blank=False
+        on_delete=models.PROTECT,
+        null=False,
+        blank=False
+    )
+    total_paid = models.DecimalField(
+        decimal_places=2,
+        max_digits=10,
     )
     created_at = models.DateTimeField(auto_now_add=True)
-    total_paid = models.DecimalField(
-        decimal_places=2, max_digits=10, default=Decimal(0)
-    )
 
 
     class Meta:
-        sorting = ["-created_at"]
+        ordering = ["-created_at"]
         constraints = [
             models.UniqueConstraint(
                 fields=["user", "semester"],
@@ -35,38 +46,7 @@ class Tenancy(models.Model):
         ]
 
     def __str__(self) -> str:
-        return f"Pk: {self.user.pk} Apt: {self.apartment}"
-
-    @transaction.atomic
-    def update_ledger_from_payment(self, payment):
-        if payment.transaction_type == "debit":
-            self.total_paid += payment.amount
-        else:
-            self.total_paid -= payment.amount
-        self.save()
-
-    @classmethod
-    def get_semester_tenants(cls, semester):
-        return cls.objects.select_related("user", "apartment").filter(
-            semester=semester, is_active=True
-        )
-
-    @classmethod
-    def get_total_payments_received(cls, semester):
-        total = cls.objects.filter(semester=semester).aggregate(
-            total=models.Sum("total_paid")
-        )
-        return total.get("total", Decimal("0.00"))
-
-    @classmethod
-    def get_uncleared_tenant_list(cls, semester):
-        """
-        Get a list of current tenants with uncleared balances for that semester
-        """
-        qs_filter = models.Q(ledger__total_paid__lt=models.F("rent")) | models.Q(
-            ledger__isnull=True
-        )
-        return cls.get_semester_tenants(semester).filter(qs_filter)
+        return f"User: {getattr(self, "user_id")} Apt: {getattr(self, "aptartment_id")}"
 
     @property
     def balance(self):

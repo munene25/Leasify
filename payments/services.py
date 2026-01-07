@@ -2,7 +2,7 @@ import uuid
 from rest_framework.exceptions import ValidationError
 from decimal import Decimal
 from .models import Payment
-from ..tenancy.selectors import tenancy_get_by_id
+from tenancy.selectors import tenancy_get_by_id
 from phonenumber_field.phonenumber import PhoneNumber
 from django.db import transaction
 

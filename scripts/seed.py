@@ -63,12 +63,12 @@ def run():
 
     apartments = [ApartmentService().create(**a) for a in aps]
 
-    # Create tenants
+    curr_sem = semester_current().pk
     tenancies = [
         TenancyService().create(
             user_id=i,
             apartment_id=i,
-            semester_id=semester_current().pk,
+            semester_id=curr_sem,
         )
         for i in given_range
     ]
