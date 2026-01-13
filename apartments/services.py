@@ -45,10 +45,7 @@ class ApartmentService:
             rent=rent,
             rentable=rentable,
         )
-        try:
-            apt.full_clean()
-        except ValidationError as exec:
-            raise ValidationError from exec
+        apt.full_clean()
         apt.save()
         return apt
 

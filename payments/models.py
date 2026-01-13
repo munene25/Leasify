@@ -1,12 +1,11 @@
 from django.db import models
 from tenancy.models import Tenancy
-from django.core.exceptions import ValidationError
 from phonenumber_field.modelfields import PhoneNumberField
 from decimal import Decimal
-from django.db import transaction
+from mixins.full_clean import ModelExceptionMixin
 
 
-class Payment(models.Model):
+class Payment(ModelExceptionMixin, models.Model):
     class TransactionChoices(models.TextChoices):
         DEBIT = "debit", "Incoming Payments"
         CREDIT = "credit", "Outgoing Payments"
@@ -20,15 +19,8 @@ class Payment(models.Model):
     )
     tenancy = models.ForeignKey(Tenancy, null=True, on_delete=models.SET_NULL)
     created_at = models.DateTimeField(auto_now_add=True)
-    phone_number = PhoneNumberField(max_length=13, blank=True, region="KE")
+    phone_number = PhoneNumberField(unique=True, blank=False)
     payee = models.CharField(max_length=30, blank=True)
-
-    @transaction.atomic
-    def save(self, *args, **kwargs):
-        self.full_clean()
-        super().save(*args, **kwargs)
-        self.tenancy.update_ledger_from_payment(self)
-
 
     def __str__(self):
         return f"Ref: {self.ref_no} Amt: {self.amount} Type: ({self.transaction_type})"

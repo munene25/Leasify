@@ -1,29 +1,17 @@
-from decimal import Decimal
 from django.db import models
 from apartments.models import Apartment
 from users.models import User
 from semesters.models import Semester
-from django.db import transaction
+from mixins.full_clean import ModelExceptionMixin
 
 
-class Tenancy(models.Model):
-    user = models.ForeignKey(
-        User,
-        on_delete=models.PROTECT,
-        null=False,
-        blank=False
-    )
+class Tenancy(ModelExceptionMixin, models.Model):
+    user = models.ForeignKey(User, on_delete=models.PROTECT, null=False, blank=False)
     apartment = models.ForeignKey(
-        Apartment,
-        on_delete=models.PROTECT,
-        null=False,
-        blank=False
+        Apartment, on_delete=models.PROTECT, null=False, blank=False
     )
     semester = models.ForeignKey(
-        Semester,
-        on_delete=models.PROTECT,
-        null=False,
-        blank=False
+        Semester, on_delete=models.PROTECT, null=False, blank=False
     )
     total_paid = models.DecimalField(
         decimal_places=2,
@@ -31,13 +19,11 @@ class Tenancy(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True)
 
-
     class Meta:
         ordering = ["-created_at"]
         constraints = [
             models.UniqueConstraint(
-                fields=["user", "semester"],
-                name="unique_user_per_semester"
+                fields=["user", "semester"], name="unique_user_per_semester"
             ),
             models.UniqueConstraint(
                 fields=["apartment", "semester"],
@@ -46,7 +32,7 @@ class Tenancy(models.Model):
         ]
 
     def __str__(self) -> str:
-        return f"User: {getattr(self, "user_id")} Apt: {getattr(self, "aptartment_id")}"
+        return f"[{self.pk}] User: {getattr(self, "user_id")} Apt: {getattr(self, "apartment_id")}"
 
     @property
     def balance(self):
@@ -54,7 +40,6 @@ class Tenancy(models.Model):
         On each tenancy instance get the balance based computed form joined apartment rent , fetch balance.
         """
         return self.apartment.rent - self.total_paid
-
 
     @property
     def tenant_name(self):

@@ -18,7 +18,7 @@ def apartment_overview(semester_id: int):
 
     return {
         "total_apartments": total_apartments,
-        "available": available,
+        "rentable": available,
         "vacant": total_apartments - available,
     }
 
@@ -43,10 +43,7 @@ def apartment_get_by_id(apartment_id: int):
 
 
 def apartment_available_units(semester_id: int):
-    return Apartment.objects.filter(rentable=True).exclude(
-        tenancy__semester_id=semester_id
-    )
-
+    return Apartment.objects.filter(rentable=True).exclude(tenancy__semester_id=semester_id)
 
 def apartment_occupancy_in_semester(*, apartment_id: int, semester_id: int):
     try:

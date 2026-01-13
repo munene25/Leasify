@@ -10,14 +10,15 @@ from .serializer import (
     TenancyDetailSerializer,
     TenancyUpdateSerializer,
 )
-
+from .tasks import show_detail
 
 class TenancyListCreateView(APIView, ValidateSerializerMixin):
     serializer_class = TenancyCreateSerializer
 
     def get(self, request) -> Response:
         tenancies = tenancy_list()
-        serializer = TenancyListSerializer(instance=tenancies)
+        print(tenancies)
+        serializer = TenancyListSerializer(instance=tenancies, many=True)
         return Response(status=status.HTTP_200_OK, data=serializer.data)
 
     def post(self, request) -> Response:
@@ -32,6 +33,7 @@ class TenancyDetailUpdateDestroyView(APIView, ValidateSerializerMixin):
 
     def get(self, request, tenancy_id: int) -> Response:
         tenancy = tenancy_get_by_id(tenancy_id)
+        show_detail.delay(tenancy_id)
         serializer = TenancyDetailSerializer(instance=tenancy)
         return Response(status=status.HTTP_200_OK, data=serializer.data)
 

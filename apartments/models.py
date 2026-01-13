@@ -1,10 +1,14 @@
+from typing import Collection
 from django.db import models
 from django.db.models.query import QuerySet
-from django.core.exceptions import ValidationError
 from semesters.selectors import semester_current
+from mixins.full_clean import ModelExceptionMixin
 
 
-class Apartment(models.Model):
+class Apartment(
+    ModelExceptionMixin,
+    models.Model,
+):
     """
     Apartment Model.
     Fields block and unit number must be unique for every entry.

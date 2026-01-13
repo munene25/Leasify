@@ -103,21 +103,24 @@ class PaymentCreateService:
 
     @transaction.atomic
     def create(self):
-        self.get_tenancy()
-        self.verify_transaction_type()
-        self.set_tenancy_total_paid()
-        self.verify_total_paid_subceeds_rent()
-        self.get_payee()
-        self.get_phone_number()
+        try:
+            self.get_tenancy()
+            self.verify_transaction_type()
+            self.set_tenancy_total_paid()
+            self.verify_total_paid_subceeds_rent()
+            self.get_payee()
+            self.get_phone_number()
 
-        payment = Payment(
-            ref_no=self.generate_ref_no(),
-            tenancy_id=self.tenancy_id,
-            transaction_type=self.transaction_type,
-            phone_number=self.phone_number,
-            payee=self.payee,
-            amount=self.amount,
-        )
-        payment.save()
-        self.update_tenancy_total_paid()
-        return payment
+            payment = Payment(
+                ref_no=self.generate_ref_no(),
+                tenancy_id=self.tenancy_id,
+                transaction_type=self.transaction_type,
+                phone_number=self.phone_number,
+                payee=self.payee,
+                amount=self.amount,
+            )
+            payment.save()
+            self.update_tenancy_total_paid()
+            return payment
+        except:
+            raise Exception

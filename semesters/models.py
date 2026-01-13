@@ -3,9 +3,10 @@ from functools import cached_property
 from datetime import date
 from django.db import models
 from rest_framework.exceptions import ValidationError
+from mixins.full_clean import ModelExceptionMixin
 
 
-class Semester(models.Model):
+class Semester(ModelExceptionMixin, models.Model):
     """
     Semester model
     Refactored to remove the name as a primary attribute
@@ -21,7 +22,7 @@ class Semester(models.Model):
     class Meta:
         ordering = ["-start_date"]
         unique_together = ("start_date", "end_date")
-        
+
     @property
     def active(self):
         return self.start_date <= date.today() <= self.end_date

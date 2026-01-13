@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Exit on error
+set -e
+
 # List your Django apps here
 APPS=("apartments" "payments" "semesters" "tenancy" "users")
 
@@ -12,33 +15,30 @@ find . -type d -name "__pycache__" -exec rm -rf {} +
 for app in "${APPS[@]}"; do
     if [ -d "$app/migrations" ]; then
         echo "Cleaning migrations in $app..."
+        # Deletes all files except __init__.py
         find "$app/migrations" -type f -name "*.py" ! -name "__init__.py" -delete
         find "$app/migrations" -type f -name "*.pyc" -delete
     else
-        echo "No migrations folder found in $app."
+        echo "⚠️ No migrations folder found in $app."
     fi
 done
-
-echo "Pycache and app migrations cleaned."
 
 # Remove SQLite DB if it exists
 if [ -f "db.sqlite3" ]; then
     rm db.sqlite3
-    echo "Deleted db.sqlite3"
-else
-    echo "No db.sqlite3 file found."
+    echo "🗑️ Deleted db.sqlite3"
 fi
 
 # Run Django migrations again
-echo "Making migrations..."
-python manage.py makemigrations
+# Note: Ensure your virtual environment is activated before running this!
+echo "🏗️ Making migrations..."
+python3 manage.py makemigrations
 
-echo "Applying migrations..."
-python manage.py migrate
+echo "🚀 Applying migrations..."
+python3 manage.py migrate
 
-echo "Project reset complete!"
+echo "🌱 Seeding database from seed.py..."
+# Assumes you have django-extensions installed for runscript
+python3 manage.py runscript seed
 
-echo "Seeding database from seed.py"
-python manage.py runscript seed
-
-echo "Seeding database complete"
+echo "✅ Project reset complete!"

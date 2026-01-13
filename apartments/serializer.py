@@ -31,5 +31,5 @@ class ApartmentDetailSerializer(serializers.Serializer):
     
 class ApartmentOverviewSerializer(serializers.Serializer):
     total_apartments = serializers.IntegerField()
-    rentable = serializers.IntegerField()
+    rentable = serializers.BooleanField()
     vacant = serializers.IntegerField()

@@ -10,9 +10,5 @@ local_settings.py
 media/
 staticfiles/
 
-# OS specific (WSL/Windows)
-.DS_Store
-Thumbs.db
-
 # Celery specific
 celerybeat-schedule

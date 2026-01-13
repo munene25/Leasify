@@ -3,11 +3,12 @@ from django.db import models
 from django.contrib.auth.models import AbstractUser
 from phonenumber_field.modelfields import PhoneNumberField
 from .manager import UserManager
+from mixins.full_clean import ModelExceptionMixin
 
 
-class User(AbstractUser):
+class User(ModelExceptionMixin, AbstractUser):
     email = models.EmailField(unique=True, blank=False)
-    phone_number = PhoneNumberField(unique=True, blank=False, region="KE")
+    phone_number = PhoneNumberField(unique=True, blank=False)
     bio = models.TextField(blank=True, max_length=300)
     verified = models.BooleanField(default=False)
     last_username_change = models.DateTimeField(null=True, blank=True)
@@ -39,4 +40,3 @@ class User(AbstractUser):
     @property
     def user_roles(self):
         return list(self.groups.values_list("name", flat=True))
-    
