@@ -2,7 +2,7 @@ from typing import Collection
 from django.db import models
 from django.db.models.query import QuerySet
 from semesters.selectors import semester_current
-from mixins.full_clean import ModelExceptionMixin
+from mixins.model_full_clean_mixin import ModelExceptionMixin
 
 
 class Apartment(

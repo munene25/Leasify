@@ -23,7 +23,7 @@ def build_verification_url(user: AbstractUser, path: str) -> str:
     """
     uid, token = generate_token(user)
     # build absolute URL e.g., https://yourdomain.com/api/verify-email/<uid>/<token>/
-    url = f"{settings.FRONTEND_URL}/{path}/{uid}/{token}/"
+    url = f"{settings.SITE_DOMAIN}/{path}/{uid}/{token}/"
     return url
 
 

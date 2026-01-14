@@ -7,7 +7,13 @@ from tenancy import selectors as tenancy_selectors
 def user_list():
     return User.objects.all()
 
-def user_get_by_id(user_id):
+def user_get_locked(user_id: int):
+    try:
+        return User.objects.select_for_update().get(pk=user_id)
+    except User.DoesNotExist:
+        raise NotFound({"user_email": "user not found"})
+
+def user_get_by_id(user_id: int):
     try:
         return User.objects.get(pk=user_id)
     except User.DoesNotExist:

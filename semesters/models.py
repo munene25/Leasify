@@ -1,10 +1,9 @@
 from __future__ import annotations
 from functools import cached_property
-from datetime import date
 from django.db import models
 from rest_framework.exceptions import ValidationError
-from mixins.full_clean import ModelExceptionMixin
-
+from mixins.model_full_clean_mixin import ModelExceptionMixin
+from django.utils import timezone
 
 class Semester(ModelExceptionMixin, models.Model):
     """
@@ -25,7 +24,7 @@ class Semester(ModelExceptionMixin, models.Model):
 
     @property
     def active(self):
-        return self.start_date <= date.today() <= self.end_date
+        return self.start_date <= timezone.localdate() <= self.end_date
 
     def clean(self) -> None:
         # start_date should come before end_date

@@ -16,9 +16,14 @@ from dotenv import load_dotenv
 import os
 
 load_dotenv()
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-APP_NAME = "Bisika Apartments"
+
+# Site settings
+SITE_DOMAIN = os.getenv("SITE_DOMAIN", "localhost")
+SITE_URL = os.getenv("SITE_URL", "http://localhost:5173")
+APP_NAME = "Bisika apartments"
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
@@ -29,11 +34,9 @@ SECRET_KEY = os.environ.get("SECURITY_KEY")
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
+ALLOWED_HOSTS = [SITE_DOMAIN, "localhost", "127.0.0.1"]
 
 
-# Url for the react app
-FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:5173")
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -49,6 +52,7 @@ INSTALLED_APPS = [
     "phonenumber_field",
     "drf_standardized_errors",
     "users",
+    "accounts",
     "payments",
     "apartments",
     "tenancy",
@@ -134,7 +138,7 @@ CACHES = {
 
 LANGUAGE_CODE = "en-us"
 
-TIME_ZONE = "UTC"
+TIME_ZONE = "Africa/Nairobi"
 
 USE_I18N = True
 
@@ -152,13 +156,16 @@ STATIC_URL = "static/"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+
+# Cors settings
 CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOWED_ORIGINS = [SITE_URL, "http://localhost:8000"]
 
-CORS_ALLOWED_ORIGINS = [FRONTEND_URL, "http://localhost:8000"]
-
-# custom User Model for emails.
+# User model
 AUTH_USER_MODEL = "users.User"
 
+
+# JWT settings
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=15),
     "REFRESH_TOKEN_LIFETIME": timedelta(weeks=2),
@@ -167,16 +174,29 @@ SIMPLE_JWT = {
     "UPDATE_LAST_LOGIN": True,
 }
 
+# Cookie Authentication
+COOKIE_AUTHENTICATION = {
+    'AUTH_COOKIE': 'access_token',          # Cookie name. Enables cookies if value is set.
+    'AUTH_COOKIE_DOMAIN': SITE_DOMAIN,      # A string like "example.com", or None for standard domain cookie.
+    'AUTH_COOKIE_SECURE': False,            # Whether the auth cookies should be secure (https:// only).
+    'AUTH_COOKIE_HTTP_ONLY' : True,         # Http only cookie flag.It's not fetch by javascript.
+    'AUTH_COOKIE_PATH': '/',                # The path of the auth cookie.
+    'AUTH_COOKIE_SAMESITE': 'Lax',          # Whether to set the flag restricting cookie leaks on cross-site requests.                                   # This can be 'Lax', 'Strict', or None to disable the flag.
+}
+
+
+# DRF standardized Errors
 DRF_STANDARDIZED_ERRORS = {"ENABLE_IN_DEBUG_FOR_UNHANDLED_EXCEPTIONS": True}
 
-EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
-EMAIL_HOST = "smtp.gmail.com"
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
-EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
-SUPPORT_EMAIL = os.getenv("EMAIL_HOST_USER")
-EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
 
+# EMAILS
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = os.getenv("EMAIL_HOST")
+EMAIL_PORT = 2525
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = DEFAULT_FROM_EMAIL = SUPPORT_EMAIL = os.getenv("EMAIL_HOST_USER")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
+ADMINS = ["edmune25@gmail.com"] # Logging email alerts in prod
 
 
 # CELERY
@@ -184,3 +204,4 @@ CELERY_BROKER_URL="redis://localhost:6379/3",
 CELERY_RESULT_BACKEND="redis://localhost:6379/4"
 CELERY_TASK_IGNORE_RESULT = False
 CELERY_RESULT_EXPIRES = 3600
+

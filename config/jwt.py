@@ -1,12 +1,13 @@
 from rest_framework.request import Request
 from rest_framework_simplejwt.authentication import JWTAuthentication
-from rest_framework import HTTP_HEADER_ENCODING
+from django.conf import settings
 
-class JWTCookieAuthenticator(JWTAuthentication):
-    def authenticate(self, request: Request) -> tuple | None:
-        token = request.COOKIES.get('access')
-        if not token:
+class JWTCookieAuthentication(JWTAuthentication):
+    """ Authentication class with simple JWT. **CSRF Exempt** """
+    def authenticate(self, request: Request):
+        raw_token = request.COOKIES.get(settings.SIMPLE_JWT['AUTH_COOKIE']) or None
+        if raw_token is None:
             return None
-        token = token.encode(HTTP_HEADER_ENCODING)
-        validated_token = self.get_validated_token(token)
-        return (self.get_user(validated_token), validated_token)
+
+        validated_token = self.get_validated_token(raw_token)
+        return self.get_user(validated_token), validated_token

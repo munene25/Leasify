@@ -1,7 +1,7 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from mixins.validate_serializer import ValidateSerializerMixin
+from mixins.view_validation_mixin import ValidateSerializerMixin
 from .services import TenancyService
 from .selectors import tenancy_list, tenancy_get_by_id
 from .serializer import (

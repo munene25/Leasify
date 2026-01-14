@@ -2,7 +2,7 @@ from django.db import models
 from apartments.models import Apartment
 from users.models import User
 from semesters.models import Semester
-from mixins.full_clean import ModelExceptionMixin
+from mixins.model_full_clean_mixin import ModelExceptionMixin
 
 
 class Tenancy(ModelExceptionMixin, models.Model):
