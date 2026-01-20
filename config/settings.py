@@ -23,7 +23,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Site settings
 SITE_DOMAIN = os.getenv("SITE_DOMAIN", "localhost")
 SITE_URL = os.getenv("SITE_URL", "http://localhost:5173")
-APP_NAME = "Bisika apartments"
+APP_NAME = "Bisika Apartments"
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
@@ -52,7 +52,6 @@ INSTALLED_APPS = [
     "phonenumber_field",
     "drf_standardized_errors",
     "users",
-    "accounts",
     "payments",
     "apartments",
     "tenancy",
@@ -175,8 +174,8 @@ SIMPLE_JWT = {
 }
 
 # Cookie Authentication
-COOKIE_AUTHENTICATION = {
-    'AUTH_COOKIE': 'access_token',          # Cookie name. Enables cookies if value is set.
+COOKIE_SETTINGS = {
+    'AUTH_COOKIE': 'access',                # Cookie name. Enables cookies if value is set.
     'AUTH_COOKIE_DOMAIN': SITE_DOMAIN,      # A string like "example.com", or None for standard domain cookie.
     'AUTH_COOKIE_SECURE': False,            # Whether the auth cookies should be secure (https:// only).
     'AUTH_COOKIE_HTTP_ONLY' : True,         # Http only cookie flag.It's not fetch by javascript.
@@ -194,7 +193,9 @@ EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_HOST = os.getenv("EMAIL_HOST")
 EMAIL_PORT = 2525
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = DEFAULT_FROM_EMAIL = SUPPORT_EMAIL = os.getenv("EMAIL_HOST_USER")
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
+DEFAULT_FROM_EMAIL = f"no-reply@{SITE_DOMAIN}"
+SUPPORT_EMAIL = f"support@{SITE_DOMAIN}"
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
 ADMINS = ["edmune25@gmail.com"] # Logging email alerts in prod
 

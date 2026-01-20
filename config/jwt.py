@@ -2,10 +2,12 @@ from rest_framework.request import Request
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from django.conf import settings
 
+
 class JWTCookieAuthentication(JWTAuthentication):
-    """ Authentication class with simple JWT. **CSRF Exempt** """
+    """Authentication class with simple JWT. **CSRF Exempt**"""
+
     def authenticate(self, request: Request):
-        raw_token = request.COOKIES.get(settings.SIMPLE_JWT['AUTH_COOKIE']) or None
+        raw_token = request.COOKIES.get(settings.SIMPLE_JWT["AUTH_COOKIE"]) or None
         if raw_token is None:
             return None
 

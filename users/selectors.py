@@ -15,7 +15,7 @@ def user_get_locked(user_id: int):
 
 def user_get_by_id(user_id: int):
     try:
-        return User.objects.get(pk=user_id)
+        return User.objects.select_related("account").get(pk=user_id)
     except User.DoesNotExist:
         raise NotFound({"user_id": "user not found"})
 

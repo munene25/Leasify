@@ -10,15 +10,17 @@ from payments.services import PaymentCreateService
 from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
 from datetime import timedelta
+from users.services import user_create
+from phonenumber_field.phonenumber import PhoneNumber
+
+
 def run():
-    user = User.objects.get(pk=2)
-    context = {"subject": "Clearance of payment", "user": user, "expiry_hours": timedelta(hours=0.2), "url": "www.bisikaapartments.com", "app_name": "Bisiska apts", "support_email": "support@bisikaapartments.com"}
-    email = EmailMultiAlternatives(
-        subject="Welcome to Bisika apartments",
-        body=render_to_string("emails/verify.txt", context=context),
-        from_email="sales@bisikaapartments.com",
-        to=[user.email]
-        
-    )   
-    email.attach_alternative(render_to_string("emails/verify.html", context=context), "text/html")
-    email.send(fail_silently=False)
+    phone_number = PhoneNumber.from_string("0721 321 231")
+    user_create(
+        email="wallace@gmail.com",
+        password="alsdk33-9u-v09uda",
+        phone_number=phone_number,
+        notify=True,
+        first_name="Wallace",
+        last_name="Pimbo",
+    )

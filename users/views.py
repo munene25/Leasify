@@ -8,7 +8,7 @@ from rest_framework_simplejwt.exceptions import TokenError, InvalidToken
 from rest_framework.generics import CreateAPIView, UpdateAPIView, RetrieveAPIView
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.serializers import TokenRefreshSerializer
-from .utils import validate_token, send_verification_email, send_password_reset_email
+from .tokens import token_validate, token_url_generate
 
 
 def _set_cookies(response: Response, key: str, value: str) -> None:

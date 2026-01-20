@@ -1,0 +1,16 @@
+{% extends 'emails/base.txt' %}
+
+{% block body %}
+Welcome to {{ app_name }}
+
+We’re glad you’re here. To get started, please confirm that this email
+address belongs to you.
+
+Verify your email address:
+{{ verify_url }}
+
+This verification link will expire for security reasons.
+
+If you didn’t create an account, you can safely ignore this email.
+
+{% endblock %}

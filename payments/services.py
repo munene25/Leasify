@@ -63,7 +63,7 @@ class PaymentCreateService:
 
     def get_phone_number(self):
         if not self.phone_number:
-            self.phone_number = self.tenancy.user.phone_number
+            self.phone_number = self.tenancy.user.account.phone_number
         elif isinstance(self.phone_number, str):
             self.phone_number = self._phone_number_from_string()
         else:

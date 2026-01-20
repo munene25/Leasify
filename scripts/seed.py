@@ -9,28 +9,20 @@ from tenancy.services import TenancyService
 from semesters.services import SemesterService
 from apartments.services import ApartmentService
 from payments.services import PaymentCreateService
-
+from users.services import user_create
 
 def run():
     # Create users (use bulk_create for performance)
     given_range = list(range(1, 10))
-    users_data = [
-        User(
-            email=f"edmune25+{i}@gmail.com",
-            username=f"munene{i}",
+    users = [
+        user_create(
+            email=f"user{i}@gmail.com",
+            password="timthetatman",
             phone_number=PhoneNumber.from_string(f"0700 000 00{i}", region="KE"),
-            first_name=f"ed{i}",
-            last_name=f"mune{i}",
-        )
-        for i in given_range
+            first_name=f"timmy{i}",
+            last_name=f"tat{i}"
+        ) for i in given_range
     ]
-    users = User.objects.bulk_create(users_data)
-
-    # Set passwords (must call set_password + save individually)
-    for u in users:
-        u.set_password("password")
-        u.save(update_fields=["password"])
-
     # Create semesters
 
     def generate_semesters(start_year=2025, end_year=2029):
@@ -82,13 +74,13 @@ def run():
                     transaction_type="debit",
                     tenancy_id=num,
                     initiator="tenant",
+                    phone_number=users[num].account.phone_number
                 ).create()
             except:
                 pass
 
-    User.objects.create_superuser(
-        email="edmune25@gmail.com",
-        password="password",
-        phone_number="0700000000",
-        username="edmune",
-    )
+    # User.objects.create_superuser(
+    #     email="edmune25@gmail.com",
+    #     password="password",
+    #     phone_number="0700000000",
+    # )

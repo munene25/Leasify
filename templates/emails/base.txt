@@ -1,0 +1,9 @@
+{{ app_name }}
+
+{% block body %}{% endblock %}
+
+Need help? Reply to this email or contact us at {{ support_email }}.
+
+{{ company_name }} — {{ company_address }}
+If you no longer wish to receive these emails, you may unsubscribe:
+{{ unsubscribe_url }}
