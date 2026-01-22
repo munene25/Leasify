@@ -1,15 +1,10 @@
 from rest_framework.response import Response
 from django.conf import settings
-from functools import cached_property
 
-
-class CookiesMixin:
-    @cached_property
-    def cookie_settings(self):
-        return settings.COOKIE_SETTINGS
-
+class CookieMixin:
     def set_cookies(self, *, response: Response, **kwargs) -> Response:
-        cookies = self.cookie_settings
+        cookies = getattr(settings, "COOKIE_SETTINGS")
+        
         for key, value in kwargs.items():
             response.set_cookie(
                 key=key,
@@ -22,7 +17,7 @@ class CookiesMixin:
             )
         return response
 
-    def del_cookies(self, *args, response: Response) -> Response:
-        for arg in args:
+    def del_cookies(self,*,  cookies: list[str], response: Response) -> Response:
+        for arg in cookies:
             response.delete_cookie(arg)
         return response

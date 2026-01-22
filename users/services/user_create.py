@@ -34,6 +34,4 @@ def user_create(
     if notify:
         send_welcome_email.delay(user.pk)
     
-   
-
     return user

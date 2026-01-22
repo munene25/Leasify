@@ -86,9 +86,9 @@ TEMPLATES = [
     },
 ]
 REST_FRAMEWORK = {
-    # "DEFAULT_AUTHENTICATION_CLASSES": (
-    #     "config.jwt.JWTCookieAuthenticator",
-    # ),
+    "DEFAULT_AUTHENTICATION_CLASSES": (
+        "config.jwt.JWTCookieAuthentication",
+    ),
     "EXCEPTION_HANDLER": "drf_standardized_errors.handler.exception_handler"
 }
 

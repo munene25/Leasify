@@ -7,9 +7,8 @@ from django.contrib.auth import authenticate
 def user_login(email: str, password: str) -> tuple[AbstractUser, dict]:
     user = authenticate(email=email, password=password)
     if user is None:
-         if user is None:
-            err = "No credentials match the email and password you provided"
-            raise AuthenticationFailed({"email": [err], "password": [err]})
+        err = "No credentials match the email and password you provided"
+        raise AuthenticationFailed({"email": [err], "password": [err]})
 
     if not user.is_active:
         err = "You cannot log in to your account. Please contact admin for further assistance"

@@ -10,7 +10,7 @@ from semesters.services import SemesterService
 from apartments.services import ApartmentService
 from payments.services import PaymentCreateService
 from users.services import user_create
-
+from django.contrib.auth.models import Group
 def run():
     # Create users (use bulk_create for performance)
     given_range = list(range(1, 10))
@@ -74,13 +74,11 @@ def run():
                     transaction_type="debit",
                     tenancy_id=num,
                     initiator="tenant",
-                    phone_number=users[num].account.phone_number
+                    phone_number=users[num].account.phone_number #type: ignore
                 ).create()
             except:
                 pass
 
-    # User.objects.create_superuser(
-    #     email="edmune25@gmail.com",
-    #     password="password",
-    #     phone_number="0700000000",
-    # )
+    roles = ["manager", "caretaker", "tenant"]
+    for role in roles:
+        Group.objects.create(name=role)

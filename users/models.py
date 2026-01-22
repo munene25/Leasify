@@ -9,7 +9,7 @@ from rest_framework.exceptions import ValidationError
 from phonenumber_field.modelfields import PhoneNumberField
 
 
-class User(AbstractUser, ModelExceptionMixin):
+class User(ModelExceptionMixin, AbstractUser):
     username = None
     email = models.EmailField(unique=True, blank=False)
     verified = models.BooleanField(default=False)
@@ -43,7 +43,7 @@ class User(AbstractUser, ModelExceptionMixin):
         return None
 
     @property
-    def user_roles(self):
+    def roles(self):
         return list(self.groups.values_list("name", flat=True))
 
 

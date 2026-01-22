@@ -3,40 +3,16 @@ from . import views
 
 
 urlpatterns = [
-    path("login/", views.LoginView.as_view(), name="login"),
-    path("signup/", views.SignUpView.as_view(), name="sign_up"),
+    path("me", views.MeView.as_view(), name="me"),
+    path("", views.UserListCreateView.as_view(), name="users_list_create"),
+    path("<int:user_id>", views.UserDetailUpdateDestroyView.as_view(), name="users_detail_update_destroy"),
+    path("login", views.LoginView.as_view(), name="login"),
+    path("logout", views.LogoutView.as_view(), name="logout"),
     path("refresh-token/", views.RefreshTokenView.as_view(), name="refresh_token"),
-    path("logout/", views.LogoutView.as_view(), name="logout"),
-    path("edit-profile/", views.UpdateUserProfile.as_view(), name="edit_profile"),
-    path(
-        "change-password/",
-        views.PasswordChangeView.as_view(),
-        name="change_password",
-    ),
-    path("change-email/", views.EmailChangeView.as_view(), name="change_email"),
-    path(
-        "generate/password-reset/",
-        views.SendPasswordResetLinkView.as_view(),
-        name="send_password_reset",
-    ),
-    path(
-        "generate/email-verification/",
-        views.SendEmailVerificationLinkView.as_view(),
-        name="send_email_verification",
-    ),
-    path(
-        "confirm/email-token/<str:uidb64>/<str:token>/",
-        views.VerifyEmailTokenView.as_view(),
-        name="verify_email",
-    ),
-    path(
-        "confirm/password-token/<str:uidb64>/<str:token>/",
-        views.VerifyPasswordTokenView.as_view(),
-        name="verify_password",
-    ),
-    path(
-        "me/",
-        views.GetUserData.as_view(),
-        name="me",
-    ),
+    path("password-change", views.PasswordChangeView.as_view(), name="users_password_change" ),
+    path("request/password-reset", views.RequestPasswordResetView.as_view(), name="send_password_reset"),
+    path("request/email-verification", views.RequestEmailVerificationView.as_view(), name="send_email_verification" ),
+    path("confirm/email-verification/<str:uuid>/<str:token>", views.ConfirmEmailVerificationView.as_view(), name="verify_email" ),
+    path("confirm/password_reset/<str:uuid>/<str:token>", views.ConfirmPasswordResetView.as_view(), name="verify_password" ),
+    path("unsubscribe/<str:uuid>", views.UserUnsubscribeView.as_view(), name="unsubscribe")
 ]

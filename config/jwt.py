@@ -12,4 +12,7 @@ class JWTCookieAuthentication(JWTAuthentication):
             return None
 
         validated_token = self.get_validated_token(raw_token)
-        return self.get_user(validated_token), validated_token
+        user = self.get_user(validated_token)
+        if not user.is_active:
+            return None
+        return user, {"type": "jwt", "token": validated_token}

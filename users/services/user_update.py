@@ -1,31 +1,33 @@
 from users.models import User
 from django.db import transaction
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import ValidationError, PermissionDenied
 from django.utils import timezone
 
-def check_passwords_equality(pass1, pass2):
-    """Cheks whether 2 passwords match"""
-    if pass1 != pass2 :
-        err = "Passwords do not match"
-        raise ValidationError({"new_password": [err], "confirm_password": [err]})  
-
-def user_change_password(*, user: User, new_password: str, confirm_password: str, current_password: str|None = None) -> User:
+@transaction.atomic
+def user_change_password(*, user: User, new_password: str,  current_password: str|None = None) -> User:
     if current_password:
         user.check_current_password(current_password)
-    check_passwords_equality(confirm_password, new_password)
     setattr(user, "_raw_password", new_password)
     user.set_password(new_password)
 
     user.full_clean()
     user.save()
     # TODO: Implement mail sending to notify user
-    # TODO: Invalidate issued JWT tokens
+    # TODO: Invalidate refresh token
     return user
-    
 
 @transaction.atomic
+def user_email_verify(user: User):
+    if user.verified:
+        return user
+    user.verified = True
+
+    # TODO: Implement mail sending to notify user
+    user.save()
+
+
 def user_update(user: User, **kwargs):
-    EDITABLE_FIELDS = {'email', 'first_name', 'last_name', 'verified'}
+    EDITABLE_FIELDS = {'email', 'first_name', 'last_name'}
     update_fields = {
         k: v
         for k, v in kwargs.items()
@@ -42,7 +44,7 @@ def user_update(user: User, **kwargs):
             raise ValidationError({"current_password": ["Current password required."]})
         user.check_current_password(password)
         if user.next_email_change is not None:
-            err = f"Next available change is '{user.next_email_change}'"
+            err = f"Next available email change is '{user.next_email_change}'"
             raise ValidationError({"email": [err]})
         # Update email and revoke verification
         user.email = email
@@ -55,4 +57,16 @@ def user_update(user: User, **kwargs):
         user.full_clean()
         user.save()
     return user
+
+
+@transaction.atomic
+def user_delete_or_deactivate(user: User) -> User | None:
+    if user.is_superuser:
+        raise PermissionDenied()
+    if user.tenancy_set.exists(): #type: ignore
+        user.is_active = False
+        user.save()
+        return user
+    user.delete()
+    return None
 
