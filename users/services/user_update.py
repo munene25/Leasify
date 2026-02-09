@@ -4,7 +4,7 @@ from rest_framework.exceptions import ValidationError, PermissionDenied
 from django.utils import timezone
 
 @transaction.atomic
-def user_change_password(*, user: User, new_password: str,  current_password: str|None = None) -> User:
+def user_change_password(*, user: User, new_password: str,  current_password: str|None = None, confirm_password: str) -> User:
     if current_password:
         user.check_current_password(current_password)
     setattr(user, "_raw_password", new_password)

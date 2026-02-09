@@ -2,7 +2,7 @@ from __future__ import annotations
 from functools import cached_property
 from django.db import models
 from rest_framework.exceptions import ValidationError
-from mixins.model_full_clean_mixin import ModelExceptionMixin
+from mixins.model_full_clean import ModelExceptionMixin
 from django.utils import timezone
 
 class Semester(ModelExceptionMixin, models.Model):

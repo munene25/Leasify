@@ -2,7 +2,7 @@ from django.db import models
 from tenancy.models import Tenancy
 from phonenumber_field.modelfields import PhoneNumberField
 from decimal import Decimal
-from mixins.model_full_clean_mixin import ModelExceptionMixin
+from mixins.model_full_clean import ModelExceptionMixin
 
 
 class Payment(ModelExceptionMixin, models.Model):

@@ -2,7 +2,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import status
 from semesters.selectors import semester_current
-from mixins.view_validation_mixin import ValidateSerializerMixin
+from mixins.view_validate import ValidateSerializerMixin
 from . import selectors
 from .services import ApartmentService
 from .serializer import (

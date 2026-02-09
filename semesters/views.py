@@ -9,7 +9,7 @@ from .serializer import (
     SemesterUpdateSerializer
 )
 from rest_framework.views import APIView
-from mixins.view_validation_mixin import ValidateSerializerMixin
+from mixins.view_validate import ValidateSerializerMixin
 
 
 class SemesterListCreateView(APIView, ValidateSerializerMixin):

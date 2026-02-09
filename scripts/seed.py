@@ -1,5 +1,4 @@
 from decimal import Decimal
-from users.models import User
 from semesters.selectors import semester_current
 from payments.models import Payment
 from datetime import date
@@ -10,7 +9,8 @@ from semesters.services import SemesterService
 from apartments.services import ApartmentService
 from payments.services import PaymentCreateService
 from users.services import user_create
-from django.contrib.auth.models import Group
+from .permissions import setup_roles_and_permissions
+
 def run():
     # Create users (use bulk_create for performance)
     given_range = list(range(1, 10))
@@ -79,6 +79,20 @@ def run():
             except:
                 pass
 
-    roles = ["manager", "caretaker", "tenant"]
-    for role in roles:
-        Group.objects.create(name=role)
+    # Setup Roles and permissions
+    setup_roles_and_permissions()
+
+    # create super_user
+    user = user_create(
+        first_name = "Ed",
+        last_name = "Mune",
+        email = "edmune25@gmail.com",
+        phone_number=PhoneNumber.from_string("+254791573104"),
+        password = "password",
+        notify=False
+    )
+    user.is_superuser = True
+    user.is_staff = True
+    user.verified = True
+    user.save()
+    

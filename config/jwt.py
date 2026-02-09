@@ -7,7 +7,8 @@ class JWTCookieAuthentication(JWTAuthentication):
     """Authentication class with simple JWT. **CSRF Exempt**"""
 
     def authenticate(self, request: Request):
-        raw_token = request.COOKIES.get(settings.SIMPLE_JWT["AUTH_COOKIE"]) or None
+        token_name = settings.COOKIE_SETTINGS["AUTH_COOKIE"]
+        raw_token = request.COOKIES.get(token_name, None)
         if raw_token is None:
             return None
 

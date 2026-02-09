@@ -1,5 +1,7 @@
 from users.models import Account
 from django.db import transaction
+
+
 def account_update( account: Account, **kwargs):
     EDITABLE_FIELDS = {"phone_number", "bio", "backup_email"}
     update_fields = {k: v for k, v in kwargs.items() if k in EDITABLE_FIELDS and getattr(account, k) != v}

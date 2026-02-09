@@ -2,10 +2,23 @@ from django.db import models
 from apartments.models import Apartment
 from users.models import User
 from semesters.models import Semester
-from mixins.model_full_clean_mixin import ModelExceptionMixin
+from mixins.model_full_clean import ModelExceptionMixin
 
 
 class Tenancy(ModelExceptionMixin, models.Model):
+    class Meta:
+        ordering = ["-created_at"]
+
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "semester"], name="unique_user_per_semester"
+            ),
+            models.UniqueConstraint(
+                fields=["apartment", "semester"],
+                name="unique_apartment_per_semester",
+            ),
+        ]
+    
     user = models.ForeignKey(User, on_delete=models.PROTECT, null=False, blank=False)
     apartment = models.ForeignKey(
         Apartment, on_delete=models.PROTECT, null=False, blank=False
@@ -19,18 +32,7 @@ class Tenancy(ModelExceptionMixin, models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True)
 
-    class Meta:
-        ordering = ["-created_at"]
-        constraints = [
-            models.UniqueConstraint(
-                fields=["user", "semester"], name="unique_user_per_semester"
-            ),
-            models.UniqueConstraint(
-                fields=["apartment", "semester"],
-                name="unique_apartment_per_semester",
-            ),
-        ]
-
+    
     def __str__(self) -> str:
         return f"[{self.pk}] User: {getattr(self, "user_id")} Apt: {getattr(self, "apartment_id")}"
 
@@ -51,7 +53,7 @@ class Tenancy(ModelExceptionMixin, models.Model):
 
     @property
     def phone_number(self):
-        return self.user.phone_number
+        return self.user.account.phone_number #type: ignore
 
     @property
     def payment_status(self):

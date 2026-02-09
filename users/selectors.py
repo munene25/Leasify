@@ -8,9 +8,7 @@ def user_list():
     return User.objects.all()
 
 def users_get_visible_for(user: User):
-    if user.is_superuser or user.is_staff:
-        return User.objects.select_related("account").all()
-    return user
+    return User.objects.select_related("account").all()
 
 def user_get_locked(user_id: int):
     try:

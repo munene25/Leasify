@@ -70,7 +70,7 @@ class TenancyService:
 
         # Add user to Tenant group
         user = user_selectors.user_get_by_id(user_id)
-        tenancy_group, _ = Group.objects.get_or_create(name="Tenant")
+        tenancy_group, _ = Group.objects.get_or_create(name="tenant")
         user.groups.add(tenancy_group)
         return tenancy
 

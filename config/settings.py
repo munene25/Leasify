@@ -88,6 +88,7 @@ TEMPLATES = [
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "config.jwt.JWTCookieAuthentication",
+        "rest_framework.authentication.SessionAuthentication"
     ),
     "EXCEPTION_HANDLER": "drf_standardized_errors.handler.exception_handler"
 }
@@ -176,7 +177,7 @@ SIMPLE_JWT = {
 # Cookie Authentication
 COOKIE_SETTINGS = {
     'AUTH_COOKIE': 'access',                # Cookie name. Enables cookies if value is set.
-    'AUTH_COOKIE_DOMAIN': SITE_DOMAIN,      # A string like "example.com", or None for standard domain cookie.
+    'AUTH_COOKIE_DOMAIN': None,      # A string like "example.com", or None for standard domain cookie.
     'AUTH_COOKIE_SECURE': False,            # Whether the auth cookies should be secure (https:// only).
     'AUTH_COOKIE_HTTP_ONLY' : True,         # Http only cookie flag.It's not fetch by javascript.
     'AUTH_COOKIE_PATH': '/',                # The path of the auth cookie.
