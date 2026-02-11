@@ -14,8 +14,8 @@ urlpatterns = [
     path("refresh", views.RefreshTokenView.as_view(), name="refresh_token"),
     path("password-change", views.PasswordChangeView.as_view(), name="users_password_change" ),
     path("request/password-reset", views.RequestPasswordResetView.as_view(), name="send_password_reset"),
+    path("confirm/password-reset/<str:uuid>/<str:token>", views.ConfirmPasswordResetView.as_view(), name="verify_password" ),
     path("request/email-verification", views.RequestEmailVerificationView.as_view(), name="send_email_verification" ),
     path("confirm/email-verification/<str:uuid>/<str:token>", views.ConfirmEmailVerificationView.as_view(), name="verify_email" ),
-    path("confirm/password_reset/<str:uuid>/<str:token>", views.ConfirmPasswordResetView.as_view(), name="verify_password" ),
     path("unsubscribe/<str:uuid>", views.UserUnsubscribeView.as_view(), name="unsubscribe")
 ]

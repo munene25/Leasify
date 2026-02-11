@@ -90,7 +90,17 @@ REST_FRAMEWORK = {
         "config.jwt.JWTCookieAuthentication",
         "rest_framework.authentication.SessionAuthentication"
     ),
-    "EXCEPTION_HANDLER": "drf_standardized_errors.handler.exception_handler"
+    "EXCEPTION_HANDLER": "drf_standardized_errors.handler.exception_handler",
+    'DEFAULT_THROTTLE_RATES': {
+        'anon_burst': '20/minute',
+        'anon_sustained': '500/day',
+        'user_burst': '30/minute',
+        'user_sustained': '500/day',
+        'login_limit': '5/hour',
+        'password_changes': '3/day',
+        'email_verification': '3/day',
+
+    }
 }
 
 WSGI_APPLICATION = "config.wsgi.application"

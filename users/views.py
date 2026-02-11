@@ -38,11 +38,20 @@ from .serializer import (
     UserRoleListSerializer,
 )
 from .permissions import GuestsCanPostOnly
+from domain.throttles import (
+    AnonBurst,
+    AnonSustained,
+    UserBurst,
+    UserSustained,
+    ScopedRateThrottle,
+    EmailBaseThrottle,
+)
 
 
 class UserListCreateView(APIView, ValidateSerializerMixin, PermissionMixin):
     serializer_class = UserCreateSerializer
     permission_classes = [GuestsCanPostOnly]
+    throttle_classes = [AnonBurst, AnonSustained]
 
     def get(self, request):
         self.check_perms(request.user, "users.view_users")
@@ -119,6 +128,8 @@ class MeView(APIView, ValidateSerializerMixin, CookieMixin):
 
 
 class LoginView(APIView, ValidateSerializerMixin, CookieMixin):
+    throttle_classes = [EmailBaseThrottle]
+    throttle_scope = "login_limit"
     authentication_classes = []
     permission_classes = [AllowAny]
     serializer_class = LoginSerializer
@@ -143,7 +154,7 @@ class LogoutView(APIView, CookieMixin):
 class RefreshTokenView(APIView, CookieMixin):
     authentication_classes = []
     permission_classes = [AllowAny]
-
+    throttle_classes = [AnonBurst, AnonSustained]
     def post(self, request):
         refresh_token = request.COOKIES.get("refresh")
         if not refresh_token:
@@ -164,6 +175,8 @@ class RefreshTokenView(APIView, CookieMixin):
 class PasswordChangeView(APIView, CookieMixin, ValidateSerializerMixin):
     permission_classes = [IsAuthenticated]
     serializer_class = PasswordChangeSerializer
+    throttle_classes = [UserBurst, ScopedRateThrottle]
+    throttle_scope = "password_changes"
 
     def post(self, request):
         data = self.validate_input(data=request.data)
@@ -173,6 +186,8 @@ class PasswordChangeView(APIView, CookieMixin, ValidateSerializerMixin):
 
 class RequestEmailVerificationView(APIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes = [UserBurst, ScopedRateThrottle]
+    throttle_scope = "email_verification"
 
     def post(self, request):
         user = request.user
@@ -182,7 +197,7 @@ class RequestEmailVerificationView(APIView):
                 url_path="email-verify",
                 subject="Verify your email address.",
                 action_cta="Verify Email",
-            ) # type: ignore
+            )  # type: ignore
         return Response(status=HTTP_202_ACCEPTED)
 
 
@@ -200,6 +215,8 @@ class RequestPasswordResetView(APIView, ValidateSerializerMixin):
     authentication_classes = []
     permission_classes = [AllowAny]
     serializer_class = RequestPasswordResetSerializer
+    throttle_classes = [AnonBurst, EmailBaseThrottle]
+    throttle_scope = "email_verification"
 
     def post(self, request):
         data = self.validate_input(data=request.data)
@@ -213,7 +230,7 @@ class RequestPasswordResetView(APIView, ValidateSerializerMixin):
                 url_path="password-reset",
                 subject="Reset your password",
                 action_cta="Reset password",
-            ) # type: ignore
+            )  # type: ignore
         return Response(status=HTTP_202_ACCEPTED)
 
 
@@ -251,15 +268,14 @@ class UserRoleDetailView(APIView, ValidateSerializerMixin):
 
     def post(self, request, user_id):
         user = user_get_by_id(user_id)
-        roles = self.validate_input(data=request.data)
-        print(roles)
-        # user.groups.add(*roles)
+        data = self.validate_input(data=request.data)
+        user.groups.add(*data["roles"])
         return Response(status=HTTP_200_OK)
 
     def delete(self, request, user_id):
         user = user_get_by_id(user_id)
-        roles = self.validate_input(data=request.data)
-        user.groups.remove(*roles)
+        data = self.validate_input(data=request.data)
+        user.groups.remove(*data["roles"])
         return Response(status=HTTP_200_OK)
 
 

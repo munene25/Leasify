@@ -74,9 +74,10 @@ class ConfirmPasswordResetSerializer(serializers.Serializer):
     new_password = serializers.CharField()
     confirm_password = serializers.CharField()
     
-    def validate_confirm_password(self, value):
-        if self.new_password != value:
-            raise serializers.ValidationError("Passwords do not match")
+    def validate(self, data):
+        if data.get('new_password') != data.get('confirm_password'):
+            raise serializers.ValidationError({"confirm_password": "Passwords do not match"})
+        return data
         
 class UserRoleDetailSerializer(serializers.Serializer):
     roles = serializers.ListField()
