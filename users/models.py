@@ -2,29 +2,25 @@ from datetime import timedelta
 from django.utils import timezone
 from django.db import models
 from django.contrib.auth.models import AbstractUser
-from mixins.model_full_clean import ModelExceptionMixin
+from common.models import BaseModel
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework.exceptions import ValidationError
 from phonenumber_field.modelfields import PhoneNumberField
 
 
-class User(ModelExceptionMixin, AbstractUser):
-    class Meta:
-        ordering = ["-created_at"]        
-        
+class User(BaseModel, AbstractUser):
     username = None
     email = models.EmailField(unique=True, blank=False)
     verified = models.BooleanField(default=False)
     last_email_change = models.DateTimeField(null=True, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
     USERNAME_FIELD = "email"
-    REQUIRED_FIELDS= []
+    REQUIRED_FIELDS = []
 
 
     def clean(self):
         super().clean()
-        if password:=getattr(self, "_raw_password"):
+        if password:=getattr(self, "_raw_password", None):
             try:
                 validate_password(password, self)
             except DjangoValidationError as exc:
@@ -44,16 +40,18 @@ class User(ModelExceptionMixin, AbstractUser):
             if next_change_time > timezone.now():
                 return timezone.localtime(next_change_time)
         return None
+    
     @property
     def full_name(self):
         return self.get_full_name()
+    
     @property
     def roles(self):
         return list(self.groups.values_list("name", flat=True))
 
 
 # Account Model
-class Account(ModelExceptionMixin, models.Model):
+class Account(BaseModel):
     """Extra information on the user: Requires phone number field"""
 
     user = models.OneToOneField(User, on_delete=models.CASCADE)

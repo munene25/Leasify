@@ -1,26 +1,28 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from rest_framework import serializers
 from rest_framework.exceptions import NotFound
 from rest_framework.permissions import AllowAny, IsAuthenticated, IsAdminUser
 from django.contrib.auth.models import Group
 from rest_framework.status import HTTP_200_OK, HTTP_202_ACCEPTED, HTTP_204_NO_CONTENT
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
-from mixins import ValidateSerializerMixin, PermissionMixin
+from common.validators import validate_serializer
+from common.permissions import check_perms
 from .mixins import CookieMixin
 from .tokens import token_validate, unsubscribe_token_validate
 from .tasks import send_token_email
 from .services import (
-    user_create,
+    user_account_create,
     user_login,
-    profile_update,
+    user_account_update,
     user_email_verify,
     user_change_password,
     user_delete_or_deactivate,
     account_unsubscribe,
 )
 from .selectors import (
-    users_get_visible_for,
+    user_list,
     user_get_by_id,
     user_get_by_email,
 )
@@ -37,8 +39,7 @@ from .serializer import (
     UserRoleDetailSerializer,
     UserRoleListSerializer,
 )
-from .permissions import GuestsCanPostOnly
-from domain.throttles import (
+from common.throttles import (
     AnonBurst,
     AnonSustained,
     UserBurst,
@@ -46,53 +47,67 @@ from domain.throttles import (
     ScopedRateThrottle,
     EmailBaseThrottle,
 )
+from common.pagination import get_paginated_response
 
 
-class UserListCreateView(APIView, ValidateSerializerMixin, PermissionMixin):
+class UserListCreateView(APIView):
     serializer_class = UserCreateSerializer
-    permission_classes = [GuestsCanPostOnly]
     throttle_classes = [AnonBurst, AnonSustained]
+    
+    class FilterSerializer(serializers.Serializer):
+        id = serializers.IntegerField()
+        email = serializers.CharField()
+        first_name = serializers.CharField()
+        last_name = serializers.CharField()
+        phone_number = serializers.CharField()
 
     def get(self, request):
-        self.check_perms(request.user, "users.view_users")
-        users = users_get_visible_for(request.user)
-        serializer = UserListSerializer(instance=users, many=True)
-        return Response(status=HTTP_200_OK, data=serializer.data)
+
+        check_perms(request.user, "users.view_users")
+        filters = validate_serializer(s_cls=self.FilterSerializer, data=request.query_params, partial=True)
+        qs = user_list(filters)
+
+        return get_paginated_response(
+            serializer_class=UserListSerializer,
+            queryset=qs,
+            request=request,
+            view=self
+        )
 
     def post(self, request):
-        data = self.validate_input(data=request.data)
-        user_create(**data)
+        data = validate_serializer(s_cls=self.serializer_class, data=request.data)
+        user_account_create(**data)
         return Response(status=HTTP_200_OK)
 
 
-class UserDetailUpdateDestroyView(APIView, ValidateSerializerMixin, PermissionMixin):
+class UserDetailUpdateDestroyView(APIView,):
     serializer_class = UserUpdateSerializer
     permission_classes = [IsAuthenticated]
 
     def get(self, request, user_id):
-        self.check_perms(request.user, "user.view_user")
+        check_perms(request.user, "user.view_user")
         user = user_get_by_id(user_id)
         serialzer_class = UserDetailSerializer(instance=user)
         return Response(status=HTTP_200_OK, data=serialzer_class.data)
 
     def put(self, request, user_id):
-        self.check_perms(request.user, "user.edit_user")
-        data = self.validate_input(data=request.data)
+        check_perms(request.user, "user.edit_user")
+        data = validate_serializer(s_cls=self.serializer_class, data=request.data)
         user = user_get_by_id(user_id)
-        profile_update(user=user, **data)
+        user_account_update(user=user, **data)
         return Response(status=HTTP_200_OK)
 
     def patch(self, request, user_id):
-        self.check_perms(request.user, "user.edit_user")
-        data = self.validate_input(data=request.data, partial=True)
+        check_perms(request.user, "user.edit_user")
+        data = validate_serializer(s_cls=self.serializer_class, data=request.data, partial=True)
         user = user_get_by_id(user_id)
-        profile_update(user=user, **data)
+        user_account_update(user=user, **data)
         return Response(status=HTTP_200_OK)
 
     def delete(self, request, user_id):
-        self.check_perms(request.user, "user.delete_user")
+        check_perms(request.user, "user.delete_user")
         user = user_get_by_id(user_id)
-        res = user_delete_or_deactivate(user)
+        res = user_delete_or_deactivate(actor=request.user, target=user)
         if res is None:
             return Response(status=HTTP_204_NO_CONTENT)
         return Response(
@@ -101,7 +116,7 @@ class UserDetailUpdateDestroyView(APIView, ValidateSerializerMixin, PermissionMi
         )
 
 
-class MeView(APIView, ValidateSerializerMixin, CookieMixin):
+class MeView(APIView, CookieMixin):
     serializer_class = UserUpdateSerializer
     permission_classes = [IsAuthenticated]
 
@@ -111,23 +126,23 @@ class MeView(APIView, ValidateSerializerMixin, CookieMixin):
         return Response(status=HTTP_200_OK, data=serializer.data)
 
     def put(self, request):
-        data = self.validate_input(data=request.data)
-        profile_update(user=request.user, **data)
+        data = validate_serializer(s_cls=self.serializer_class, data=request.data)
+        user_account_update(user=request.user, **data)
         return Response(status=HTTP_200_OK)
 
     def patch(self, request):
-        data = self.validate_input(data=request.data, partial=True)
-        profile_update(user=request.user, **data)
+        data = validate_serializer(s_cls=self.serializer_class, data=request.data, partial=True)
+        user_account_update(user=request.user, **data)
         return Response(status=HTTP_200_OK)
 
     def delete(self, request):
-        user_delete_or_deactivate(request.user)
+        user_delete_or_deactivate(actor=request.user, target=request.user)
         res = Response(status=HTTP_204_NO_CONTENT)
         response = self.del_cookies(cookies=["access", "refresh"], response=res)
         return response
 
 
-class LoginView(APIView, ValidateSerializerMixin, CookieMixin):
+class LoginView(APIView, CookieMixin):
     throttle_classes = [EmailBaseThrottle]
     throttle_scope = "login_limit"
     authentication_classes = []
@@ -135,7 +150,7 @@ class LoginView(APIView, ValidateSerializerMixin, CookieMixin):
     serializer_class = LoginSerializer
 
     def post(self, request):
-        data = self.validate_input(data=request.data)
+        data = validate_serializer(s_cls=self.serializer_class, data=request.data)
         _, tokens = user_login(**data)
         res = Response(status=HTTP_200_OK)
         response = self.set_cookies(response=res, **tokens)
@@ -172,14 +187,14 @@ class RefreshTokenView(APIView, CookieMixin):
             raise InvalidToken()
 
 
-class PasswordChangeView(APIView, CookieMixin, ValidateSerializerMixin):
+class PasswordChangeView(APIView, CookieMixin):
     permission_classes = [IsAuthenticated]
     serializer_class = PasswordChangeSerializer
     throttle_classes = [UserBurst, ScopedRateThrottle]
     throttle_scope = "password_changes"
 
     def post(self, request):
-        data = self.validate_input(data=request.data)
+        data = validate_serializer(s_cls=self.serializer_class, data=request.data)
         user_change_password(user=request.user, **data)
         return Response(status=HTTP_200_OK)
 
@@ -211,7 +226,7 @@ class ConfirmEmailVerificationView(APIView):
         return Response(status=HTTP_200_OK)
 
 
-class RequestPasswordResetView(APIView, ValidateSerializerMixin):
+class RequestPasswordResetView(APIView):
     authentication_classes = []
     permission_classes = [AllowAny]
     serializer_class = RequestPasswordResetSerializer
@@ -219,7 +234,7 @@ class RequestPasswordResetView(APIView, ValidateSerializerMixin):
     throttle_scope = "email_verification"
 
     def post(self, request):
-        data = self.validate_input(data=request.data)
+        data = validate_serializer(s_cls=self.serializer_class, data=request.data)
         try:
             user = user_get_by_email(data["email"])
         except NotFound:
@@ -234,14 +249,14 @@ class RequestPasswordResetView(APIView, ValidateSerializerMixin):
         return Response(status=HTTP_202_ACCEPTED)
 
 
-class ConfirmPasswordResetView(APIView, ValidateSerializerMixin):
+class ConfirmPasswordResetView(APIView):
     authentication_classes = []
     permission_classes = [AllowAny]
     serializer_class = ConfirmPasswordResetSerializer
 
     def post(self, request, uuid, token):
         user = token_validate(uuid=uuid, token=token)
-        data = self.validate_input(data=request.data)
+        data = validate_serializer(s_cls=self.serializer_class, data=request.data)
         user_change_password(user=user, **data)
         return Response(status=HTTP_200_OK)
 
@@ -257,7 +272,7 @@ class UserUnsubscribeView(APIView):
         return Response(status=HTTP_200_OK)
 
 
-class UserRoleDetailView(APIView, ValidateSerializerMixin):
+class UserRoleDetailView(APIView):
     permission_classes = [IsAdminUser]
     serializer_class = UserRoleCreateSerializer
 
@@ -268,13 +283,13 @@ class UserRoleDetailView(APIView, ValidateSerializerMixin):
 
     def post(self, request, user_id):
         user = user_get_by_id(user_id)
-        data = self.validate_input(data=request.data)
+        data = validate_serializer(s_cls=self.serializer_class, data=request.data)
         user.groups.add(*data["roles"])
         return Response(status=HTTP_200_OK)
 
     def delete(self, request, user_id):
         user = user_get_by_id(user_id)
-        data = self.validate_input(data=request.data)
+        data = validate_serializer(s_cls=self.serializer_class, data=request.data)
         user.groups.remove(*data["roles"])
         return Response(status=HTTP_200_OK)
 

@@ -1,14 +1,10 @@
-from typing import Collection
 from django.db import models
 from django.db.models.query import QuerySet
 from semesters.selectors import semester_current
-from mixins.model_full_clean import ModelExceptionMixin
+from common.models import BaseModel
 
 
-class Apartment(
-    ModelExceptionMixin,
-    models.Model,
-):
+class Apartment(BaseModel):
     """
     Apartment Model.
     Fields block and unit number must be unique for every entry.
@@ -25,7 +21,6 @@ class Apartment(
     rentable = models.BooleanField(
         default=True, help_text="Viewable and available to rent"
     )
-    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         unique_together = ("block", "unit_number")

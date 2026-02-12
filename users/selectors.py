@@ -1,14 +1,22 @@
 from .models import User
 from rest_framework.exceptions import NotFound
-from django.db import models
-from tenancy.models import Tenancy
-from tenancy import selectors as tenancy_selectors
+import django_filters
 
-def user_list():
-    return User.objects.all()
 
-def users_get_visible_for(user: User):
-    return User.objects.select_related("account").all()
+def user_list(filters: dict|None = None):
+    class UserFilter(django_filters.FilterSet):
+        first_name = django_filters.CharFilter(lookup_expr="icontains")
+        last_name = django_filters.CharFilter(lookup_expr="icontains")
+        email = django_filters.CharFilter(lookup_expr="icontains")
+        phone_number = django_filters.NumberFilter(field_name="account__phone_number", lookup_expr="icontains")
+        class Meta:
+            model = User
+            fields = ['id']
+
+            
+    users = User.objects.select_related("account").all()
+    filters = filters or {}
+    return UserFilter(filters, users).qs
 
 def user_get_locked(user_id: int):
     try:

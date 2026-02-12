@@ -2,10 +2,10 @@ from __future__ import annotations
 from functools import cached_property
 from django.db import models
 from rest_framework.exceptions import ValidationError
-from mixins.model_full_clean import ModelExceptionMixin
+from common.models import BaseModel
 from django.utils import timezone
 
-class Semester(ModelExceptionMixin, models.Model):
+class Semester(BaseModel):
     """
     Semester model
     Refactored to remove the name as a primary attribute
@@ -16,7 +16,6 @@ class Semester(ModelExceptionMixin, models.Model):
     start_date = models.DateField()
     end_date = models.DateField()
     off_season = models.BooleanField()
-    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         ordering = ["-start_date"]

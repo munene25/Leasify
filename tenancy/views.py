@@ -1,7 +1,7 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from mixins.view_validate import ValidateSerializerMixin
+from common.validators import validate_serializer
 from .services import TenancyService
 from .selectors import tenancy_list, tenancy_get_by_id
 from .serializer import (
@@ -12,7 +12,8 @@ from .serializer import (
 )
 from .tasks import show_detail
 
-class TenancyListCreateView(APIView, ValidateSerializerMixin):
+
+class TenancyListCreateView(APIView):
     serializer_class = TenancyCreateSerializer
 
     def get(self, request) -> Response:
@@ -21,13 +22,13 @@ class TenancyListCreateView(APIView, ValidateSerializerMixin):
         return Response(status=status.HTTP_200_OK, data=serializer.data)
 
     def post(self, request) -> Response:
-        data = self.validate_input(data=request.data)
+        data = validate_serializer(s_cls=self.serializer_class, data=request.data)
         service = TenancyService()
         service.create(**data)
         return Response(status=status.HTTP_201_CREATED)
 
 
-class TenancyDetailUpdateDestroyView(APIView, ValidateSerializerMixin):
+class TenancyDetailUpdateDestroyView(APIView):
     serializer_class = TenancyUpdateSerializer
 
     def get(self, request, tenancy_id: int) -> Response:
@@ -36,13 +37,15 @@ class TenancyDetailUpdateDestroyView(APIView, ValidateSerializerMixin):
         return Response(status=status.HTTP_200_OK, data=serializer.data)
 
     def put(self, request, tenancy_id: int) -> Response:
-        data = self.validate_input(data=request.data)
+        data = validate_serializer(s_cls=self.serializer_class, data=request.data)
         service = TenancyService(tenancy_id)
         service.update(**data)
         return Response(status=status.HTTP_200_OK)
 
     def patch(self, request, tenancy_id: int) -> Response:
-        data = self.validate_input(data=request.data, partial=True)
+        data = validate_serializer(
+            s_cls=self.serializer_class, data=request.data, partial=True
+        )
         service = TenancyService(tenancy_id)
         service.update(**data)
         return Response(status=status.HTTP_200_OK)

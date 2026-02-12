@@ -2,10 +2,10 @@ from django.db import models
 from apartments.models import Apartment
 from users.models import User
 from semesters.models import Semester
-from mixins.model_full_clean import ModelExceptionMixin
+from common.models import BaseModel
 
 
-class Tenancy(ModelExceptionMixin, models.Model):
+class Tenancy(BaseModel):
     class Meta:
         ordering = ["-created_at"]
 
@@ -30,7 +30,6 @@ class Tenancy(ModelExceptionMixin, models.Model):
         decimal_places=2,
         max_digits=10,
     )
-    created_at = models.DateTimeField(auto_now_add=True)
 
     
     def __str__(self) -> str:

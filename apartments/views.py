@@ -2,7 +2,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import status
 from semesters.selectors import semester_current
-from mixins.view_validate import ValidateSerializerMixin
+from common.validators import validate_serializer
 from . import selectors
 from .services import ApartmentService
 from .serializer import (
@@ -14,7 +14,7 @@ from .serializer import (
 )
 
 
-class ApartmentListCreateView(APIView, ValidateSerializerMixin):
+class ApartmentListCreateView(APIView):
     serializer_class = ApartmentCreateSerializer
 
     def get(self, request):
@@ -23,12 +23,12 @@ class ApartmentListCreateView(APIView, ValidateSerializerMixin):
         return Response(status=status.HTTP_200_OK, data=serializer.data)
 
     def post(self, request):
-        data = self.validate_input(data=request.data)
+        data = validate_serializer(s_cls=self.serializer_class, data=request.data)
         ApartmentService().create(**data)
         return Response(status=status.HTTP_201_CREATED)
 
 
-class ApartmentDetailUpdateDeleteView(APIView, ValidateSerializerMixin):    
+class ApartmentDetailUpdateDeleteView(APIView):
     serializer_class = ApartmentUpdateSerializer
 
     def get(self, request, apartment_id):
@@ -37,19 +37,20 @@ class ApartmentDetailUpdateDeleteView(APIView, ValidateSerializerMixin):
         return Response(status=status.HTTP_200_OK, data=serializer.data)
 
     def patch(self, request, apartment_id):
-        data = self.validate_input(data=request.data, partial=True)
+        data = validate_serializer(
+            s_cls=self.serializer_class, data=request.data, partial=True
+        )
         ApartmentService(apartment_id).update(**data)
         return Response(status=status.HTTP_200_OK)
 
     def put(self, request, apartment_id):
-        data = self.validate_input(data=request.data)
+        data = validate_serializer(s_cls=self.serializer_class, data=request.data)
         ApartmentService(apartment_id).update(**data)
         return Response(status=status.HTTP_200_OK)
-    
+
     def delete(self, request, apartment_id):
         ApartmentService(apartment_id).delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
-
 
 
 class ApartmentOverviewView(APIView):

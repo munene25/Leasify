@@ -2,10 +2,10 @@ from django.db import models
 from tenancy.models import Tenancy
 from phonenumber_field.modelfields import PhoneNumberField
 from decimal import Decimal
-from mixins.model_full_clean import ModelExceptionMixin
+from common.models import BaseModel
 
 
-class Payment(ModelExceptionMixin, models.Model):
+class Payment(BaseModel):
     class TransactionChoices(models.TextChoices):
         DEBIT = "debit", "Incoming Payments"
         CREDIT = "credit", "Outgoing Payments"
@@ -18,7 +18,6 @@ class Payment(ModelExceptionMixin, models.Model):
         null=False, max_length=10, choices=TransactionChoices.choices
     )
     tenancy = models.ForeignKey(Tenancy, null=True, on_delete=models.SET_NULL)
-    created_at = models.DateTimeField(auto_now_add=True)
     phone_number = PhoneNumberField(unique=True, blank=False)
     payee = models.CharField(max_length=30, blank=True)
 

@@ -6,44 +6,44 @@ from .serializer import (
     SemesterCreateSerializer,
     SemesterListSerializer,
     SemesterDetailSerializer,
-    SemesterUpdateSerializer
+    SemesterUpdateSerializer,
 )
 from rest_framework.views import APIView
-from mixins.view_validate import ValidateSerializerMixin
+from common.validators import validate_serializer
 
 
-class SemesterListCreateView(APIView, ValidateSerializerMixin):
+class SemesterListCreateView(APIView):
     serializer_class = SemesterCreateSerializer
-    
+
     def get(self, request):
         sems = selectors.semester_list()
         serializer = SemesterListSerializer(instance=sems, many=True)
         return Response(status=status.HTTP_200_OK, data=serializer.data)
-    
+
     def post(self, request):
-        data = self.validate_input(data=request.data)
+        data = validate_serializer(s_cls=self.serializer_class, data=request.data)
         creator = services.SemesterService().create(**data)
         return Response(status=status.HTTP_201_CREATED)
-    
 
-class SemesterDetailUpdateDeleteView(APIView, ValidateSerializerMixin):
+
+class SemesterDetailUpdateDeleteView(APIView):
     serializer_class = SemesterUpdateSerializer
 
     def get(self, request, semester_id: int):
         semester = selectors.semester_get_by_id(semester_id=semester_id)
         serializer = SemesterDetailSerializer(instance=semester)
-        return Response(
-            status=status.HTTP_200_OK,
-            data=serializer.data
-        )
+        return Response(status=status.HTTP_200_OK, data=serializer.data)
+
     def patch(self, request, semester_id: int):
-        data = self.validate_input(data=request.data, partial=True)
+        data = validate_serializer(
+            s_cls=self.serializer_class, data=request.data, partial=True
+        )
         service = services.SemesterService(semester_id)
         service.update(**data)
         return Response(status=status.HTTP_200_OK)
-    
+
     def put(self, request, semester_id):
-        data = self.validate_input(data=request.data)
+        data = validate_serializer(s_cls=self.serializer_class, data=request.data)
         service = services.SemesterService(semester_id)
         service.update(**data)
         return Response(status=status.HTTP_200_OK)

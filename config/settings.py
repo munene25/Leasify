@@ -90,6 +90,8 @@ REST_FRAMEWORK = {
         "config.jwt.JWTCookieAuthentication",
         "rest_framework.authentication.SessionAuthentication"
     ),
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 5,
     "EXCEPTION_HANDLER": "drf_standardized_errors.handler.exception_handler",
     'DEFAULT_THROTTLE_RATES': {
         'anon_burst': '20/minute',
@@ -105,6 +107,37 @@ REST_FRAMEWORK = {
 
 WSGI_APPLICATION = "config.wsgi.application"
 
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "standard": {
+            "format": "%(levelname)s %(name)s %(asctime)s [%(actor)s] %(message)s"
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "standard",
+            "stream": "ext://sys.stdout",
+        },
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": "WARNING",  
+    },
+    "loggers": {
+        "users": {
+            "level": "INFO",
+            "propagate": True,
+        },
+        "django": {
+            "level": "INFO",
+            "propagate": True,
+        },
+    },
+}
 
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases

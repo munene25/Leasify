@@ -10,10 +10,9 @@ from payments.services import PaymentCreateService
 from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
 from datetime import timedelta
-from users.services import user_create, user_update
+from users.services import user_account_create, user_login
 from phonenumber_field.phonenumber import PhoneNumber
 from django.contrib.auth.models import Permission
 
 def run():
-    all_permissions = Permission.objects.in_bulk(field_name="codename")
-    print(f"perms: {all_permissions}")
+    user_login(email="user2@gmail.com", password="timthetatman")
