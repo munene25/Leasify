@@ -7,6 +7,8 @@ from phonenumber_field.phonenumber import PhoneNumber
 from users.tasks import send_welcome_email
 from .accounts import account_create, account_update
 
+logger = logging.getLogger("users.services")
+
 @transaction.atomic
 def user_account_create(*, password: str, email: str, phone_number: PhoneNumber, first_name: str | None = None, last_name: str | None = None, notify: bool = True) -> User:
     email = User.objects.normalize_email(email)
@@ -26,46 +28,63 @@ def user_account_create(*, password: str, email: str, phone_number: PhoneNumber,
     return user
 
 @transaction.atomic
-def user_account_update(_user: User, **kwargs) -> tuple[User, Account]:
-    user = user_update(user=_user, **kwargs)
-    acc = getattr(user, "account")
-    account = account_update(acc, **kwargs)
-    return user, account
+def user_account_update(user: User, **kwargs) -> tuple[User, Account]:
+    mod_user = user_update(user=user, **kwargs)
+    account = getattr(user, "account")
+    mod_account = account_update(account, **kwargs)
+    return mod_user, mod_account
 
 @transaction.atomic
-def user_change_password(*, user: User, new_password: str, current_password: str | None = None, confirm_password: str) -> User:
+def user_change_password(*, user: User, new_password: str, current_password: str | None = None) -> User:
     if current_password:
         user.check_current_password(current_password)
     setattr(user, "_raw_password", new_password)
     user.set_password(new_password)
     user.full_clean()
     user.save()
+    logging.info(f"User {user} changed password")
     # TODO: Implement mail sending to notify user
     # TODO: Invalidate refresh token
     return user
 
 
 @transaction.atomic
-def user_email_verify(user: User):
+def user_email_verify(user: User) -> User:
     if user.verified:
         return user
     user.verified = True
-    # TODO: Implement mail sending to notify user
     user.save()
+    logging.info(f"User {user} verified their email")
+    # TODO: Implement mail sending to notify user
+    return user
 
 @transaction.atomic
-def user_delete_or_deactivate(*, actor: User, target: User) -> User | None:
-    if target.is_superuser:
-        raise PermissionDenied()
+def user_delete_or_deactivate(*, user: User, actor: User | None = None) -> User | None:
+    """
+    Allows deletion or deactivation of account.
+    Denies permission an actor(Administrator) deleting or deactivating a super_user or staff member
+    """
+    if actor:
+        if user.is_superuser or user.is_staff:
+            logger.warning(f"deletion denied for {user} based on superuser/staff status")
+            raise PermissionDenied()
+            
     if user.tenancy_set.exists():  # type: ignore
-        target.is_active = False
-        target.save()
-        return target
-    target.delete()
+        user.is_active = False
+        user.save()
+        logger.info(f"deactivation successful. user: {user}")
+        return user
+    user.delete()
+    logger.warning(f"deletion successful. user: {user}")
     return None
 
-
-def user_update(user: User, **kwargs):
+@transaction.atomic
+def user_update(user: User, actor: User | None = None, **kwargs):
+    if actor:
+        if user.is_superuser or user.is_staff:
+            logger.warning(f"modifying user data denied for {user} based on superuser/staff status")
+            raise PermissionDenied()
+        
     EDITABLE_FIELDS = {"email", "first_name", "last_name"}
     update_fields = {
         k: v
@@ -89,10 +108,15 @@ def user_update(user: User, **kwargs):
         user.email = email
         user.verified = False
         user.last_email_change = timezone.now()
+        user.full_clean()
+        user.save(update_fields=["email"])
+        logger.info(f"{user} email address modified")
 
     if update_fields:
         for field, value in update_fields.items():
             setattr(user, field, value)
         user.full_clean()
-        user.save()
+        fields = list(update_fields.keys())
+        user.save(update_fields=fields)
+    logger.info(f"email modified for {user}. fields: {fields}")
     return user

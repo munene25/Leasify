@@ -8,14 +8,14 @@ from tenancy.services import TenancyService
 from semesters.services import SemesterService
 from apartments.services import ApartmentService
 from payments.services import PaymentCreateService
-from users.services import user_create
+from users.services import user_account_create
 from .permissions import setup_roles_and_permissions
 
 def run():
     # Create users (use bulk_create for performance)
     given_range = list(range(1, 10))
     users = [
-        user_create(
+        user_account_create(
             email=f"user{i}@gmail.com",
             password="timthetatman",
             phone_number=PhoneNumber.from_string(f"0700 000 00{i}", region="KE"),
@@ -83,7 +83,7 @@ def run():
     setup_roles_and_permissions()
 
     # create super_user
-    user = user_create(
+    user = user_account_create(
         first_name = "Ed",
         last_name = "Mune",
         email = "edmune25@gmail.com",

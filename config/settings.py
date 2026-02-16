@@ -37,7 +37,6 @@ DEBUG = True
 ALLOWED_HOSTS = [SITE_DOMAIN, "localhost", "127.0.0.1"]
 
 
-
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -88,21 +87,20 @@ TEMPLATES = [
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "config.jwt.JWTCookieAuthentication",
-        "rest_framework.authentication.SessionAuthentication"
+        "rest_framework.authentication.SessionAuthentication",
     ),
-    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    'PAGE_SIZE': 5,
+    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+    "PAGE_SIZE": 5,
     "EXCEPTION_HANDLER": "drf_standardized_errors.handler.exception_handler",
-    'DEFAULT_THROTTLE_RATES': {
-        'anon_burst': '20/minute',
-        'anon_sustained': '500/day',
-        'user_burst': '30/minute',
-        'user_sustained': '500/day',
-        'login_limit': '5/hour',
-        'password_changes': '3/day',
-        'email_verification': '3/day',
-
-    }
+    "DEFAULT_THROTTLE_RATES": {
+        "anon_burst": "20/minute",
+        "anon_sustained": "500/day",
+        "user_burst": "30/minute",
+        "user_sustained": "500/day",
+        "login_limit": "5/hour",
+        "password_changes": "3/day",
+        "email_verification": "3/day",
+    },
 }
 
 WSGI_APPLICATION = "config.wsgi.application"
@@ -116,16 +114,18 @@ LOGGING = {
             "format": "%(levelname)s %(name)s %(asctime)s [%(actor)s] %(message)s"
         },
     },
+    "filters": {"actor_metadata": {"()": "config.logger.ActorMetadataFilter"}},
     "handlers": {
         "console": {
             "class": "logging.StreamHandler",
             "formatter": "standard",
             "stream": "ext://sys.stdout",
+            "filters": ["actor_metadata"],
         },
     },
     "root": {
         "handlers": ["console"],
-        "level": "WARNING",  
+        "level": "WARNING",
     },
     "loggers": {
         "users": {
@@ -133,7 +133,7 @@ LOGGING = {
             "propagate": True,
         },
         "django": {
-            "level": "INFO",
+            "level": "WARNING",
             "propagate": True,
         },
     },
@@ -172,7 +172,7 @@ CACHES = {
         "LOCATION": "redis://localhost:6379/1",
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
-        }
+        },
     }
 }
 
@@ -219,12 +219,12 @@ SIMPLE_JWT = {
 
 # Cookie Authentication
 COOKIE_SETTINGS = {
-    'AUTH_COOKIE': 'access',                # Cookie name. Enables cookies if value is set.
-    'AUTH_COOKIE_DOMAIN': None,      # A string like "example.com", or None for standard domain cookie.
-    'AUTH_COOKIE_SECURE': False,            # Whether the auth cookies should be secure (https:// only).
-    'AUTH_COOKIE_HTTP_ONLY' : True,         # Http only cookie flag.It's not fetch by javascript.
-    'AUTH_COOKIE_PATH': '/',                # The path of the auth cookie.
-    'AUTH_COOKIE_SAMESITE': 'Lax',          # Whether to set the flag restricting cookie leaks on cross-site requests.                                   # This can be 'Lax', 'Strict', or None to disable the flag.
+    "AUTH_COOKIE": "access",  # Cookie name. Enables cookies if value is set.
+    "AUTH_COOKIE_DOMAIN": None,  # A string like "example.com", or None for standard domain cookie.
+    "AUTH_COOKIE_SECURE": False,  # Whether the auth cookies should be secure (https:// only).
+    "AUTH_COOKIE_HTTP_ONLY": True,  # Http only cookie flag.It's not fetch by javascript.
+    "AUTH_COOKIE_PATH": "/",  # The path of the auth cookie.
+    "AUTH_COOKIE_SAMESITE": "Lax",  # Whether to set the flag restricting cookie leaks on cross-site requests.                                   # This can be 'Lax', 'Strict', or None to disable the flag.
 }
 
 
@@ -241,12 +241,11 @@ EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
 DEFAULT_FROM_EMAIL = f"no-reply@{SITE_DOMAIN}"
 SUPPORT_EMAIL = f"support@{SITE_DOMAIN}"
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
-ADMINS = ["edmune25@gmail.com"] # Logging email alerts in prod
+ADMINS = ["edmune25@gmail.com"]  # Logging email alerts in prod
 
 
 # CELERY
-CELERY_BROKER_URL="redis://localhost:6379/3",
-CELERY_RESULT_BACKEND="redis://localhost:6379/4"
+CELERY_BROKER_URL = ("redis://localhost:6379/3",)
+CELERY_RESULT_BACKEND = "redis://localhost:6379/4"
 CELERY_TASK_IGNORE_RESULT = False
 CELERY_RESULT_EXPIRES = 3600
-

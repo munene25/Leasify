@@ -27,7 +27,6 @@ class ApartmentService:
         """
         Create a new apartment, defaults to rentable allowing users to view or book apartment
         
-        :param self: ApartmentService instance
         :param block: The block set in apartment choices either "OLD" or "NEW"
         :type block: str
         :param unit_number: The unit_number of the apartment

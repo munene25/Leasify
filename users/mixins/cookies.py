@@ -1,10 +1,11 @@
 from rest_framework.response import Response
 from django.conf import settings
 
+
 class CookieMixin:
     def set_cookies(self, *, response: Response, **kwargs) -> Response:
         cookies = getattr(settings, "COOKIE_SETTINGS")
-        
+
         for key, value in kwargs.items():
             response.set_cookie(
                 key=key,
@@ -17,7 +18,7 @@ class CookieMixin:
             )
         return response
 
-    def del_cookies(self,*,  cookies: list[str], response: Response) -> Response:
+    def del_cookies(self, *, cookies: list[str], response: Response) -> Response:
         for arg in cookies:
             response.delete_cookie(arg)
         return response

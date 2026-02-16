@@ -65,6 +65,7 @@ class PasswordChangeSerializer(serializers.Serializer):
     def validate(self, data):
         if data.get('new_password') != data.get('confirm_password'):
             raise serializers.ValidationError({"confirm_password": "Passwords do not match"})
+        data.pop("confirm_password", None)
         return data
 
 class RequestPasswordResetSerializer(serializers.Serializer):
