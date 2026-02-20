@@ -1,3 +1,4 @@
+
 """
 Django settings for config project.
 
@@ -14,6 +15,7 @@ from pathlib import Path
 from datetime import timedelta
 from dotenv import load_dotenv
 import os
+from config.logging import DICT_LOG, configure_logging
 
 load_dotenv()
 
@@ -50,6 +52,7 @@ INSTALLED_APPS = [
     "django_extensions",
     "phonenumber_field",
     "drf_standardized_errors",
+    "django_structlog",
     "users",
     "payments",
     "apartments",
@@ -60,6 +63,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    "django_structlog.middlewares.RequestMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -105,39 +109,9 @@ REST_FRAMEWORK = {
 
 WSGI_APPLICATION = "config.wsgi.application"
 
-
-LOGGING = {
-    "version": 1,
-    "disable_existing_loggers": False,
-    "formatters": {
-        "standard": {
-            "format": "%(levelname)s %(name)s %(asctime)s [%(actor)s] %(message)s"
-        },
-    },
-    "filters": {"actor_metadata": {"()": "config.logger.ActorMetadataFilter"}},
-    "handlers": {
-        "console": {
-            "class": "logging.StreamHandler",
-            "formatter": "standard",
-            "stream": "ext://sys.stdout",
-            "filters": ["actor_metadata"],
-        },
-    },
-    "root": {
-        "handlers": ["console"],
-        "level": "WARNING",
-    },
-    "loggers": {
-        "users": {
-            "level": "INFO",
-            "propagate": True,
-        },
-        "django": {
-            "level": "WARNING",
-            "propagate": True,
-        },
-    },
-}
+# logging
+LOGGING = DICT_LOG
+configure_logging()
 
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases

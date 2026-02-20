@@ -1,4 +1,4 @@
-from rest_framework.views import APIView
+from common.views import BaseAPIView
 from rest_framework.response import Response
 from rest_framework import status
 from common.validators import validate_serializer
@@ -13,7 +13,7 @@ from .serializer import (
 from .tasks import show_detail
 
 
-class TenancyListCreateView(APIView):
+class TenancyListCreateView(BaseAPIView):
     serializer_class = TenancyCreateSerializer
 
     def get(self, request) -> Response:
@@ -28,7 +28,7 @@ class TenancyListCreateView(APIView):
         return Response(status=status.HTTP_201_CREATED)
 
 
-class TenancyDetailUpdateDestroyView(APIView):
+class TenancyDetailUpdateDestroyView(BaseAPIView):
     serializer_class = TenancyUpdateSerializer
 
     def get(self, request, tenancy_id: int) -> Response:

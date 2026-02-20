@@ -1,4 +1,4 @@
-from logging import getLogger
+from structlog import getLogger
 from users.models import User, Account
 from django.db import transaction
 from phonenumber_field.phonenumber import PhoneNumber
@@ -10,9 +10,11 @@ def account_unsubscribe(account: Account) -> Account:
     """
     Unsubscribes a user from the mailing list.
     """
-    account.can_receive_emails = False
-    account.save()
-    logger.info(f"User {account.user} has unsubscribed from mailling list")
+    if account.can_receive_emails:
+        account.can_receive_emails = False
+        account.save()
+    logger.info(f"user [user_id: {account.user_id}] has unsubscribed from mailling list")
+
     return account
 
 def account_update(account: Account, **kwargs)  -> Account:
@@ -39,7 +41,7 @@ def account_update(account: Account, **kwargs)  -> Account:
     account.full_clean()
     updates = list(update_fields.keys())
     account.save(update_fields=updates)
-    logger.info(f"User {account.user} has updated fields {updates}")
+    logger.info(f"account details updated. fileds: {updates}")
     return account
 
 @transaction.atomic

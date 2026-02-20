@@ -1,24 +1,31 @@
 import hashlib
+from typing import Protocol 
 from rest_framework.request import Request
 from rest_framework.views import View
 from users.models import User
 from rest_framework.throttling import AnonRateThrottle, UserRateThrottle, ScopedRateThrottle
 from logging import getLogger
 
+
 logger = getLogger("throttling")
 
+class ThrottleProtocol(Protocol):
+    @property
+    def scope(self) -> str: ...
+    def allow_request(self, request, view) -> bool: ...
+    def get_rate(self) -> str: ...
+    
+
+
 class ThrottleLoggingMixin:
-    def allow_request(self, request: Request, view: View):
+    def allow_request(self: ThrottleProtocol, request: Request, view: View):
         allowed = super().allow_request(request, view)
         if not allowed:
-            if request.user and request.user.is_authenticated:
-                actor = f"user_id: {request.user}"
-            else:
-                actor = f"ip: {self.get_ident(request)}"
-            
             scope = self.scope or getattr(view, "throttle_scope", "undefined")
-            logger.warning(f"Throttled. scope: {scope} rate: {self.get_rate()},  view: {view.__class__.__name__}, method: {request.method}", extra={"actor": actor})
+            logger.warning(f"Throttled. [scope: {scope}] [rate: {self.get_rate()}]")
         return allowed
+    
+    
 class EmailBaseThrottle(ThrottleLoggingMixin, ScopedRateThrottle):
     def get_cache_key(self, request, view):
         # Realized this throttles even on successful attempts 

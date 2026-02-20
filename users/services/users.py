@@ -1,13 +1,13 @@
-import logging
+from structlog import getLogger
 from users.models import User, Account
 from django.db import transaction
-from rest_framework.exceptions import ValidationError, PermissionDenied
+from rest_framework.exceptions import ValidationError
 from django.utils import timezone
 from phonenumber_field.phonenumber import PhoneNumber
 from users.tasks import send_welcome_email
 from .accounts import account_create, account_update
 
-logger = logging.getLogger("users.services")
+logger = getLogger("users.services")
 
 @transaction.atomic
 def user_account_create(*, password: str, email: str, phone_number: PhoneNumber, first_name: str | None = None, last_name: str | None = None, notify: bool = True) -> User:
@@ -25,6 +25,7 @@ def user_account_create(*, password: str, email: str, phone_number: PhoneNumber,
     account_create(user=user, phone_number=phone_number)
     if notify:
         send_welcome_email.delay(user.pk)  # type: ignore
+    logger.info(f"user [{user.email}] created.")
     return user
 
 @transaction.atomic
@@ -42,7 +43,7 @@ def user_change_password(*, user: User, new_password: str, current_password: str
     user.set_password(new_password)
     user.full_clean()
     user.save()
-    logging.info(f"User {user} changed password")
+    logger.info(f"user password changed")
     # TODO: Implement mail sending to notify user
     # TODO: Invalidate refresh token
     return user
@@ -54,37 +55,28 @@ def user_email_verify(user: User) -> User:
         return user
     user.verified = True
     user.save()
-    logging.info(f"User {user} verified their email")
+    logger.info(f"user verified their email")
     # TODO: Implement mail sending to notify user
     return user
 
 @transaction.atomic
-def user_delete_or_deactivate(*, user: User, actor: User | None = None) -> User | None:
+def user_delete_or_deactivate(*, user: User) -> User | None:
     """
     Allows deletion or deactivation of account.
     Denies permission an actor(Administrator) deleting or deactivating a super_user or staff member
-    """
-    if actor:
-        if user.is_superuser or user.is_staff:
-            logger.warning(f"deletion denied for {user} based on superuser/staff status")
-            raise PermissionDenied()
-            
+    """     
     if user.tenancy_set.exists():  # type: ignore
         user.is_active = False
         user.save()
-        logger.info(f"deactivation successful. user: {user}")
+        logger.info(f"user deactivated.")
         return user
+    
     user.delete()
-    logger.warning(f"deletion successful. user: {user}")
+    logger.warning(f"user deleted.")
     return None
 
 @transaction.atomic
-def user_update(user: User, actor: User | None = None, **kwargs):
-    if actor:
-        if user.is_superuser or user.is_staff:
-            logger.warning(f"modifying user data denied for {user} based on superuser/staff status")
-            raise PermissionDenied()
-        
+def user_update(user: User,  **kwargs):        
     EDITABLE_FIELDS = {"email", "first_name", "last_name"}
     update_fields = {
         k: v
@@ -110,7 +102,7 @@ def user_update(user: User, actor: User | None = None, **kwargs):
         user.last_email_change = timezone.now()
         user.full_clean()
         user.save(update_fields=["email"])
-        logger.info(f"{user} email address modified")
+        logger.info(f"email address changed for user [{user}]")
 
     if update_fields:
         for field, value in update_fields.items():
@@ -118,5 +110,6 @@ def user_update(user: User, actor: User | None = None, **kwargs):
         user.full_clean()
         fields = list(update_fields.keys())
         user.save(update_fields=fields)
-    logger.info(f"email modified for {user}. fields: {fields}")
+        logger.info(f"user data modified for {user}. fields: {fields}")
+        
     return user

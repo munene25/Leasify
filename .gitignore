@@ -5,7 +5,7 @@ __pycache__
 out.txt
 
 .venv/ 
-*.log
+*logs
 local_settings.py
 media/
 staticfiles/

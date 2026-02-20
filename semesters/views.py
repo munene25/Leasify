@@ -8,11 +8,11 @@ from .serializer import (
     SemesterDetailSerializer,
     SemesterUpdateSerializer,
 )
-from rest_framework.views import APIView
+from common.views import BaseAPIView
 from common.validators import validate_serializer
 
 
-class SemesterListCreateView(APIView):
+class SemesterListCreateView(BaseAPIView):
     serializer_class = SemesterCreateSerializer
 
     def get(self, request):
@@ -26,7 +26,7 @@ class SemesterListCreateView(APIView):
         return Response(status=status.HTTP_201_CREATED)
 
 
-class SemesterDetailUpdateDeleteView(APIView):
+class SemesterDetailUpdateDeleteView(BaseAPIView):
     serializer_class = SemesterUpdateSerializer
 
     def get(self, request, semester_id: int):

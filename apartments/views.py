@@ -1,5 +1,5 @@
 from rest_framework.response import Response
-from rest_framework.views import APIView
+from common.views import BaseAPIView
 from rest_framework import status
 from semesters.selectors import semester_current
 from common.validators import validate_serializer
@@ -14,7 +14,7 @@ from .serializer import (
 )
 
 
-class ApartmentListCreateView(APIView):
+class ApartmentListCreateView(BaseAPIView):
     serializer_class = ApartmentCreateSerializer
 
     def get(self, request):
@@ -28,7 +28,7 @@ class ApartmentListCreateView(APIView):
         return Response(status=status.HTTP_201_CREATED)
 
 
-class ApartmentDetailUpdateDeleteView(APIView):
+class ApartmentDetailUpdateDeleteView(BaseAPIView):
     serializer_class = ApartmentUpdateSerializer
 
     def get(self, request, apartment_id):
@@ -53,7 +53,7 @@ class ApartmentDetailUpdateDeleteView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-class ApartmentOverviewView(APIView):
+class ApartmentOverviewView(BaseAPIView):
     def get(self, request):
         semester = semester_current()
         overview = selectors.apartment_overview(semester.pk)

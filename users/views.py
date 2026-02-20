@@ -1,14 +1,14 @@
+from structlog import getLogger
 from django.contrib.auth.models import Group
-from rest_framework.views import APIView
+from common.views import BaseAPIView
 from rest_framework.response import Response
 from rest_framework import serializers
-from rest_framework.exceptions import NotFound
+from rest_framework.exceptions import NotFound, PermissionDenied
 from rest_framework.permissions import AllowAny, IsAuthenticated, IsAdminUser
 from rest_framework.status import HTTP_200_OK, HTTP_202_ACCEPTED, HTTP_204_NO_CONTENT
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
-from common.ip import get_client_ip
-from common.validators import validate_serializer
+from common.validators import validate_serializer, validate_filter
 from common.permissions import check_perms
 from common.pagination import get_paginated_response
 from common.throttling import (
@@ -49,14 +49,13 @@ from .serializer import (
     UserRoleListSerializer,
 )
 
-from logging import getLogger
-
 logger = getLogger("users.views")
 
-class UserListCreateView(APIView):
+
+class UserListCreateView(BaseAPIView):
     serializer_class = UserCreateSerializer
     throttle_classes = [AnonBurst, AnonSustained]
-    
+
     class FilterSerializer(serializers.Serializer):
         id = serializers.IntegerField()
         email = serializers.CharField()
@@ -67,14 +66,13 @@ class UserListCreateView(APIView):
     def get(self, request):
 
         check_perms(request.user, "users.view_users")
-        filters = validate_serializer(s_cls=self.FilterSerializer, data=request.query_params, partial=True)
+        filters = validate_filter(
+            s_cls=self.FilterSerializer, data=request.query_params, partial=True
+        )
         qs = user_list(filters)
 
         return get_paginated_response(
-            serializer_class=UserListSerializer,
-            queryset=qs,
-            request=request,
-            view=self
+            serializer_class=UserListSerializer, queryset=qs, request=request, view=self
         )
 
     def post(self, request):
@@ -83,7 +81,7 @@ class UserListCreateView(APIView):
         return Response(status=HTTP_200_OK)
 
 
-class UserDetailUpdateDestroyView(APIView,):
+class UserDetailUpdateDestroyView(BaseAPIView):
     serializer_class = UserUpdateSerializer
     permission_classes = [IsAuthenticated]
 
@@ -91,40 +89,61 @@ class UserDetailUpdateDestroyView(APIView,):
         check_perms(request.user, "user.view_user")
         user = user_get_by_id(user_id)
         serialzer_class = UserDetailSerializer(instance=user)
-        
+
         return Response(status=HTTP_200_OK, data=serialzer_class.data)
 
     def put(self, request, user_id):
         check_perms(request.user, "user.edit_user")
         data = validate_serializer(s_cls=self.serializer_class, data=request.data)
         user = user_get_by_id(user_id)
-        user_account_update(user=user, actor=request.user, **data)
-        logger.info(f"admin modified user data. user: {user}", extra={"actor": f"user: {user}"})
+
+        if user.is_superuser or user.is_staff:
+            logger.warning(
+                f"modifying staff user data data not allowed. Target[user_id: {user_id}]"
+            )
+            raise PermissionDenied()
+
+        user_account_update(user=user, **data)
+        logger.info(f"admin modified user data. [user_id: {user_id}]")
         return Response(status=HTTP_200_OK)
 
     def patch(self, request, user_id):
         check_perms(request.user, "user.edit_user")
-        data = validate_serializer(s_cls=self.serializer_class, data=request.data, partial=True)
+        data = validate_serializer(
+            s_cls=self.serializer_class, data=request.data, partial=True
+        )
         user = user_get_by_id(user_id)
-        user_account_update(user=user, actor=request.user, **data)
-        logger.info(f"Admin modified user data. user: {user} data", extra={"actor": f"user: {user}"})
+        if user.is_superuser or user.is_staff:
+            logger.warning(
+                f"modifying staff user data data not allowed. Target[user_id: {user_id}]"
+            )
+            raise PermissionDenied()
+
+        user_account_update(user=user, **data)
+        logger.info(f"Admin modified user data. [user_id: {user_id}] data")
         return Response(status=HTTP_200_OK)
 
     def delete(self, request, user_id):
         check_perms(request.user, "user.delete_user")
         user = user_get_by_id(user_id)
-        res = user_delete_or_deactivate(actor=request.user, user=user)
+        if user.is_superuser or user.is_staff:
+            logger.warning(
+                f"modifying staff user data data not allowed. Target[user_id: {user_id}]"
+            )
+            raise PermissionDenied()
+
+        res = user_delete_or_deactivate(user=user)
         if res is None:
-            logger.info(f"Admin deleted user. user: {user}", extra={"actor": f"user: {user}"})
+            logger.info(f"Admin deleted user. [user_id: {user_id}]")
             return Response(status=HTTP_204_NO_CONTENT)
-        logger.info(f"Admin deactivated user {user}", extra={"actor": f"user: {user}"})
+        logger.info(f"Admin deactivated user. [user_id: {user_id}]")
         return Response(
             status=HTTP_200_OK,
             data={"message": "User deactivated, deletion not available"},
         )
 
 
-class MeView(APIView, CookieMixin):
+class MeView(BaseAPIView, CookieMixin):
     serializer_class = UserUpdateSerializer
     permission_classes = [IsAuthenticated]
 
@@ -136,24 +155,24 @@ class MeView(APIView, CookieMixin):
     def put(self, request):
         data = validate_serializer(s_cls=self.serializer_class, data=request.data)
         user_account_update(user=request.user, **data)
-        logger.info(f"User data modified", extra={"actor": f"user: {request.user}"})
         return Response(status=HTTP_200_OK)
 
     def patch(self, request):
-        data = validate_serializer(s_cls=self.serializer_class, data=request.data, partial=True)
+        data = validate_serializer(
+            s_cls=self.serializer_class, data=request.data, partial=True
+        )
         user_account_update(user=request.user, **data)
-        logger.info(f"User data modified.", extra={"actor": f"user: {request.user}"})
         return Response(status=HTTP_200_OK)
 
     def delete(self, request):
         user_delete_or_deactivate(user=request.user)
         res = Response(status=HTTP_204_NO_CONTENT)
-        logger.info(f"User deleted self.", extra={"actor": f"user: {request.user}"})
+        logger.info(f"User deleted self.")
         response = self.del_cookies(cookies=["access", "refresh"], response=res)
         return response
 
 
-class LoginView(APIView, CookieMixin):
+class LoginView(BaseAPIView, CookieMixin):
     throttle_classes = [EmailBaseThrottle]
     throttle_scope = "login_limit"
     authentication_classes = []
@@ -165,25 +184,24 @@ class LoginView(APIView, CookieMixin):
         user, tokens = user_login(**data)
         res = Response(status=HTTP_200_OK)
         response = self.set_cookies(response=res, **tokens)
-        logger.info(f"Login successful. IP: {get_client_ip(request)}", extra={"actor": f"user: {user}"})
         return response
 
 
-class LogoutView(APIView, CookieMixin):
+class LogoutView(BaseAPIView, CookieMixin):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
         res = Response(status=HTTP_200_OK)
         response = self.del_cookies(cookies=["access", "refresh"], response=res)
-        logger.info(f"Logout successful. IP: {get_client_ip(request)}", extra={"actor": f"user: {request.user}"})
+        logger.info(f"Logout successful")
         return response
 
 
-class RefreshTokenView(APIView, CookieMixin):
+class RefreshTokenView(BaseAPIView, CookieMixin):
     authentication_classes = []
     permission_classes = [AllowAny]
     throttle_classes = [AnonBurst, AnonSustained]
-    
+
     def post(self, request):
         refresh_token = request.COOKIES.get("refresh")
         if not refresh_token:
@@ -201,7 +219,7 @@ class RefreshTokenView(APIView, CookieMixin):
             raise InvalidToken()
 
 
-class PasswordChangeView(APIView, CookieMixin):
+class PasswordChangeView(BaseAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = PasswordChangeSerializer
     throttle_classes = [UserBurst, ScopedRateThrottle]
@@ -210,11 +228,10 @@ class PasswordChangeView(APIView, CookieMixin):
     def post(self, request):
         data = validate_serializer(s_cls=self.serializer_class, data=request.data)
         user_change_password(user=request.user, **data)
-        logger.info("User password changed", extra={"actor": f"user: {request.user}"})
         return Response(status=HTTP_200_OK)
 
 
-class RequestEmailVerificationView(APIView):
+class RequestEmailVerificationView(BaseAPIView):
     permission_classes = [IsAuthenticated]
     throttle_classes = [UserBurst, ScopedRateThrottle]
     throttle_scope = "email_verification"
@@ -228,11 +245,14 @@ class RequestEmailVerificationView(APIView):
                 subject="Verify your email address.",
                 action_cta="Verify Email",
             )  # type: ignore
-            logger.info("User email verification request", extra={"actor": f"user: {request.user}"})
+            logger.info(
+                "User email verification request",
+                extra={"actor": f"user: {request.user}"},
+            )
         return Response(status=HTTP_202_ACCEPTED)
 
 
-class ConfirmEmailVerificationView(APIView):
+class ConfirmEmailVerificationView(BaseAPIView):
     authentication_classes = []
     permission_classes = [AllowAny]
 
@@ -242,7 +262,7 @@ class ConfirmEmailVerificationView(APIView):
         return Response(status=HTTP_200_OK)
 
 
-class RequestPasswordResetView(APIView):
+class RequestPasswordResetView(BaseAPIView):
     authentication_classes = []
     permission_classes = [AllowAny]
     serializer_class = RequestPasswordResetSerializer
@@ -262,11 +282,11 @@ class RequestPasswordResetView(APIView):
                 subject="Reset your password",
                 action_cta="Reset password",
             )  # type: ignore
-            logger.info("User request password reset", extra={"actor": f"user: {request.user}"})
+            logger.info("User request password reset")
         return Response(status=HTTP_202_ACCEPTED)
 
 
-class ConfirmPasswordResetView(APIView):
+class ConfirmPasswordResetView(BaseAPIView):
     authentication_classes = []
     permission_classes = [AllowAny]
     serializer_class = ConfirmPasswordResetSerializer
@@ -275,11 +295,10 @@ class ConfirmPasswordResetView(APIView):
         user = token_validate(uuid=uuid, token=token)
         data = validate_serializer(s_cls=self.serializer_class, data=request.data)
         user_change_password(user=user, **data)
-        logger.info(f"User password reset successful. IP adress: {get_client_ip(request)}", extra={"actor": f"user: {request.user}"})
         return Response(status=HTTP_200_OK)
 
 
-class UserUnsubscribeView(APIView):
+class UserUnsubscribeView(BaseAPIView):
     authentication_classes = []
     permission_classes = [AllowAny]
 
@@ -290,7 +309,7 @@ class UserUnsubscribeView(APIView):
         return Response(status=HTTP_200_OK)
 
 
-class UserRoleDetailView(APIView):
+class UserRoleDetailView(BaseAPIView):
     permission_classes = [IsAdminUser]
     serializer_class = UserRoleCreateSerializer
 
@@ -303,7 +322,9 @@ class UserRoleDetailView(APIView):
         user = user_get_by_id(user_id)
         data = validate_serializer(s_cls=self.serializer_class, data=request.data)
         user.groups.add(*data["roles"])
-        logger.info(f"Admin added roles {data["roles"]}. target: {user}", extra={"actor": f"user: {request.user}"})
+        logger.info(
+            f"Admin added [roles {data["roles"]}] for [user_id: {user_id}]"
+        )
 
         return Response(status=HTTP_200_OK)
 
@@ -311,12 +332,14 @@ class UserRoleDetailView(APIView):
         user = user_get_by_id(user_id)
         data = validate_serializer(s_cls=self.serializer_class, data=request.data)
         user.groups.remove(*data["roles"])
-        logger.info(f"Admin removed roles {data["roles"]}. target: {user}", extra={"actor": f"user: {request.user}"})
+        logger.info(
+            f"Admin removed [roles: {data["roles"]}] from [user_id: {user.pk}]",
+        )
 
         return Response(status=HTTP_200_OK)
 
 
-class UserRoleListView(APIView):
+class UserRoleListView(BaseAPIView):
     permission_classes = [IsAdminUser]
 
     def get(self, request):
