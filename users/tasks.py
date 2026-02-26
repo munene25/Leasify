@@ -4,12 +4,7 @@ from config.emails import get_default_params, send_template_email
 from .tokens import token_url_generate, unsubscribe_url_for
 import smtplib
 
-@shared_task(
-    autoretry_for=(smtplib.SMTPDataError,),
-    retry_kwargs={'max_retries': 5},                       
-    retry_backoff=True,                                    
-    retry_jitter=True                                      
-)
+@shared_task(autoretry_for=(smtplib.SMTPDataError,),retry_kwargs={'max_retries': 3}, retry_backoff=True, retry_jitter=True)
 def send_welcome_email(user_id: int):
     user = user_get_by_id(user_id)
     context = get_default_params()
@@ -24,12 +19,7 @@ def send_welcome_email(user_id: int):
     )
     return True
 
-@shared_task(
-    autoretry_for=(smtplib.SMTPDataError, ConnectionError),
-    retry_kwargs={'max_retries': 5},                       
-    retry_backoff=True,                                    
-    retry_jitter=True                                      
-)
+@shared_task(autoretry_for=(smtplib.SMTPDataError, ConnectionError), retry_kwargs={'max_retries': 3}, retry_backoff=True, retry_jitter=True)
 def send_token_email(user_id: int, url_path: str, subject: str, action_cta: str):
     user = user_get_by_id(user_id)
     context = get_default_params()

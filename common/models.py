@@ -15,7 +15,7 @@ class BaseModel(models.Model):
 
     def full_clean(self, *args, **kwargs) -> None:
         try:
-            super().full_clean(*args, **kwargs)  # type:ignore
+            super().full_clean(*args, **kwargs)
         except DjangoValidationError as exc:
             errors = exc.message_dict
             raise DRFValidationError(errors)
