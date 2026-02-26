@@ -20,15 +20,16 @@ class User(BaseModel, AbstractUser):
 
     def clean(self):
         super().clean()
+        """Properly attatch password requirement messages to the error message"""
         if password:=getattr(self, "_raw_password", None):
             try:
                 validate_password(password, self)
             except DjangoValidationError as exc:
                 raise ValidationError({"password": exc.messages})
 
-    def check_current_password(self, current_password):
-        """Takes a 'current_password'"""
-        if not self.check_password(current_password):
+    def check_password(self, current_password):
+        """Wrapper for check_password with an exception"""
+        if not super().check_password(current_password):
             err = "Current password is incorrect"
             raise ValidationError({"current_password": [err]})
 

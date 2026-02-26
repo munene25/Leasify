@@ -38,7 +38,7 @@ def user_account_update(user: User, **kwargs) -> tuple[User, Account]:
 @transaction.atomic
 def user_change_password(*, user: User, new_password: str, current_password: str | None = None) -> User:
     if current_password:
-        user.check_current_password(current_password)
+        user.check_password(current_password)
     setattr(user, "_raw_password", new_password)
     user.set_password(new_password)
     user.full_clean()
@@ -92,7 +92,7 @@ def user_update(user: User,  **kwargs):
         password = kwargs.get("current_password", None)
         if password is None:
             raise ValidationError({"current_password": ["Current password required."]})
-        user.check_current_password(password)
+        user.check_password(password)
         if user.next_email_change is not None:
             err = f"Next available email change is '{user.next_email_change}'"
             raise ValidationError({"email": [err]})
