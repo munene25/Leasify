@@ -24,7 +24,7 @@ def user_account_create(*, password: str, email: str, phone_number: PhoneNumber,
     user.save()
     account_create(user=user, phone_number=phone_number)
     if notify:
-        send_welcome_email.delay(user.pk)  # type: ignore
+        transaction.on_commit(lambda: send_welcome_email.delay(user.pk))
     logger.info(f"user [{user.email}] created.")
     return user
 

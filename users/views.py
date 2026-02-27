@@ -244,7 +244,7 @@ class RequestEmailVerificationView(BaseAPIView):
                 url_path="email-verify",
                 subject="Verify your email address.",
                 action_cta="Verify Email",
-            )  # type: ignore
+            )
             logger.info(
                 "User email verification request",
                 extra={"actor": f"user: {request.user}"},
@@ -281,7 +281,7 @@ class RequestPasswordResetView(BaseAPIView):
                 url_path="password-reset",
                 subject="Reset your password",
                 action_cta="Reset password",
-            )  # type: ignore
+            )
             logger.info("User request password reset")
         return Response(status=HTTP_202_ACCEPTED)
 

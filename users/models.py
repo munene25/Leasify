@@ -19,9 +19,10 @@ class User(BaseModel, AbstractUser):
 
 
     def clean(self):
-        super().clean()
         """Properly attatch password requirement messages to the error message"""
-        if password:=getattr(self, "_raw_password", None):
+        super().clean()
+        password = getattr(self, "_raw_password", None)
+        if password is not None:
             try:
                 validate_password(password, self)
             except DjangoValidationError as exc:

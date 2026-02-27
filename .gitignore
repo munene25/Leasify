@@ -9,6 +9,7 @@ out.txt
 local_settings.py
 media/
 staticfiles/
+x.py
 
 # Celery specific
 celerybeat-schedule

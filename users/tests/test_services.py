@@ -1,103 +1,160 @@
+from dataclasses import dataclass, asdict, field
 import pytest
-from dataclasses import dataclass, asdict, replace
 from faker import Faker
 from rest_framework.exceptions import ValidationError
 from phonenumber_field.phonenumber import PhoneNumber
 from users.models import User
 from users.services import user_account_create
 from unittest.mock import patch
-fake = Faker("en_KE")
+from django.conf import settings
 
+
+pytestmark = pytest.mark.django_db
+
+fake = Faker("en_KE")
 
 @dataclass
 class UserData:
-    # user_data
-    first_name: str
-    last_name: str
-    email: str
-    password: str
-    # acc_data
-    phone_number: PhoneNumber
+    first_name: str = field(default_factory = fake.first_name)
+    last_name: str = field(default_factory = fake.last_name)
+    email: str = field(default_factory = fake.email)
+    password: str = field(default_factory = fake.password)
+    phone_number: PhoneNumber = field(default_factory = lambda: PhoneNumber.from_string(fake.numerify("+254-7##-###-###")))
+    
+
+@pytest.fixture(autouse=True)
+def settings_override(settings):
+    settings.CELERY_TASK_ALWAYS_EAGER = True
+    settings.CELERY_TASK_EAGER_PROPAGATES = True
 
 
-@pytest.fixture
-def user_data() -> UserData:
-    return UserData(
-        fake.first_name(),
-        fake.last_name(),
-        fake.email(),
-        fake.password(),
-        PhoneNumber.from_string(f"+2547{fake.random_number(digits=8, fix_len=True)}"),
+@pytest.fixture(autouse=True)
+def userdata():
+    def _create(**overrides)-> UserData:
+        data = UserData()
+        if overrides:
+            for k, v in overrides.items():
+                setattr(data, k, v)
+        return data
+    return _create
+
+
+class TestSuccessfulAccountCreation:
+    def test_account_creation_successful(self, userdata):
+        data: UserData = userdata()
+        user_account_create(**asdict(data))
+
+        user = User.objects.get(email=data.email)
+        account = user.account
+        assert user == account.user
+
+        assert user.first_name == data.first_name
+        assert user.last_name == data.last_name
+        assert user.email == data.email
+        assert user.password != data.password
+        user.check_password(data.password)
+        assert user.account.phone_number == data.phone_number
+
+        assert User.objects.count() == 1
+
+    def test_skip_mail_sending(self, userdata, django_capture_on_commit_callbacks):
+        with django_capture_on_commit_callbacks() as callback:
+            user_account_create(**asdict(userdata()), notify=False)
+        assert len(callback) == 0
+        assert User.objects.count() == 1
+
+
+    def test_mail_sent_upon_creation(self, userdata, mailoutbox, django_capture_on_commit_callbacks):
+        data: UserData = userdata()
+        with django_capture_on_commit_callbacks() as callback:
+            user_account_create(**asdict(data), notify=True)
+        assert len(callback) == 1
+        # Execute
+        callback[0]()
+        assert len(mailoutbox) == 1
+        sent = mailoutbox[0]
+        assert sent.to == [data.email]
+        assert sent.from_email == settings.DEFAULT_FROM_EMAIL
+        assert User.objects.count() == 1
+    
+    @patch("users.tasks.send_welcome_email.delay")
+    def test_user_creation_success_on_cache_fail(self, mock, userdata, django_capture_on_commit_callbacks):
+        mock.side_effect = Exception("Cache Down")
+        with pytest.raises(Exception, match="Cache Down"):
+            with django_capture_on_commit_callbacks(execute=True):
+                data = asdict(userdata())
+                user_account_create(**data)
+
+        assert User.objects.count() == 1
+
+class TestPasswordValidators:
+    @pytest.mark.parametrize(
+        "password,exception",
+        [
+            ("", "short"),
+            ("foo", "short"),
+            ("aeiou", "short"),
+            ("1235151545", "numeric"),
+        ],
+    )
+    def test_password_validators_fail(self, userdata, password, exception):
+        data = userdata(password=password)
+        with pytest.raises(ValidationError) as exc:
+            user_account_create(**asdict(data))
+        assert exception in str(exc.value.detail)
+        assert User.objects.count() == 0
+
+
+    @pytest.mark.parametrize(
+        "field,value,password",
+        [
+            ("first_name","Bethany", "Bethany!"),
+            ("last_name","Florence", "_floReNCE_"),
+            ("email","benedicturs@gmail.com", "benedictorial"),
+        ],
     )
 
-
-@pytest.mark.django_db
-@patch("users.tasks.send_welcome_email.delay")
-def test_account_creation_successful(_, user_data):
-    user_data.email = "test@ExamplE.CoM"
-    raw_password = user_data.password 
-
-    # assert user & acc creation
-    created_user = user_account_create(**asdict(user_data))
-    user = User.objects.get(pk=created_user.pk)
-    account = user.account # type: ignore
-
-    # assert user_data matches
-    assert user.first_name == user_data.first_name
-    assert user.last_name == user_data.last_name
- 
-    # assert email normalisation
-    assert user.email == "test@example.com"
-
-    # assert password hashed
-    assert user.password != raw_password
-    assert user.check_password(raw_password) is True
-
-
-    # assert account_data matches
+    def test_password_validators_fail_for_user_similarity(self, userdata, field, value, password):
+        data = userdata(**{field: value, "password": password})
+        with pytest.raises(ValidationError) as exc:
+            user_account_create(**asdict(data))
+        assert "similar" in str(exc.value.detail)
+        assert User.objects.count() == 0
     
-    assert account.user == user
-    assert account.phone_number == user_data.phone_number
+    @pytest.mark.parametrize(
+            "phone_number",
+            [
+                PhoneNumber.from_string("+254 700 000 000"),
+                PhoneNumber.from_string("+255 700 000 000"),
+                PhoneNumber.from_string("254 700 000 000"),
+                PhoneNumber.from_string("+104 700 000"),
+  
+            ]
+    )
+    def test_phone_number_validator_fail_for_wrong_format(self, phone_number):
+        pass
 
-@pytest.mark.django_db
-@patch("users.tasks.send_welcome_email.delay")
-def test_password_validators_work(_, user_data):
-    user_data.password = str(user_data.email).split("@")[0]
-    with pytest.raises(ValidationError) as exc:
-        user_account_create(**asdict(user_data))
-    assert "password" in str(exc.value)
+class TestDBConstraints:
+    @pytest.mark.parametrize(
+        "field,value,duplicate",
+        [
+            ("email", "test@test.com", "test@test.com"),
+            ("email", "phil@TEST.com", "phil@test.com"),
+            ("phone_number", PhoneNumber.from_string("0710-100-100"), PhoneNumber.from_string("254710100100")),
+            ("phone_number", PhoneNumber.from_string("0710100100"), PhoneNumber.from_string("+254-710-100-100")),
+        ],
+    )
+    def test_account_creation_fails_with_db_contraints(self, userdata, field, value, duplicate):
+        data1 = asdict(userdata(**{field: value}))
+        data2 = asdict(userdata(**{field: duplicate}))
+        print(data1["email"])
+        print(data2["email"])
+        
+        user_account_create(**data1)
+        with pytest.raises(ValidationError) as exc:
+            user_account_create(**data2)
 
-@pytest.mark.django_db
-@patch("users.tasks.send_welcome_email.delay")
-def test_account_creation_fails_with_duplicate_phone_numbers(_, user_data):
-
-    data2 = replace(user_data)
-    data2.phone_number = user_data.phone_number
-    user_account_create(**asdict(user_data))
-    with pytest.raises(ValidationError):
-        user_account_create(**asdict(data2))
-
-
-@pytest.mark.django_db
-@patch("users.tasks.send_welcome_email.delay")
-def test_account_creation_fails_with_duplicate_emails(_, user_data):
-    data2 = replace(user_data)
-    user_account_create(**asdict(user_data))
-    with pytest.raises(ValidationError):
-        user_account_create(**asdict(data2))
-
-@pytest.mark.django_db
-@patch("users.tasks.send_welcome_email.delay")
-def test_email_sender(mock_email, user_data):
-    user = user_account_create(**asdict(user_data))
-    mock_email.assert_called_once_with(user.pk)
-
-@pytest.mark.django_db
-@patch("users.tasks.send_welcome_email.delay", side_effect=Exception("Cache unavailable"))
-def test_chache_down(mock_email, user_data):
-    user = user_account_create(**asdict(user_data))
-    with pytest.raises(Exception) as exc:
-        mock_email.assert_called_once_with(user.pk)
-    assert user is not None
+        assert User.objects.count() == 1
+        assert field in exc.value.detail
 
 
