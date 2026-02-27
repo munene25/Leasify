@@ -1,5 +1,4 @@
 from celery import shared_task, Task
-from typing import Literal
 from .selectors import user_get_by_id
 from config.emails import get_default_params, send_template_email
 from .tokens import token_url_generate, unsubscribe_url_for
