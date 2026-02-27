@@ -41,6 +41,7 @@ def userdata():
 
 class TestSuccessfulAccountCreation:
     def test_account_creation_successful(self, userdata):
+        """Test whether account creation is successfull and data is data matches"""
         data: UserData = userdata()
         user_account_create(**asdict(data))
 
@@ -52,12 +53,14 @@ class TestSuccessfulAccountCreation:
         assert user.last_name == data.last_name
         assert user.email == data.email
         assert user.password != data.password
-        user.check_password(data.password)
         assert user.account.phone_number == data.phone_number
+        
+        user.check_password(data.password)
 
         assert User.objects.count() == 1
 
     def test_skip_mail_sending(self, userdata, django_capture_on_commit_callbacks):
+        """Test whether mail will be ignored with notify flag added"""
         with django_capture_on_commit_callbacks() as callback:
             user_account_create(**asdict(userdata()), notify=False)
         assert len(callback) == 0
@@ -65,11 +68,12 @@ class TestSuccessfulAccountCreation:
 
 
     def test_mail_sent_upon_creation(self, userdata, mailoutbox, django_capture_on_commit_callbacks):
+        """Test normal mail sending with notify flag set to True. Requires always eager for delay calls"""
         data: UserData = userdata()
         with django_capture_on_commit_callbacks() as callback:
             user_account_create(**asdict(data), notify=True)
         assert len(callback) == 1
-        # Execute
+        # Execute callback
         callback[0]()
         assert len(mailoutbox) == 1
         sent = mailoutbox[0]
@@ -79,6 +83,7 @@ class TestSuccessfulAccountCreation:
     
     @patch("users.tasks.send_welcome_email.delay")
     def test_user_creation_success_on_cache_fail(self, mock, userdata, django_capture_on_commit_callbacks):
+        """Regardless of cache failure i.e., celery cant reach broker, user should be created nonetheless"""
         mock.side_effect = Exception("Cache Down")
         with pytest.raises(Exception, match="Cache Down"):
             with django_capture_on_commit_callbacks(execute=True):
@@ -97,10 +102,13 @@ class TestPasswordValidators:
             ("1235151545", "numeric"),
         ],
     )
+
     def test_password_validators_fail(self, userdata, password, exception):
+        """Different variations of passwords that should be fail validation"""
         data = userdata(password=password)
         with pytest.raises(ValidationError) as exc:
             user_account_create(**asdict(data))
+        assert "password" in exc.value.detail
         assert exception in str(exc.value.detail)
         assert User.objects.count() == 0
 
@@ -113,26 +121,30 @@ class TestPasswordValidators:
             ("email","benedicturs@gmail.com", "benedictorial"),
         ],
     )
-
     def test_password_validators_fail_for_user_similarity(self, userdata, field, value, password):
+        """Different variations of passwords that should fail based on user similarity"""
         data = userdata(**{field: value, "password": password})
         with pytest.raises(ValidationError) as exc:
             user_account_create(**asdict(data))
+        assert "password" in exc.value.detail
         assert "similar" in str(exc.value.detail)
         assert User.objects.count() == 0
     
     @pytest.mark.parametrize(
             "phone_number",
             [
-                PhoneNumber.from_string("+254 700 000 000"),
+                PhoneNumber.from_string("+254 000 000 000"),
                 PhoneNumber.from_string("+255 700 000 000"),
-                PhoneNumber.from_string("254 700 000 000"),
-                PhoneNumber.from_string("+104 700 000"),
-  
+                PhoneNumber.from_string("254 700 000 00"),
+                PhoneNumber.from_string("+104 700 000 000"),
             ]
     )
     def test_phone_number_validator_fail_for_wrong_format(self, phone_number):
-        pass
+        data = userdata(phone_number=phone_number)
+        with pytest.raises(Exception) as exc:
+            user_account_create(**asdict(data))
+        assert "phone_number" in str(exc.value)
+        assert User.objects.count() == 0
 
 class TestDBConstraints:
     @pytest.mark.parametrize(
