@@ -5,6 +5,7 @@ __pycache__
 out.txt
 
 .venv/ 
+testdata.md
 *logs
 local_settings.py
 media/
