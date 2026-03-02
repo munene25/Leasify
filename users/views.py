@@ -23,7 +23,7 @@ from .tasks import send_token_email
 from .services import (
     user_account_create,
     user_login,
-    user_account_update,
+    user_update,
     user_email_verify,
     user_change_password,
     user_delete_or_deactivate,
