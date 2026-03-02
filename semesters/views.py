@@ -21,7 +21,7 @@ class SemesterListCreateView(BaseAPIView):
         return Response(status=status.HTTP_200_OK, data=serializer.data)
 
     def post(self, request):
-        data = validate_serializer(s_cls=self.serializer_class, data=request.data)
+        data = self.validate_serializer(data=request.data)
         creator = services.SemesterService().create(**data)
         return Response(status=status.HTTP_201_CREATED)
 
@@ -43,7 +43,7 @@ class SemesterDetailUpdateDeleteView(BaseAPIView):
         return Response(status=status.HTTP_200_OK)
 
     def put(self, request, semester_id):
-        data = validate_serializer(s_cls=self.serializer_class, data=request.data)
+        data = self.validate_serializer(data=request.data)
         service = services.SemesterService(semester_id)
         service.update(**data)
         return Response(status=status.HTTP_200_OK)

@@ -22,7 +22,7 @@ class TenancyListCreateView(BaseAPIView):
         return Response(status=status.HTTP_200_OK, data=serializer.data)
 
     def post(self, request) -> Response:
-        data = validate_serializer(s_cls=self.serializer_class, data=request.data)
+        data = self.validate_serializer(data=request.data)
         service = TenancyService()
         service.create(**data)
         return Response(status=status.HTTP_201_CREATED)
@@ -37,7 +37,7 @@ class TenancyDetailUpdateDestroyView(BaseAPIView):
         return Response(status=status.HTTP_200_OK, data=serializer.data)
 
     def put(self, request, tenancy_id: int) -> Response:
-        data = validate_serializer(s_cls=self.serializer_class, data=request.data)
+        data = self.validate_serializer(data=request.data)
         service = TenancyService(tenancy_id)
         service.update(**data)
         return Response(status=status.HTTP_200_OK)

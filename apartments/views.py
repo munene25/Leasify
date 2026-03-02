@@ -23,7 +23,7 @@ class ApartmentListCreateView(BaseAPIView):
         return Response(status=status.HTTP_200_OK, data=serializer.data)
 
     def post(self, request):
-        data = validate_serializer(s_cls=self.serializer_class, data=request.data)
+        data = self.validate_serializer(data=request.data)
         ApartmentService().create(**data)
         return Response(status=status.HTTP_201_CREATED)
 
@@ -44,7 +44,7 @@ class ApartmentDetailUpdateDeleteView(BaseAPIView):
         return Response(status=status.HTTP_200_OK)
 
     def put(self, request, apartment_id):
-        data = validate_serializer(s_cls=self.serializer_class, data=request.data)
+        data = self.validate_serializer(data=request.data)
         ApartmentService(apartment_id).update(**data)
         return Response(status=status.HTTP_200_OK)
 
