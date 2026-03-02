@@ -1,3 +1,5 @@
-from .users import  user_delete_or_deactivate,  user_change_password, user_email_verify, user_account_create, user_account_update
+from .update import  user_change_password, user_update
+from .deactivate import user_deactivate, account_unsubscribe
+from .create import user_account_create, account_create
+from .deactivate import account_unsubscribe, user_deactivate
 from .login import user_login
-from .accounts import account_unsubscribe

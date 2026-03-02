@@ -1,8 +1,8 @@
 import hashlib
+from typing import override
 from typing import Protocol 
 from rest_framework.request import Request
 from rest_framework.views import View
-from users.models import User
 from rest_framework.throttling import AnonRateThrottle, UserRateThrottle, ScopedRateThrottle
 from logging import getLogger
 
@@ -15,7 +15,6 @@ class ThrottleProtocol(Protocol):
     def allow_request(self, request, view) -> bool: ...
     def get_rate(self) -> str: ...
     
-
 
 class ThrottleLoggingMixin:
     def allow_request(self: ThrottleProtocol, request: Request, view: View):

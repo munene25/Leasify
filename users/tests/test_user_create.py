@@ -1,6 +1,6 @@
-from dataclasses import dataclass, asdict, field
+from dataclasses import asdict
+from .conftest import UserData
 import pytest
-from faker import Faker
 from rest_framework.exceptions import ValidationError
 from phonenumber_field.phonenumber import PhoneNumber
 from users.models import User
@@ -9,70 +9,51 @@ from unittest.mock import patch
 from django.conf import settings
 
 
-pytestmark = pytest.mark.django_db
-
-fake = Faker("en_KE")
-
-@dataclass
-class UserData:
-    first_name: str = field(default_factory = fake.first_name)
-    last_name: str = field(default_factory = fake.last_name)
-    email: str = field(default_factory = fake.email)
-    password: str = field(default_factory = fake.password)
-    phone_number: PhoneNumber = field(default_factory = lambda: PhoneNumber.from_string(fake.numerify("+254-7##-###-###")))
-    
-
-@pytest.fixture(autouse=True)
-def settings_override(settings):
-    settings.CELERY_TASK_ALWAYS_EAGER = True
-    settings.CELERY_TASK_EAGER_PROPAGATES = True
-
-
-@pytest.fixture(autouse=True)
+@pytest.fixture
 def userdata():
-    def _create(**overrides)-> UserData:
-        data = UserData()
+    # Returns a creator function
+    def _create(**overrides) -> UserData:
+        userdata = UserData()
         if overrides:
             for k, v in overrides.items():
-                setattr(data, k, v)
-        return data
+                setattr(userdata, k, v)
+        return userdata
+
     return _create
 
 
 class TestSuccessfulAccountCreation:
     def test_account_creation_successful(self, userdata):
         """Test whether account creation is successfull and data is data matches"""
-        
-        data: UserData = userdata()
+        data = userdata()
         user_account_create(**asdict(data))
-
         user = User.objects.get(email=data.email)
-        account = user.account
+        account = user.account # type: ignore
         assert user == account.user
 
         assert user.first_name == data.first_name
         assert user.last_name == data.last_name
         assert user.email == data.email
         assert user.password != data.password
-        assert user.account.phone_number == data.phone_number
-        
+        assert user.account.phone_number == data.phone_number # type: ignore
+
         user.check_password(data.password)
 
         assert User.objects.count() == 1
 
-    def test_skip_mail_sending(self, userdata, django_capture_on_commit_callbacks):
+    def test_skip_mail_sending(self, mod, django_capture_on_commit_callbacks):
         """Test whether mail will be ignored with notify flag added"""
-
         with django_capture_on_commit_callbacks() as callback:
-            user_account_create(**asdict(userdata()), notify=False)
+            user_account_create(**asdict(mod()), notify=False)
         assert len(callback) == 0
         assert User.objects.count() == 1
 
-
-    def test_mail_sent_upon_creation(self, userdata, mailoutbox, django_capture_on_commit_callbacks):
+    def test_mail_sent_upon_creation(
+        self, mod, mailoutbox, django_capture_on_commit_callbacks
+    ):
         """Test normal mail sending with notify flag set to True. Requires always eager for delay calls"""
 
-        data: UserData = userdata()
+        data: UserData = mod()
         with django_capture_on_commit_callbacks() as callback:
             user_account_create(**asdict(data), notify=True)
         assert len(callback) == 1
@@ -83,18 +64,21 @@ class TestSuccessfulAccountCreation:
         assert sent.to == [data.email]
         assert sent.from_email == settings.DEFAULT_FROM_EMAIL
         assert User.objects.count() == 1
-    
+
     @patch("users.tasks.send_welcome_email.delay")
-    def test_user_creation_success_on_cache_fail(self, mock, userdata, django_capture_on_commit_callbacks):
+    def test_user_creation_success_on_cache_fail(
+        self, mock, mod, django_capture_on_commit_callbacks
+    ):
         """Regardless of cache failure i.e., celery cant reach broker, user should be created nonetheless"""
 
         mock.side_effect = Exception("Cache Down")
         with pytest.raises(Exception, match="Cache Down"):
             with django_capture_on_commit_callbacks(execute=True):
-                data = asdict(userdata())
+                data = asdict(mod())
                 user_account_create(**data)
 
         assert User.objects.count() == 1
+
 
 class TestPasswordValidators:
     @pytest.mark.parametrize(
@@ -106,52 +90,53 @@ class TestPasswordValidators:
             ("1235151545", "numeric"),
         ],
     )
-
-    def test_password_validators_fail(self, userdata, password, exception):
+    def test_password_validators_fail(self, mod, password, exception):
         """Different variations of passwords that should be fail validation"""
 
-        data = userdata(password=password)
+        data = mod(password=password)
         with pytest.raises(ValidationError) as exc:
             user_account_create(**asdict(data))
         assert "password" in exc.value.detail
         assert exception in str(exc.value.detail)
         assert User.objects.count() == 0
 
-
     @pytest.mark.parametrize(
         "field,value,password",
         [
-            ("first_name","Bethany", "Bethany!"),
-            ("last_name","Florence", "_floReNCE_"),
-            ("email","benedicturs@gmail.com", "benedictorial"),
+            ("first_name", "Bethany", "Bethany!"),
+            ("last_name", "Florence", "_floReNCE_"),
+            ("email", "benedicturs@gmail.com", "benedictorial"),
         ],
     )
-    def test_password_validators_fail_for_user_similarity(self, userdata, field, value, password):
+    def test_password_validators_fail_for_user_similarity(
+        self, mod, field, value, password
+    ):
         """Different variations of passwords that should fail based on user similarity"""
 
-        data = userdata(**{field: value, "password": password})
+        data = mod(**{field: value, "password": password})
         with pytest.raises(ValidationError) as exc:
             user_account_create(**asdict(data))
         assert "password" in exc.value.detail
         assert "similar" in str(exc.value.detail)
         assert User.objects.count() == 0
-    
+
     @pytest.mark.parametrize(
-            "phone_number",
-            [
-                PhoneNumber.from_string("+254 000 100 100"),
-                PhoneNumber.from_string("+255 700 100 100"),
-                PhoneNumber.from_string("+104 700 100 100"),
-            ]
+        "phone_number",
+        [
+            PhoneNumber.from_string("+254 000 100 100"),
+            PhoneNumber.from_string("+255 700 100 100"),
+            PhoneNumber.from_string("+104 700 100 100"),
+        ],
     )
-    def test_phone_number_validator_fail_for_wrong_format(self, userdata, phone_number):
+    def test_phone_number_validator_fail_for_wrong_format(self, mod, phone_number):
         """Assert wrong phone number formats and phone number regions are rejected"""
 
-        data = userdata(phone_number=phone_number)
+        data = mod(phone_number=phone_number)
         with pytest.raises(Exception) as exc:
             user_account_create(**asdict(data))
         assert "phone_number" in str(exc.value)
         assert User.objects.count() == 0
+
 
 class TestDBConstraints:
     @pytest.mark.parametrize(
@@ -159,21 +144,29 @@ class TestDBConstraints:
         [
             ("email", "test@test.com", "test@test.com"),
             ("email", "phil@TEST.com", "phil@test.com"),
-            ("phone_number", PhoneNumber.from_string("0710-100-100"), PhoneNumber.from_string("254710100100")),
-            ("phone_number", PhoneNumber.from_string("0710100100"), PhoneNumber.from_string("+254-710-100-100")),
+            (
+                "phone_number",
+                PhoneNumber.from_string("0710-100-100"),
+                PhoneNumber.from_string("254710100100"),
+            ),
+            (
+                "phone_number",
+                PhoneNumber.from_string("0710100100"),
+                PhoneNumber.from_string("+254-710-100-100"),
+            ),
         ],
     )
-    def test_account_creation_fails_with_db_contraints(self, userdata, field, value, duplicate):
-        data1 = asdict(userdata(**{field: value}))
-        data2 = asdict(userdata(**{field: duplicate}))
+    def test_account_creation_fails_with_db_contraints(
+        self, mod, field, value, duplicate
+    ):
+        data1 = asdict(mod(**{field: value}))
+        data2 = asdict(mod(**{field: duplicate}))
         print(data1["email"])
         print(data2["email"])
-        
+
         user_account_create(**data1)
         with pytest.raises(ValidationError) as exc:
             user_account_create(**data2)
 
         assert User.objects.count() == 1
         assert field in exc.value.detail
-
-
