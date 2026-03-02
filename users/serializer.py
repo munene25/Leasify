@@ -25,17 +25,12 @@ class UserListSerializer(serializers.Serializer):
     )
 
 class UserUpdateSerializer(serializers.Serializer):
-    email = serializers.EmailField()
-    current_password = serializers.CharField(write_only=True)
-    new_password = serializers.CharField(write_only=True)
-    confirm_password = serializers.CharField(write_only=True)
-    first_name = serializers.CharField()
-    last_name = serializers.CharField()
-    email = serializers.EmailField()
+    first_name = serializers.CharField(allow_null=True)
+    last_name = serializers.CharField(allow_null=True)
     # Account fields
-    phone_number = PhoneNumberField(write_only=True)
-    bio = serializers.CharField(write_only=True)
-    backup_email = serializers.EmailField(write_only=True)
+    phone_number = PhoneNumberField(allow_null=True)
+    bio = serializers.CharField(allow_null=True)
+    backup_email = serializers.EmailField(allow_null=True)
 
 class UserDetailSerializer(serializers.Serializer):
     email = serializers.EmailField()
@@ -79,7 +74,12 @@ class ConfirmPasswordResetSerializer(serializers.Serializer):
         if data.get('new_password') != data.get('confirm_password'):
             raise serializers.ValidationError({"confirm_password": "Passwords do not match"})
         return data
-        
+
+class UserEmailUpdateSerializer(serializers.Serializer):
+    current_password = serializers.CharField()
+    email = serializers.EmailField()
+    
+
 class UserRoleDetailSerializer(serializers.Serializer):
     roles = serializers.ListField()
 

@@ -24,9 +24,10 @@ from .services import (
     user_account_create,
     user_login,
     user_update,
+    user_email_update,
     user_email_verify,
     user_change_password,
-    user_delete_or_deactivate,
+    user_deactivate,
     account_unsubscribe,
 )
 from .selectors import (
@@ -46,6 +47,7 @@ from .serializer import (
     UserRoleCreateSerializer,
     UserRoleDetailSerializer,
     UserRoleListSerializer,
+    UserEmailUpdateSerializer
 )
 
 logger = getLogger("users.views")
@@ -69,7 +71,9 @@ class UserListCreateView(BaseAPIView):
         filters = self.validate_filter(data=request.query_params)
         qs = user_list(filters)
 
-        return get_paginated_response(s_cls=UserListSerializer, qs=qs, req=request, view=self)
+        return get_paginated_response(
+            s_cls=UserListSerializer, qs=qs, req=request, view=self
+        )
 
     def post(self, request):
         data = self.validate_serializer(data=request.data)
@@ -85,21 +89,7 @@ class UserDetailUpdateDestroyView(BaseAPIView):
         check_perms(request.user, "user.view_user")
         user = user_get_by_id(user_id)
         serialzer_class = UserDetailSerializer(instance=user)
-
         return Response(status=HTTP_200_OK, data=serialzer_class.data)
-
-    def put(self, request, user_id):
-        check_perms(request.user, "user.edit_user")
-        data = self.validate_serializer(data=request.data)
-        user = user_get_by_id(user_id)
-
-        if user.is_superuser or user.is_staff:
-            logger.warning(f"modifying staff user data data not allowed. Target[user_id: {user_id}]")
-            raise PermissionDenied()
-
-        user_account_update(user=user, **data)
-        logger.info(f"admin modified user data. [user_id: {user_id}]")
-        return Response(status=HTTP_200_OK)
 
     def patch(self, request, user_id):
         check_perms(request.user, "user.edit_user")
@@ -107,11 +97,11 @@ class UserDetailUpdateDestroyView(BaseAPIView):
         user = user_get_by_id(user_id)
         if user.is_superuser or user.is_staff:
             logger.warning(
-                f"modifying staff user data data not allowed. Target[user_id: {user_id}]"
+                f"modifying staff data data not allowed.", target_id=user_id
             )
             raise PermissionDenied()
 
-        user_account_update(user=user, **data)
+        user_update(user, **data)
         logger.info(f"Admin modified user data. [user_id: {user_id}] data")
         return Response(status=HTTP_200_OK)
 
@@ -120,15 +110,12 @@ class UserDetailUpdateDestroyView(BaseAPIView):
         user = user_get_by_id(user_id)
         if user.is_superuser or user.is_staff:
             logger.warning(
-                f"modifying staff user data data not allowed. Target[user_id: {user_id}]"
+                f"deactivating staff not allowed", target_id=user_id
             )
             raise PermissionDenied()
 
-        res = user_delete_or_deactivate(user=user)
-        if res is None:
-            logger.info(f"Admin deleted user. [user_id: {user_id}]")
-            return Response(status=HTTP_204_NO_CONTENT)
-        logger.info(f"Admin deactivated user. [user_id: {user_id}]")
+        user_deactivate(user=user)
+        logger.info(f"Admin deactivated user.", target_id=user_id)
         return Response(
             status=HTTP_200_OK,
             data={"message": "User deactivated, deletion not available"},
@@ -144,22 +131,25 @@ class MeView(BaseAPIView, CookieMixin):
         serializer = UserDetailSerializer(instance=user)
         return Response(status=HTTP_200_OK, data=serializer.data)
 
-    def put(self, request):
-        data = self.validate_serializer(data=request.data)
-        user_account_update(user=request.user, **data)
-        return Response(status=HTTP_200_OK)
-
     def patch(self, request):
         data = self.validate_serializer(data=request.data, partial=True)
-        user_account_update(user=request.user, **data)
+        user_update(user=request.user, **data)
         return Response(status=HTTP_200_OK)
 
     def delete(self, request):
-        user_delete_or_deactivate(user=request.user)
+        user_deactivate(user=request.user)
         res = Response(status=HTTP_204_NO_CONTENT)
         logger.info(f"User deleted self.")
         response = self.del_cookies(cookies=["access", "refresh"], response=res)
         return response
+
+class EmailUpdateView(BaseAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = UserEmailUpdateSerializer
+
+    def post(self, request, view):
+        data = self.validate_serializer(data=request.data, partial=False)
+        user_email_update(user=request.user, **data)
 
 
 class LoginView(BaseAPIView, CookieMixin):

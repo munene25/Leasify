@@ -13,6 +13,7 @@ urlpatterns = [
     path("roles/<int:user_id>", views.UserRoleDetailView.as_view(), name="assign_roles"),
     path("refresh", views.RefreshTokenView.as_view(), name="refresh_token"),
     path("password-change", views.PasswordChangeView.as_view(), name="users_password_change" ),
+    path("email-change", views.EmailUpdateView.as_view(), name="email_update_view" ),
     path("request/password-reset", views.RequestPasswordResetView.as_view(), name="send_password_reset"),
     path("confirm/password-reset/<str:uuid>/<str:token>", views.ConfirmPasswordResetView.as_view(), name="verify_password" ),
     path("request/email-verification", views.RequestEmailVerificationView.as_view(), name="send_email_verification" ),
