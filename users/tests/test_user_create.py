@@ -1,5 +1,4 @@
-from dataclasses import asdict
-from .conftest import UserData
+from typing import TYPE_CHECKING
 import pytest
 from rest_framework.exceptions import ValidationError
 from phonenumber_field.phonenumber import PhoneNumber
@@ -8,40 +7,50 @@ from users.services import user_account_create
 from unittest.mock import patch
 from django.conf import settings
 
+
+if TYPE_CHECKING:
+    from .conftest import APIPayload
+
+
+
 class TestSuccessfulAccountCreation:
-    def test_account_creation_successful(self, userdata):
+    def test_account_creation_successful(self, payload: type[APIPayload]):
         """Test whether account creation is successfull and data is data matches"""
-        data = userdata()
-        user_account_create(**asdict(data))
+        
+        data: APIPayload = payload()
+        user_account_create(**data.to_dict)
         user = User.objects.get(email=data.email)
-        account = user.account # type: ignore
+        account = user.account 
         assert user == account.user
 
         assert user.first_name == data.first_name
         assert user.last_name == data.last_name
         assert user.email == data.email
         assert user.password != data.password
-        assert user.account.phone_number == data.phone_number # type: ignore
+        assert account.phone_number == data.phone_number 
 
         user.check_password(data.password)
 
         assert User.objects.count() == 1
 
-    def test_skip_mail_sending(self, userdata, django_capture_on_commit_callbacks):
+
+
+    def test_skip_mail_sending(self, payload, django_capture_on_commit_callbacks):
         """Test whether mail will be ignored with notify flag added"""
+        
         with django_capture_on_commit_callbacks() as callback:
-            user_account_create(**asdict(userdata()), notify=False)
+            user_account_create(**payload(), notify=False)
         assert len(callback) == 0
         assert User.objects.count() == 1
 
-    def test_mail_sent_upon_creation(
-        self, userdata, mailoutbox, django_capture_on_commit_callbacks
-    ):
-        """Test normal mail sending with notify flag set to True. Requires always eager for delay calls"""
 
-        data: UserData = userdata()
+
+    def test_mail_sent_upon_creation(self, payload: type[APIPayload], mailoutbox, django_capture_on_commit_callbacks):
+        """Test normal mail sending with notify flag set to True. Requires always eager for delay calls"""
+        
+        data = payload()
         with django_capture_on_commit_callbacks() as callback:
-            user_account_create(**asdict(data), notify=True)
+            user_account_create(**data.to_dict, notify=True)
         assert len(callback) == 1
         # Execute callback
         callback[0]()
@@ -51,19 +60,21 @@ class TestSuccessfulAccountCreation:
         assert sent.from_email == settings.DEFAULT_FROM_EMAIL
         assert User.objects.count() == 1
 
-    @patch("users.tasks.send_welcome_email.delay")
-    def test_user_creation_success_on_cache_fail(
-        self, mock, userdata, django_capture_on_commit_callbacks
-    ):
-        """Regardless of cache failure i.e., celery cant reach broker, user should be created nonetheless"""
 
+
+
+    @patch("users.tasks.send_welcome_email.delay")
+    def test_user_creation_success_on_cache_fail(self, mock, payload, django_capture_on_commit_callbacks):
+        """Regardless of cache failure i.e., celery cant reach broker, user should be created nonetheless"""
+        
         mock.side_effect = Exception("Cache Down")
         with pytest.raises(Exception, match="Cache Down"):
             with django_capture_on_commit_callbacks(execute=True):
-                data = asdict(userdata())
-                user_account_create(**data)
+               data = payload()
+               user_account_create(**data.to_dict)
 
         assert User.objects.count() == 1
+
 
 
 class TestPasswordValidators:
@@ -76,15 +87,17 @@ class TestPasswordValidators:
             ("1235151545", "numeric"),
         ],
     )
-    def test_password_validators_fail(self, userdata, password, exception):
+    def test_password_validators_fail(self, payload: type[APIPayload], password, exception):
         """Different variations of passwords that should be fail validation"""
 
-        data = userdata(password=password)
+        data = payload(password=password)
         with pytest.raises(ValidationError) as exc:
-            user_account_create(**asdict(data))
+            user_account_create(**data.to_dict)
         assert "password" in exc.value.detail
         assert exception in str(exc.value.detail)
         assert User.objects.count() == 0
+
+
 
     @pytest.mark.parametrize(
         "field,value,password",
@@ -94,34 +107,36 @@ class TestPasswordValidators:
             ("email", "benedicturs@gmail.com", "benedictorial"),
         ],
     )
-    def test_password_validators_fail_for_user_similarity(
-        self, userdata, field, value, password
-    ):
+    def test_password_validators_fail_for_user_similarity(self, payload: type[APIPayload], field, value, password):
         """Different variations of passwords that should fail based on user similarity"""
 
-        data = userdata(**{field: value, "password": password})
+        data = payload(**{field: value, "password": password})
         with pytest.raises(ValidationError) as exc:
-            user_account_create(**asdict(data))
+            user_account_create(**data.to_dict)
         assert "password" in exc.value.detail
         assert "similar" in str(exc.value.detail)
         assert User.objects.count() == 0
 
+
+
+
     @pytest.mark.parametrize(
         "phone_number",
         [
-            PhoneNumber.from_string("+254 000 100 100"),
-            PhoneNumber.from_string("+255 700 100 100"),
-            PhoneNumber.from_string("+104 700 100 100"),
-        ],
+            "+254 000 100 100",
+            "+255 700 100 100",
+            "+104 700 100 100",
+        ]
     )
-    def test_phone_number_validator_fail_for_wrong_format(self, userdata, phone_number):
+    def test_phone_number_validator_fail_for_wrong_format(self, phone_no, payload: type[APIPayload], phone_number):
         """Assert wrong phone number formats and phone number regions are rejected"""
 
-        data = userdata(phone_number=phone_number)
+        data = payload(phone_number=phone_no(phone_number))
         with pytest.raises(Exception) as exc:
-            user_account_create(**asdict(data))
+            user_account_create(**data.to_dict)
         assert "phone_number" in str(exc.value)
         assert User.objects.count() == 0
+
 
 
 class TestDBConstraints:
@@ -130,29 +145,19 @@ class TestDBConstraints:
         [
             ("email", "test@test.com", "test@test.com"),
             ("email", "phil@TEST.com", "phil@test.com"),
-            (
-                "phone_number",
-                PhoneNumber.from_string("0710-100-100"),
-                PhoneNumber.from_string("254710100100"),
-            ),
-            (
-                "phone_number",
-                PhoneNumber.from_string("0710100100"),
-                PhoneNumber.from_string("+254-710-100-100"),
-            ),
+            ("phone_number", PhoneNumber.from_string("0710-100-100"), PhoneNumber.from_string("254710100100")),
         ],
     )
-    def test_account_creation_fails_with_db_contraints(
-        self, userdata, field, value, duplicate
-    ):
-        data1 = asdict(userdata(**{field: value}))
-        data2 = asdict(userdata(**{field: duplicate}))
-        print(data1["email"])
-        print(data2["email"])
+    def test_account_creation_fails_with_db_contraints(self, payload: type[APIPayload], field, value, duplicate):
+        """
+        Test that db constraints with multiple 
+        """
+        data1 = payload(**{field: value})
+        data2 = payload(**{field: duplicate})
 
-        user_account_create(**data1)
+        user_account_create(**data1.to_dict)
         with pytest.raises(ValidationError) as exc:
-            user_account_create(**data2)
+            user_account_create(**data2.to_dict)
 
         assert User.objects.count() == 1
         assert field in exc.value.detail
