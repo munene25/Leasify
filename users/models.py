@@ -16,9 +16,9 @@ if TYPE_CHECKING:
     from datetime import datetime
 
 
-def phone_number_validator(value):
-    if (val:=parse(value).country_code) != 254:
-        raise ValidationError({"phone_number": f"Phone number of region [+{val}] not allowed. Only to Kenya [+254]"})
+def phone_number_validator(phone_nubmer):
+    if parse(phone_nubmer).country_code != 254:
+        raise ValidationError({"phone_number": f"Invalid country code! [{phone_nubmer =}]"}) 
 
 
 class User(BaseModel, AbstractUser):
