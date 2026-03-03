@@ -9,7 +9,7 @@ from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework.exceptions import ValidationError
 from phonenumber_field.modelfields import PhoneNumberField
-from phonenumbers import region_code_for_number, parse
+from phonenumbers import parse
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -17,9 +17,8 @@ if TYPE_CHECKING:
 
 
 def phone_number_validator(value):
-    phone = parse(value)
-    if region_code_for_number(phone) != "KE":
-        raise ValidationError("Phone number must belong to Kenya [+254]")
+    if (val:=parse(value).country_code) != 254:
+        raise ValidationError({"phone_number": f"Phone number of region [+{val}] not allowed. Only to Kenya [+254]"})
 
 
 class User(BaseModel, AbstractUser):

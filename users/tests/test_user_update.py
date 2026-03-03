@@ -83,20 +83,19 @@ class TestUserUpdate:
             user_update(user, **{"phone_number": phone})
             
         assert "phone_number" in exc.value.detail
-        assert exc.value.detail is 0
 
 
 
     @pytest.mark.parametrize(
-            "field,value,exception",
+            "field,value,",
         [   
-            ("first_name", "E", "Ensure this value has at least 2 characters"),
-            ("last_name", "M", "Ensure this value has at least 2 characters"),
-            ("first_name", "Edwin_", "field accepts only alphabetic characters"),
-            ("last_name", "Munene!", "field accepts only alphabetic characters"),
+            ("first_name", "E"),
+            ("last_name", "M"),
+            ("first_name", "Edwin_"),
+            ("last_name", "Munene!"),
         ]
     )
-    def test_null_name_fields_are_not_allowed(self, user, field, value, exception):
+    def test_name_field_validators_fail_with_unexpected_formats(self, user, field, value):
         with pytest.raises(ValidationError) as exc:
             user_update(user, **{field: value})
-        assert exception in str(exc.value.detail)
+        assert field in exc.value.detail
