@@ -67,20 +67,10 @@ class TestUserUpdate:
 
 
 
-    @pytest.mark.parametrize(
-        "tel",
-        [
-            "+101-999-222-222",
-            "+255-222-222-222",
-            "+256-722-222-222",
-            "+255712345678"
-        ],
-    )
-    def test_phone_number_validators_fail(self, phone_no, tel, user):
+    def test_phone_number_validators_fail_for_wrong_format(self, wrong_phone_number, user):
         """Phone numbers that should be rejected because of either incorrect countrycode or wrong format"""
         with pytest.raises(ValidationError) as exc:
-            phone = phone_no(tel)
-            user_update(user, **{"phone_number": phone})
+            user_update(user, **{"phone_number": wrong_phone_number})
             
         assert "phone_number" in exc.value.detail
 

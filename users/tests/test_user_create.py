@@ -1,3 +1,4 @@
+from __future__ import annotations
 from typing import TYPE_CHECKING
 import pytest
 from rest_framework.exceptions import ValidationError
@@ -35,11 +36,11 @@ class TestSuccessfulAccountCreation:
 
 
 
-    def test_skip_mail_sending(self, payload, django_capture_on_commit_callbacks):
+    def test_skip_mail_sending(self, payload: type[APIPayload] , django_capture_on_commit_callbacks):
         """Test whether mail will be ignored with notify flag added"""
         
         with django_capture_on_commit_callbacks() as callback:
-            user_account_create(**payload(), notify=False)
+            user_account_create(**payload().to_dict, notify=False)
         assert len(callback) == 0
         assert User.objects.count() == 1
 
@@ -64,7 +65,7 @@ class TestSuccessfulAccountCreation:
 
 
     @patch("users.tasks.send_welcome_email.delay")
-    def test_user_creation_success_on_cache_fail(self, mock, payload, django_capture_on_commit_callbacks):
+    def test_user_creation_success_on_cache_fail(self, mock, payload: type[APIPayload], django_capture_on_commit_callbacks):
         """Regardless of cache failure i.e., celery cant reach broker, user should be created nonetheless"""
         
         mock.side_effect = Exception("Cache Down")
@@ -120,21 +121,12 @@ class TestPasswordValidators:
 
 
 
-    @pytest.mark.parametrize(
-        "phone_number",
-        [
-            "+254 000 100 100",
-            "+255 700 100 100",
-            "+104 700 100 100",
-        ]
-    )
-    def test_phone_number_validator_fail_for_wrong_format(self, phone_no, payload: type[APIPayload], phone_number):
+    def test_phone_number_validator_fail_for_wrong_format(self, payload: type[APIPayload], wrong_phone_number):
         """Assert wrong phone number formats and phone number regions are rejected"""
-
-        data = payload(phone_number=phone_no(phone_number))
-        with pytest.raises(Exception) as exc:
+        data = payload(phone_number=wrong_phone_number)
+        with pytest.raises(ValidationError) as exc:
             user_account_create(**data.to_dict)
-        assert "phone_number" in str(exc.value)
+        assert "phone_number" in exc.value.detail
         assert User.objects.count() == 0
 
 
@@ -145,7 +137,7 @@ class TestDBConstraints:
         [
             ("email", "test@test.com", "test@test.com"),
             ("email", "phil@TEST.com", "phil@test.com"),
-            ("phone_number", PhoneNumber.from_string("0710-100-100"), PhoneNumber.from_string("254710100100")),
+            ("phone_number", PhoneNumber.from_string("0710-100-100"), PhoneNumber.from_string("+254 710 100 100")),
         ],
     )
     def test_account_creation_fails_with_db_contraints(self, payload: type[APIPayload], field, value, duplicate):

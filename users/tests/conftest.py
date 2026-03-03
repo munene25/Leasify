@@ -38,6 +38,9 @@ def phone_no() -> Callable[[str | None], PhoneNumber]:
     )
     return phone
 
+@pytest.fixture(params=["+101-999-222-222","+222-222-222-222","+256-722-222-222","+255712345678"],)
+def wrong_phone_number(phone_no, request) -> PhoneNumber:
+    return phone_no(request.param)
 
 @pytest.fixture
 def fake():
