@@ -1,7 +1,6 @@
 from common.views import BaseAPIView
 from rest_framework.response import Response
 from rest_framework import status
-from common.validators import validate_serializer
 from .services import TenancyService
 from .selectors import tenancy_list, tenancy_get_by_id
 from .serializer import (
@@ -10,8 +9,6 @@ from .serializer import (
     TenancyDetailSerializer,
     TenancyUpdateSerializer,
 )
-from .tasks import show_detail
-
 
 class TenancyListCreateView(BaseAPIView):
     serializer_class = TenancyCreateSerializer
@@ -43,9 +40,7 @@ class TenancyDetailUpdateDestroyView(BaseAPIView):
         return Response(status=status.HTTP_200_OK)
 
     def patch(self, request, tenancy_id: int) -> Response:
-        data = validate_serializer(
-            s_cls=self.serializer_class, data=request.data, partial=True
-        )
+        data = self.validate_serializer(data=request.data, partial=True)
         service = TenancyService(tenancy_id)
         service.update(**data)
         return Response(status=status.HTTP_200_OK)

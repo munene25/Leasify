@@ -10,18 +10,21 @@ from apartments.services import ApartmentService
 from payments.services import PaymentCreateService
 from users.services import user_account_create
 from .permissions import setup_roles_and_permissions
+from faker import Faker
 
+f = Faker("en_KE")
 def run():
     # Create users (use bulk_create for performance)
-    given_range = list(range(1, 10))
+    given_range = list(range(1, 20))
     users = [
         user_account_create(
-            email=f"user{i}@gmail.com",
-            password="timthetatman",
-            phone_number=PhoneNumber.from_string(f"0700 000 00{i}", region="KE"),
-            first_name=f"timmy{i}",
-            last_name=f"tat{i}"
-        ) for i in given_range
+            password="pa55word!",
+            email=f.email(),
+            phone_number=PhoneNumber.from_string(f.numerify("+254-7##-###-###")),
+            first_name=f.first_name(),
+            last_name=f.last_name(),
+            notify = False
+        ) for _ in given_range
     ]
     # Create semesters
 
@@ -47,7 +50,7 @@ def run():
         return semesters
 
     semesters = [SemesterService().create(**s) for s in generate_semesters(2025, 2030)]
-    no_of_apts = 12
+    no_of_apts = len(given_range) + 5
     aps = [
         {"block": f"{"OLD" if i%2 == 1 else "NEW"}", "unit_number": i, "rent": Decimal(20000)}
         for i in range(1, no_of_apts + 1)

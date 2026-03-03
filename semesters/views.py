@@ -9,7 +9,6 @@ from .serializer import (
     SemesterUpdateSerializer,
 )
 from common.views import BaseAPIView
-from common.validators import validate_serializer
 
 
 class SemesterListCreateView(BaseAPIView):
@@ -35,9 +34,7 @@ class SemesterDetailUpdateDeleteView(BaseAPIView):
         return Response(status=status.HTTP_200_OK, data=serializer.data)
 
     def patch(self, request, semester_id: int):
-        data = validate_serializer(
-            s_cls=self.serializer_class, data=request.data, partial=True
-        )
+        data = self.validate_serializer(data=request.data, partial=True)
         service = services.SemesterService(semester_id)
         service.update(**data)
         return Response(status=status.HTTP_200_OK)

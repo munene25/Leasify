@@ -1,22 +1,34 @@
+from __future__ import annotations
 from datetime import timedelta
 from django.utils import timezone
 from django.db import models
+from django.core.validators import MinLengthValidator
 from django.contrib.auth.models import AbstractUser
 from common.models import BaseModel
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework.exceptions import ValidationError
 from phonenumber_field.modelfields import PhoneNumberField
+from typing import TYPE_CHECKING
 
+if TYPE_CHECKING:
+    from datetime import datetime
+
+def alpha_validator(value):
+    if not value.isalpha():
+        print(value)
+        raise ValidationError("This field accepts only alphabetic characters.")
 
 class User(BaseModel, AbstractUser):
     username = None
+    first_name = models.CharField("first name", max_length=30, blank=False, validators=[alpha_validator, MinLengthValidator(2)])
+    last_name = models.CharField("last name", max_length=30, blank=False, validators=[alpha_validator, MinLengthValidator(2)])
     email = models.EmailField(unique=True, blank=False)
     verified = models.BooleanField(default=False)
     last_email_change = models.DateTimeField(null=True, blank=True)
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []
-
+    account: Account
 
     def clean(self):
         """Properly attatch password requirement messages to the error message"""
@@ -28,14 +40,14 @@ class User(BaseModel, AbstractUser):
             except DjangoValidationError as exc:
                 raise ValidationError({"password": exc.messages})
 
-    def check_password(self, current_password):
+    def check_password(self, current_password) -> None:
         """Wrapper for check_password with an exception"""
         if not super().check_password(current_password):
             err = "Current password is incorrect"
             raise ValidationError({"current_password": [err]})
 
     @property
-    def next_email_change(self):
+    def next_email_change(self) -> None | datetime:
         if self.last_email_change:
             cooldown = timedelta(days=30)
             next_change_time = self.last_email_change + cooldown
@@ -44,11 +56,11 @@ class User(BaseModel, AbstractUser):
         return None
     
     @property
-    def full_name(self):
+    def full_name(self) -> str:
         return self.get_full_name()
     
     @property
-    def roles(self):
+    def roles(self) -> list:
         return list(self.groups.values_list("name", flat=True))
 
 

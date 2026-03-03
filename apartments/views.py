@@ -2,7 +2,6 @@ from rest_framework.response import Response
 from common.views import BaseAPIView
 from rest_framework import status
 from semesters.selectors import semester_current
-from common.validators import validate_serializer
 from . import selectors
 from .services import ApartmentService
 from .serializer import (
@@ -37,9 +36,7 @@ class ApartmentDetailUpdateDeleteView(BaseAPIView):
         return Response(status=status.HTTP_200_OK, data=serializer.data)
 
     def patch(self, request, apartment_id):
-        data = validate_serializer(
-            s_cls=self.serializer_class, data=request.data, partial=True
-        )
+        data = self.validate_serializer(data=request.data, partial=True)
         ApartmentService(apartment_id).update(**data)
         return Response(status=status.HTTP_200_OK)
 
