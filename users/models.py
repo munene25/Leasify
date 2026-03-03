@@ -2,27 +2,52 @@ from __future__ import annotations
 from datetime import timedelta
 from django.utils import timezone
 from django.db import models
-from django.core.validators import MinLengthValidator
+from django.core.validators import MinLengthValidator, RegexValidator
 from django.contrib.auth.models import AbstractUser
 from common.models import BaseModel
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework.exceptions import ValidationError
 from phonenumber_field.modelfields import PhoneNumberField
+from phonenumbers import region_code_for_number, parse
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from datetime import datetime
 
-def alpha_validator(value):
-    if not value.isalpha():
-        print(value)
-        raise ValidationError("This field accepts only alphabetic characters.")
+
+def phone_number_validator(value):
+    phone = parse(value)
+    if region_code_for_number(phone) != "KE":
+        raise ValidationError("Phone number must belong to Kenya [+254]")
+
 
 class User(BaseModel, AbstractUser):
     username = None
-    first_name = models.CharField("first name", max_length=30, blank=False, validators=[alpha_validator, MinLengthValidator(2)])
-    last_name = models.CharField("last name", max_length=30, blank=False, validators=[alpha_validator, MinLengthValidator(2)])
+    first_name = models.CharField(
+        "first name",
+        max_length=30,
+        blank=False,
+        validators=[
+            RegexValidator(
+                regex=r"^[A-Za-zÀ-ÖØ-öø-ÿ' -]+$",
+                message="Enter a valid name. Letters, spaces, hyphens, and apostrophes only.",
+            ),
+            MinLengthValidator(2),
+        ],
+    )
+    last_name = models.CharField(
+        "last name",
+        max_length=30,
+        blank=False,
+        validators=[
+            RegexValidator(
+                regex=r"^[A-Za-zÀ-ÖØ-öø-ÿ' -]+$",
+                message="Enter a valid name. Letters, spaces, hyphens, and apostrophes only.",
+            ),
+            MinLengthValidator(2),
+        ],
+    )
     email = models.EmailField(unique=True, blank=False)
     verified = models.BooleanField(default=False)
     last_email_change = models.DateTimeField(null=True, blank=True)
@@ -54,11 +79,11 @@ class User(BaseModel, AbstractUser):
             if next_change_time > timezone.now():
                 return timezone.localtime(next_change_time)
         return None
-    
+
     @property
     def full_name(self) -> str:
         return self.get_full_name()
-    
+
     @property
     def roles(self) -> list:
         return list(self.groups.values_list("name", flat=True))
@@ -73,6 +98,7 @@ class Account(BaseModel):
         unique=True,
         null=True,
         blank=True,
+        validators=[phone_number_validator],
         error_messages={
             "unique": ("A user with that phone_number already exists."),
         },
