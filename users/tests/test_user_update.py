@@ -1,3 +1,4 @@
+from __future__ import annotations
 import pytest
 from users.models import User
 from rest_framework.exceptions import ValidationError
@@ -36,10 +37,13 @@ class TestUserUpdate:
         assert mod_acc.backup_email == "test@gmail.com"
 
         wrong_format = "test@gmail"
-        with pytest.raises(ValidationError):
-            user_update(user, backup_email=wrong_format)
-        # Assert email remains the same
-        assert mod_acc.backup_email == "test@gmail.com"
+        with pytest.raises(ValidationError) as exc:
+            user_update(mod_user, backup_email=wrong_format)
+        assert "backup_email" in exc.value.detail
+
+        db_version = User.objects.get(pk=user.pk)
+        
+        assert db_version.account.backup_email == "test@gmail.com"
 
 
 
@@ -64,33 +68,35 @@ class TestUserUpdate:
 
 
     @pytest.mark.parametrize(
-        "field,value",
+        "tel",
         [
-            ("phone_number", "01-222-222-222"),
-            ("phone_number", "+288-222-222-222"),
+            "+101-999-222-222",
+            "+255-222-222-222",
+            "+256-722-222-222",
+            "+255712345678"
         ],
     )
-    def test_phone_number_validators_fail(self, phone_no, field, value, user):
+    def test_phone_number_validators_fail(self, phone_no, tel, user):
         """Phone numbers that should be rejected because of either incorrect countrycode or wrong format"""
         with pytest.raises(ValidationError) as exc:
-            value = phone_no(value)
-            user_update(user, **{field: value})
+            phone = phone_no(tel)
+            user_update(user, **{"phone_number": phone})
             
-        assert field in exc.value.detail
+        assert "phone_number" in exc.value.detail
+        assert exc.value.detail is 0
 
 
 
     @pytest.mark.parametrize(
             "field,value,exception",
         [   
-            ("first_name", "E", "value is atleast 2 characters"),
-            ("last_name", "M", "value is atleast 2 characters"),
-            ("first_name", "Edwin_", "field accepts only alphabet characters"),
-            ("last_name", "Munene!", "field accepts only alphabet characters"),
+            ("first_name", "E", "Ensure this value has at least 2 characters"),
+            ("last_name", "M", "Ensure this value has at least 2 characters"),
+            ("first_name", "Edwin_", "field accepts only alphabetic characters"),
+            ("last_name", "Munene!", "field accepts only alphabetic characters"),
         ]
     )
     def test_null_name_fields_are_not_allowed(self, user, field, value, exception):
         with pytest.raises(ValidationError) as exc:
             user_update(user, **{field: value})
         assert exception in str(exc.value.detail)
-        assert exc.value is 0

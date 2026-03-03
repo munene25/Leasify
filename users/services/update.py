@@ -68,7 +68,7 @@ def user_update(user: User,  **kwargs: Unpack[UserUpdateData]) :
     user_updates = []
     account_updates = []
     
-    account: Account = user.account # type: ignore
+    account = user.account 
     
     # Normalize email
     backup_email = kwargs.get("backup_email", None)
