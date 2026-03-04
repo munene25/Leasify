@@ -52,6 +52,7 @@ def fake():
 def settings_override(settings):
     settings.CELERY_TASK_ALWAYS_EAGER = True
     settings.CELERY_TASK_EAGER_PROPAGATES = True
+    settings.EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 
 
 @pytest.fixture
@@ -61,4 +62,4 @@ def payload() -> type[APIPayload]:
 
 @pytest.fixture
 def user(payload):
-    return user_account_create(**payload().to_dict)
+    return user_account_create(**payload(password="Pa55word!").to_dict)

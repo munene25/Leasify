@@ -4,7 +4,6 @@ from phonenumber_field.phonenumber import PhoneNumber
 from users.models import User
 from users.services import user_account_create
 from unittest.mock import patch
-from django.conf import settings
 from .conftest import APIPayload
 
 
@@ -44,6 +43,10 @@ class TestSuccessfulAccountCreation:
         """
         Test normal mail sending with notify flag set to True. Requires always eager for delay calls
         """
+        from config.emails import EmailConfig
+
+        config = EmailConfig.load()
+
         data = payload()
         with django_capture_on_commit_callbacks() as callback:
             user_account_create(**data.to_dict, notify=True)
@@ -53,9 +56,11 @@ class TestSuccessfulAccountCreation:
         # Execute callback
         callback[0]()
         assert len(mailoutbox) == 1
-        sent = mailoutbox[0]
-        assert sent.to == [data.email]
-        assert sent.from_email == settings.DEFAULT_FROM_EMAIL
+        mail = mailoutbox[0]
+        assert mail.to == [data.email]
+        assert mail.from_email == config.default_from_email
+        assert mail.subject == f"Welcome to {config.app_name}"
+        assert "email-verify" in mail.body
 
     @patch("users.tasks.send_welcome_email.delay")
     def test_user_creation_success_on_cache_fail(self, mock, payload: type[APIPayload], django_capture_on_commit_callbacks):
