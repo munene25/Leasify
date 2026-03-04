@@ -1,18 +1,14 @@
-from __future__ import annotations
 import pytest
 from users.models import User
 from rest_framework.exceptions import ValidationError
 from users.services.update import user_update
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from .conftest import APIPayload
-
+from .conftest import APIPayload
 
 class TestUserUpdate:
-    def test_updating_existing_data_succeeds(
-        self, payload: type[APIPayload], user: User
-    ):
+    def test_updating_existing_data_succeeds(self, payload: type[APIPayload], user: User):
+        """
+        Updating existing user and account fields should work
+        """
         data = payload()
         mod_user = user_update(user, **data.to_dict)
         mod_account = mod_user.account
@@ -31,6 +27,9 @@ class TestUserUpdate:
         assert mod_user.password == user.password
 
     def test_email_validation(self, user):
+        """
+        Emails should be normalized and incorrect changes should not reflect
+        """
         backup_email = "test@GMAIl.com"
         mod_user = user_update(user, backup_email=backup_email)
         mod_acc = mod_user.account
@@ -42,10 +41,8 @@ class TestUserUpdate:
         assert "backup_email" in exc.value.detail
 
         db_version = User.objects.get(pk=user.pk)
-        
+
         assert db_version.account.backup_email == "test@gmail.com"
-
-
 
     @pytest.mark.parametrize(
         "field, model, value",
@@ -58,34 +55,36 @@ class TestUserUpdate:
     )
     def test_inserting_new_data_succeeds(self, field, model, value, user):
         """
-        Originally, these fields are marked as null, should be able to modify
+        Originally, these fields do not exist on the db, 
+        User should be able to add and data
         """
         mod_user = user_update(user, **{field: value})
         mod_account = mod_user.account
         obj = mod_user if model == "user" else mod_account
         assert getattr(obj, field) == value
 
-
-
     def test_phone_number_validators_fail_for_wrong_format(self, wrong_phone_number, user):
-        """Phone numbers that should be rejected because of either incorrect countrycode or wrong format"""
+        """
+        Phone numbers that should be rejected based on incorrect countrycode
+        """
         with pytest.raises(ValidationError) as exc:
             user_update(user, **{"phone_number": wrong_phone_number})
-            
+
         assert "phone_number" in exc.value.detail
 
-
-
     @pytest.mark.parametrize(
-            "field,value,",
-        [   
+        "field,value,",
+        [
             ("first_name", "E"),
             ("last_name", "M"),
             ("first_name", "Edwin_"),
             ("last_name", "Munene!"),
-        ]
+        ],
     )
-    def test_name_field_validators_fail_with_unexpected_formats(self, user, field, value):
+    def test_name_field_validators_fail(self, user, field, value):
+        """
+        Short names and unexpected punctuations are not allowed.
+        """
         with pytest.raises(ValidationError) as exc:
             user_update(user, **{field: value})
         assert field in exc.value.detail
