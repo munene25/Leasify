@@ -1,51 +1,25 @@
 from typing import TypedDict
 from typing_extensions import Unpack
 from structlog import getLogger
-from users.models import User, Account
+from users.models import User
 from django.db import transaction
 from phonenumber_field.phonenumber import PhoneNumber
+from users.tasks import notify_password_change
 
 logger = getLogger("users.services,update")
 
 class UserUpdateData(TypedDict, total=False):
+    """Represents the payload expected for the user_update function"""
     first_name: str
     last_name: str
     phone_number: PhoneNumber
     bio: str
     backup_email: str
 
-@transaction.atomic
-def user_change_password(*, user: User, new_password: str, current_password: str | None = None) -> User:
-    """
-    This service is used in both password recovery and password changes
-    Therefore in password recovery flows, the current password is unknown
-    Raw password is also required to check password validity
-
-    :param user: User model instance
-    :type user: User
-    :param new_password: The password to be set if operation is successful
-    :type new_password: str
-    :param current_password: The current raw password of the user. Can be none in password recovery flows
-    :type current_password: str
-
-    :return: Modified User object
-    :rtype: User 
-    """
-    if current_password:
-        user.check_password(current_password)
-    setattr(user, "_raw_password", new_password)
-    user.set_password(new_password)
-    user.full_clean()
-    user.save()
-    logger.info(f"user [user_id: {user.pk}] password changed")
-    # TODO: Implement mail sending to notify user
-    # TODO: Invalidate refresh token
-    return user
-
 
 
 @transaction.atomic
-def user_update(user: User,  **kwargs: Unpack[UserUpdateData]) :
+def user_update(user: User,  **kwargs: Unpack[UserUpdateData]):
     """
     User and Account model updates under a singular interface.
     
@@ -96,4 +70,38 @@ def user_update(user: User,  **kwargs: Unpack[UserUpdateData]) :
         logger.info(f"account [account_id: {account.pk}] modified. fields: {account_updates}")
 
     return user
+
+
+@transaction.atomic
+def user_change_password(*, user: User, new_password: str, current_password: str | None = None) -> User:
+    """
+    This service is used in both password recovery and password changes
+    Therefore in password recovery flows, the current password is unknown
+    Raw password is also required to check password validity
+
+    :param user: User model instance
+    :type user: User
+    :param new_password: The password to be set if operation is successful
+    :type new_password: str
+    :param current_password: The current raw password of the user. Can be none in password recovery flows
+    :type current_password: str
+
+    :return: Modified User object
+    :rtype: User 
+    """
+    if current_password:
+        user.check_password(current_password)
+    setattr(user, "_raw_password", new_password)
+    user.set_password(new_password)
+    user.full_clean()
+    user.save()
+    logger.info(f"user [user_id: {user.pk}] password changed")
+
+    
+    transaction.on_commit(lambda: notify_password_change.delay(user.pk))
+    # ? Should I Invalidate refresh token?
+    return user
+
+
+
 

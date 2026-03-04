@@ -1,22 +1,33 @@
+from dataclasses import dataclass, asdict, fields
+from functools import cached_property, lru_cache
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
 
 
-def get_default_params() -> dict[str, str]:
-    attrs = [
-        "site_domain",
-        "site_url",
-        "app_name",
-        "support_email",
-        "default_from_email",
-    ]
-    params = {}
-    for a in attrs:
-        params[a] = getattr(settings, a.upper())
-    params["company_name"] = params["app_name"]
-    params["company_address"] = "Embu, Kenya"
-    return params
+@dataclass(frozen=True)
+class EmailConfig:
+    site_domain: str 
+    site_url: str 
+    app_name: str 
+    support_email: str 
+    default_from_email: str 
+    company_name: str
+    company_address: str 
+    
+    @classmethod
+    @lru_cache
+    def load(cls):
+        values = {}
+        for f in fields(cls):
+            values[f.name] = getattr(
+                settings, f.name.upper(), f.default
+            )
+        return cls(**values)
+
+    @cached_property
+    def as_dict(self) -> dict[str, str]:
+        return asdict(self)
 
 
 def send_template_email(

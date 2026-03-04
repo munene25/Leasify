@@ -26,6 +26,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SITE_DOMAIN = os.getenv("SITE_DOMAIN", "localhost")
 SITE_URL = os.getenv("SITE_URL", "http://localhost:5173")
 APP_NAME = "Bisika Apartments"
+COMPANY_NAME = "Bisika Apartments Ltd."
+COMPANY_ADRESS = "Embu, Kenya"
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
