@@ -52,7 +52,8 @@ def fake():
 def settings_override(settings):
     settings.CELERY_TASK_ALWAYS_EAGER = True
     settings.CELERY_TASK_EAGER_PROPAGATES = True
-    settings.EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+    # django-pytest needs locmem backend to capture the mail
+    # settings.EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 
 
 @pytest.fixture

@@ -64,7 +64,7 @@ class User(BaseModel, AbstractUser):
             except DjangoValidationError as exc:
                 raise ValidationError({"password": exc.messages})
 
-    def check_password(self, current_password) -> None:
+    def check_password(self, current_password: str) -> None:
         """Wrapper for check_password with an exception"""
         if not super().check_password(current_password):
             err = "Current password is incorrect"

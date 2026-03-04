@@ -1,8 +1,10 @@
 import pytest
 from users.models import User
 from rest_framework.exceptions import ValidationError
-from users.services.update import user_update
+from users.services.update import user_update, user_change_password
 from .conftest import APIPayload
+from django.core.mail.message import EmailMessage
+
 
 class TestUserUpdate:
     def test_updating_existing_data_succeeds(self, payload: type[APIPayload], user: User):
@@ -88,3 +90,53 @@ class TestUserUpdate:
         with pytest.raises(ValidationError) as exc:
             user_update(user, **{field: value})
         assert field in exc.value.detail
+
+
+class TestUserChangePassword:
+    def test_password_change_successful(self, user: User) -> None:
+        """
+        A users password be hashed
+        The new password should work pass check_password
+        The old password should not work
+        """
+        current_password = "Pa55word!"; new_password = "TimT@tman!"
+        user.check_password(current_password)
+        modified = user_change_password(
+            user=user,
+            new_password=new_password,
+            current_password=current_password
+        )
+        assert user == modified == User.objects.get(pk=user.pk)
+        # Password should be hashed
+        assert modified.password != new_password
+        # Should not raise error
+        modified.check_password(new_password)
+        # Should raise error
+        with pytest.raises(ValidationError) as exc:
+            modified.check_password(current_password)
+        assert "current_password" in exc.value.detail
+        
+
+    def test_password_change_sends_email(self, user: User, mailoutbox: list[EmailMessage],  django_capture_on_commit_callbacks) -> None:
+        """
+        Check the mail is sent to the correct user
+        contains the correct subject, links, and body
+        """
+        from django.conf import settings
+
+
+        current_password = "Pa55word!"; new_password = "TimT@tman!"
+        user.check_password(current_password)
+        with django_capture_on_commit_callbacks(execute=True) as callbacks:
+            user_change_password(
+                user=user,
+                new_password=new_password,
+                current_password=current_password
+            )
+        assert len(callbacks) == 1
+        assert len(mailoutbox) == 1
+        mail = mailoutbox[0]
+        assert mail.subject == "Account password has been changed"
+        assert mail.from_email == settings.DEFAULT_FROM_EMAIL
+        assert mail.to == [user.email]
+        assert "password-reset" in mail.body
