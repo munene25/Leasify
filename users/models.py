@@ -69,18 +69,18 @@ class User(BaseModel, AbstractUser):
                 raise ValidationError({"password": exc.messages})
 
     def validate_password(self, password: str) -> None:
-        """Wrapper for check_password with an exception"""
+        """Wrapper for check_password. Raises exc if passwords do not match"""
         if not super().check_password(password):
             err = "Password is incorrect"
             raise ValidationError({"password": [err]})
 
     @property
     def next_email_change(self) -> None | datetime:
-        if self.last_email_change:
-            next_change_time = self.last_email_change + EMAIL_COOLDOWN
-            if next_change_time > timezone.now():
-                return timezone.localtime(next_change_time)
-        return None
+        if self.last_email_change is None: return None
+        
+        next_change_time = self.last_email_change + EMAIL_COOLDOWN
+        if next_change_time > timezone.now():
+            return timezone.localtime(next_change_time)
 
     @property
     def full_name(self) -> str:

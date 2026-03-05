@@ -19,7 +19,7 @@ class TestEmailUpdate:
         # Check sideeffects
         assert mod_user.last_email_change is not None
         assert (mod_user.last_email_change - timezone.now()) <= timedelta(seconds=1) 
-
+        assert mod_user.next_email_change == mod_user.last_email_change + EMAIL_COOLDOWN
         assert mod_user.verified == False
 
     def test_email_update_with_cooldown_active_fails(self, user: User):
@@ -44,4 +44,16 @@ class TestEmailUpdate:
         fetched = User.objects.get(pk=user.pk)
         assert fetched == mod_user
         assert mod_user.email == new_email
+
+class TestConfirmEmailVerify:
+    def test_email_set_as_verified(self, user: User, django_assert_num_queries):
+        """
+        Also have to consider the transaction savepoints
+        """
+        with django_assert_num_queries(3):
+            user = user_email_verify(user)
+        assert user.verified == True
+
+        with django_assert_num_queries(2) as cap:
+            user_email_verify(user)
 

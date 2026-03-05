@@ -90,7 +90,7 @@ def user_change_password(*, user: User, new_password: str, current_password: str
     :return: Modified User object
     :rtype: User 
     """
-    # ! password hash changes and tokens are automatically invalidated on password change
+    # ! Password changes automatically invalidate issued tokens
     if current_password:
         user.check_password(current_password)
     setattr(user, "_raw_password", new_password)
@@ -98,10 +98,7 @@ def user_change_password(*, user: User, new_password: str, current_password: str
     user.full_clean()
     user.save()
     logger.info(f"user [user_id: {user.pk}] password changed")
-
-    
     transaction.on_commit(lambda: notify_password_change.delay(user.pk))
-    
     return user
 
 

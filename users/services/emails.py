@@ -9,17 +9,39 @@ logger = getLogger("users.services.emails")
 
 @transaction.atomic
 def user_email_verify(user: User) -> User:
+    """
+    Simply verifies the user in a transaction,
+    Could add more features in the future like a confirmaiton email.
+
+    :param user: User object
+    :type user: User
+
+    :return: A user that is verified
+    :rtype: User 
+    """
     if user.verified:
         return user
     user.verified = True
     user.save(update_fields=["email"])
     logger.info(f"user verified their email")
-    # TODO: Implement mail sending to notify user
     return user
 
 
 @transaction.atomic
 def user_email_update(user: User, email: str, password: str) -> User:
+    """
+    Email updater that limits email changes to once per 2 weeks.
+
+    :param user: User obj
+    :type user: User
+    :param email: the intended email to change to
+    :type email: str
+    :param password: current password for the user
+    :type password: str
+
+    :return: user
+    :rtype: User
+    """
     user.validate_password(password)
 
     # Ensure change is available
