@@ -23,8 +23,8 @@ class TestUserDeactivation:
 class TestAccountUnsubscribe:
     def test_deactivation_succeeds(self, user: User, django_assert_num_queries):
         """
-        Account returned should not allow emails
-        Count querries aggree
+        Account should be marked as cannot receive emails
+        Count querries
         """
         with django_assert_num_queries(3):
             mod_acc = account_unsubscribe(user.account)
