@@ -77,7 +77,7 @@ def user_change_password(*, user: User, new_password: str, current_password: str
     """
     This service is used in both password recovery and password changes
     Therefore in password recovery flows, the current password is unknown
-    Raw password is also required to check password validity
+    Raw password is also set on the user object to check password validity
 
     :param user: User model instance
     :type user: User
@@ -91,6 +91,7 @@ def user_change_password(*, user: User, new_password: str, current_password: str
     """
     if current_password:
         user.check_password(current_password)
+    
     setattr(user, "_raw_password", new_password)
     user.set_password(new_password)
     user.full_clean()

@@ -140,3 +140,11 @@ class TestUserChangePassword:
         assert mail.from_email == settings.DEFAULT_FROM_EMAIL
         assert mail.to == [user.email]
         assert "password-reset" in mail.body
+
+
+    def test_password_changed_without_password(self, user: User):
+        new_password = "Everl@sting!"
+        mod_user = user_change_password(user=user, new_password=new_password)
+        assert mod_user == user
+        mod_user.check_password(new_password)
+        

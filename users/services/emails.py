@@ -33,7 +33,7 @@ def user_email_update(user: User, email: str, password: str) -> User:
     user.last_email_change = timezone.now()
     
     user.full_clean()
-    user.save(update_fields=["email"])
+    user.save(update_fields=["email", "verified", "last_email_change"])
 
     # ? Update email and revoke verification
     
