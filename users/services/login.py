@@ -27,6 +27,5 @@ def user_login(email: str, password: str) -> tuple[AbstractUser, dict]:
     access = refresh.access_token
     tokens = {"access": access, "refresh": refresh}
 
-    # TODO: send Email for login
     logger.info(f"user [user_id: {user.pk} logged in")
     return user, tokens

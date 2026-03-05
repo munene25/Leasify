@@ -25,7 +25,7 @@ def user_account_create(*, password: str, email: str, phone_number: PhoneNumber,
     if notify:
         transaction.on_commit(lambda: send_welcome_email.delay(user.pk))
     
-    logger.info(f"user [{user.email}] created.")
+    logger.info(f"user {user.get_full_name()} [user_id: {user.pk}] created an account")
     return user
 
 @transaction.atomic

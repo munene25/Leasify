@@ -15,10 +15,14 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from datetime import datetime
 
+EMAIL_COOLDOWN: timedelta = timedelta(days=14)
+
 
 def phone_number_validator(phone_nubmer):
     if parse(phone_nubmer).country_code != 254:
-        raise ValidationError({"phone_number": f"Invalid country code! [{phone_nubmer =}]"}) 
+        raise ValidationError(
+            {"phone_number": f"Invalid country code! [{phone_nubmer =}]"}
+        )
 
 
 class User(BaseModel, AbstractUser):
@@ -47,7 +51,7 @@ class User(BaseModel, AbstractUser):
             MinLengthValidator(2),
         ],
     )
-    email = models.EmailField(unique=True, blank=False)
+    email = models.EmailField(unique=True, blank=False, db_index=True)
     verified = models.BooleanField(default=False)
     last_email_change = models.DateTimeField(null=True, blank=True)
     USERNAME_FIELD = "email"
@@ -64,17 +68,16 @@ class User(BaseModel, AbstractUser):
             except DjangoValidationError as exc:
                 raise ValidationError({"password": exc.messages})
 
-    def check_password(self, current_password: str) -> None:
+    def validate_password(self, password: str) -> None:
         """Wrapper for check_password with an exception"""
-        if not super().check_password(current_password):
-            err = "Current password is incorrect"
-            raise ValidationError({"current_password": [err]})
+        if not super().check_password(password):
+            err = "Password is incorrect"
+            raise ValidationError({"password": [err]})
 
     @property
     def next_email_change(self) -> None | datetime:
         if self.last_email_change:
-            cooldown = timedelta(days=30)
-            next_change_time = self.last_email_change + cooldown
+            next_change_time = self.last_email_change + EMAIL_COOLDOWN
             if next_change_time > timezone.now():
                 return timezone.localtime(next_change_time)
         return None
