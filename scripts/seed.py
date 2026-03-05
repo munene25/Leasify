@@ -18,7 +18,7 @@ def run():
     given_range = list(range(1, 20))
     users = [
         user_account_create(
-            password="pa55word!",
+            password="Pa55word!",
             email=f.email(),
             phone_number=PhoneNumber.from_string(f.numerify("+254-7##-###-###")),
             first_name=f.first_name(),
@@ -91,7 +91,7 @@ def run():
         last_name = "Mune",
         email = "edmune25@gmail.com",
         phone_number=PhoneNumber.from_string("+254791573104"),
-        password = "password",
+        password = "Pa55word!",
         notify=False
     )
     user.is_superuser = True
