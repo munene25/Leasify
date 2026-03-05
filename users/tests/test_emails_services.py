@@ -8,6 +8,11 @@ from users.services import user_email_update, user_email_verify
 
 class TestEmailUpdate:
     def test_email_update_succeeds(self, user: User):
+        """
+        Email should be normalized
+        Emails should match
+        Side effects like last email change and verified status are checked
+        """
         new_email = "test@EXAMPLE.com"
         normalized = new_email.lower()
         mod_user = user_email_update(user=user, email=new_email, password="Pa55word!")
@@ -23,6 +28,9 @@ class TestEmailUpdate:
         assert mod_user.verified == False
 
     def test_email_update_with_cooldown_active_fails(self, user: User):
+        """
+        The cooldown should fail if user tries to change password WITHIN the cooldown window
+        """
         new_email = "test@example.com"
         before_cooldown = EMAIL_COOLDOWN - timedelta(days=1)
         user.last_email_change = timezone.now() - before_cooldown
@@ -35,6 +43,9 @@ class TestEmailUpdate:
         assert User.objects.get(pk=user.pk).email == user.email
 
     def test_email_update_after_cooldown_succeeds(self, user: User):
+        """
+        The cooldown should succeed if user changes password AFTER the cooldown window
+        """
         new_email = "test@example.com"
         after_cooldown = EMAIL_COOLDOWN + timedelta(days=1)
         user.last_email_change = timezone.now() - after_cooldown
@@ -48,6 +59,7 @@ class TestEmailUpdate:
 class TestConfirmEmailVerify:
     def test_email_set_as_verified(self, user: User, django_assert_num_queries):
         """
+        Verified status should reflect
         Also have to consider the transaction savepoints
         """
         with django_assert_num_queries(3):

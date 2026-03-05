@@ -12,7 +12,7 @@ def account_unsubscribe(account: Account) -> Account:
     if account.can_receive_emails:
         account.can_receive_emails = False
         account.save()
-    logger.info(f"user [user_id: {account.user_id}] unsubscribed from mailling list")  # type: ignore
+        logger.info(f"user [user_id: {account.user_id}] unsubscribed from mailling list")  # type: ignore
     return account
 
 
