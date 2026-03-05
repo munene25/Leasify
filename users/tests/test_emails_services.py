@@ -2,13 +2,12 @@ import pytest
 from datetime import timedelta
 from django.utils import timezone
 from rest_framework.exceptions import ValidationError
-from users.models import User
+from users.models import User, EMAIL_COOLDOWN
 from users.services import user_email_update, user_email_verify
 
 
 class TestEmailUpdate:
     def test_email_update_succeeds(self, user: User):
-        old_email = user.email
         new_email = "test@EXAMPLE.com"
         normalized = new_email.lower()
         mod_user = user_email_update(user=user, email=new_email, password="Pa55word!")
@@ -25,7 +24,8 @@ class TestEmailUpdate:
 
     def test_email_update_with_cooldown_active_fails(self, user: User):
         new_email = "test@example.com"
-        user.last_email_change = timezone.now() - timedelta(days=10)
+        before_cooldown = EMAIL_COOLDOWN - timedelta(days=1)
+        user.last_email_change = timezone.now() - before_cooldown
         user.save(update_fields=["last_email_change"])
 
         with pytest.raises(ValidationError) as exc:
@@ -36,7 +36,8 @@ class TestEmailUpdate:
 
     def test_email_update_after_cooldown_succeeds(self, user: User):
         new_email = "test@example.com"
-        user.last_email_change = timezone.now() - timedelta(days=15)
+        after_cooldown = EMAIL_COOLDOWN + timedelta(days=1)
+        user.last_email_change = timezone.now() - after_cooldown
         user.save(update_fields=["last_email_change"])
         mod_user = user_email_update(user=user, email=new_email, password="Pa55word!")
         

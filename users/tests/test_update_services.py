@@ -7,7 +7,9 @@ from django.core.mail.message import EmailMessage
 
 
 class TestUserUpdate:
-    def test_updating_existing_data_succeeds(self, payload: type[APIPayload], user: User):
+    def test_updating_existing_data_succeeds(
+        self, payload: type[APIPayload], user: User
+    ):
         """
         Updating existing user and account fields should work
         """
@@ -57,7 +59,7 @@ class TestUserUpdate:
     )
     def test_inserting_new_data_succeeds(self, field, model, value, user):
         """
-        Originally, these fields do not exist on the db, 
+        Originally, these fields do not exist on the db,
         User should be able to add and data
         """
         mod_user = user_update(user, **{field: value})
@@ -65,7 +67,9 @@ class TestUserUpdate:
         obj = mod_user if model == "user" else mod_account
         assert getattr(obj, field) == value
 
-    def test_phone_number_validators_fail_for_wrong_format(self, wrong_phone_number, user):
+    def test_phone_number_validators_fail_for_wrong_format(
+        self, wrong_phone_number, user
+    ):
         """
         Phone numbers that should be rejected based on incorrect countrycode
         """
@@ -99,39 +103,40 @@ class TestUserChangePassword:
         The new password should work pass check_password
         The old password should not work
         """
-        current_password = "Pa55word!"; new_password = "TimT@tman!"
-        user.check_password(current_password)
+        current_password = "Pa55word!"
+        new_password = "TimT@tman!"
+        user.validate_password(current_password)
         modified = user_change_password(
-            user=user,
-            new_password=new_password,
-            current_password=current_password
+            user=user, new_password=new_password, current_password=current_password
         )
         assert user == modified == User.objects.get(pk=user.pk)
         # Password should be hashed
         assert modified.password != new_password
         # Should not raise error
-        modified.check_password(new_password)
+        modified.validate_password(new_password)
         # Should raise error
         with pytest.raises(ValidationError) as exc:
-            modified.check_password(current_password)
+            modified.validate_password(current_password)
         assert "current_password" in exc.value.detail
-        
 
-    def test_password_change_sends_email(self, user: User, mailoutbox: list[EmailMessage],  django_capture_on_commit_callbacks) -> None:
+    def test_password_change_sends_email(
+        self,
+        user: User,
+        mailoutbox: list[EmailMessage],
+        django_capture_on_commit_callbacks,
+    ) -> None:
         """
         Check the mail is sent to the correct user
         contains the correct subject, links, and body
         """
         from django.conf import settings
 
-
-        current_password = "Pa55word!"; new_password = "TimT@tman!"
-        user.check_password(current_password)
+        current_password = "Pa55word!"
+        new_password = "TimT@tman!"
+        user.validate_password(current_password)
         with django_capture_on_commit_callbacks(execute=True) as callbacks:
             user_change_password(
-                user=user,
-                new_password=new_password,
-                current_password=current_password
+                user=user, new_password=new_password, current_password=current_password
             )
         assert len(callbacks) == 1
         assert len(mailoutbox) == 1
@@ -141,10 +146,8 @@ class TestUserChangePassword:
         assert mail.to == [user.email]
         assert "password-reset" in mail.body
 
-
     def test_password_changed_without_password(self, user: User):
         new_password = "Everl@sting!"
         mod_user = user_change_password(user=user, new_password=new_password)
         assert mod_user == user
-        mod_user.check_password(new_password)
-        
+        mod_user.validate_password(new_password)

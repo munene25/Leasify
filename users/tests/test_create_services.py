@@ -7,7 +7,6 @@ from unittest.mock import patch
 from .conftest import APIPayload
 
 
-
 class TestSuccessfulAccountCreation:
     def test_account_creation_successful(self, payload: type[APIPayload]):
         """
@@ -24,12 +23,13 @@ class TestSuccessfulAccountCreation:
         assert user.email == data.email
         # Assert password hashed correctly
         assert user.password != data.password
-        assert account.phone_number == data.phone_number 
-        user.check_password(data.password)
+        assert account.phone_number == data.phone_number
+        user.validate_password(data.password)
         assert User.objects.count() == 1
 
-
-    def test_skip_mail_sending(self, payload: type[APIPayload] , django_capture_on_commit_callbacks):
+    def test_skip_mail_sending(
+        self, payload: type[APIPayload], django_capture_on_commit_callbacks
+    ):
         """
         Test whether mailing will be ignored with notify flag set to false
         """
@@ -38,8 +38,9 @@ class TestSuccessfulAccountCreation:
         assert len(callback) == 0
         assert User.objects.count() == 1
 
-
-    def test_mail_sent_upon_creation(self, payload: type[APIPayload], mailoutbox, django_capture_on_commit_callbacks):
+    def test_mail_sent_upon_creation(
+        self, payload: type[APIPayload], mailoutbox, django_capture_on_commit_callbacks
+    ):
         """
         Test normal mail sending with notify flag set to True. Requires always eager for delay calls
         """
@@ -63,7 +64,9 @@ class TestSuccessfulAccountCreation:
         assert "email-verify" in mail.body
 
     @patch("users.tasks.send_welcome_email.delay")
-    def test_user_creation_success_on_cache_fail(self, mock, payload: type[APIPayload], django_capture_on_commit_callbacks):
+    def test_user_creation_success_on_cache_fail(
+        self, mock, payload: type[APIPayload], django_capture_on_commit_callbacks
+    ):
         """
         Regardless of cache failure i.e., celery cant reach broker, user should be created nonetheless
         """
@@ -71,8 +74,8 @@ class TestSuccessfulAccountCreation:
         mock.side_effect = Exception("Cache Down")
         with pytest.raises(Exception, match="Cache Down"):
             with django_capture_on_commit_callbacks(execute=True):
-               data = payload()
-               user_account_create(**data.to_dict)
+                data = payload()
+                user_account_create(**data.to_dict)
         assert User.objects.count() == 1
 
     @pytest.mark.parametrize(
@@ -84,7 +87,9 @@ class TestSuccessfulAccountCreation:
             ("1235151545", "numeric"),
         ],
     )
-    def test_password_validators_fail(self, payload: type[APIPayload], password, exception):
+    def test_password_validators_fail(
+        self, payload: type[APIPayload], password, exception
+    ):
         """
         Different variations of passwords that should fail validation
         """
@@ -95,8 +100,6 @@ class TestSuccessfulAccountCreation:
         assert exception in str(exc.value.detail)
         assert User.objects.count() == 0
 
-
-
     @pytest.mark.parametrize(
         "field,value,password",
         [
@@ -105,7 +108,9 @@ class TestSuccessfulAccountCreation:
             ("email", "benedicturs@gmail.com", "benedictorial"),
         ],
     )
-    def test_password_validators_fail_for_user_similarity(self, payload: type[APIPayload], field, value, password):
+    def test_password_validators_fail_for_user_similarity(
+        self, payload: type[APIPayload], field, value, password
+    ):
         """
         Different variations of passwords that should fail based on user similarity
         """
@@ -122,12 +127,18 @@ class TestSuccessfulAccountCreation:
         [
             ("email", "test@test.com", "test@test.com"),
             ("email", "phil@TEST.com", "phil@test.com"),
-            ("phone_number", PhoneNumber.from_string("0710-100-100"), PhoneNumber.from_string("+254 710 100 100")),
+            (
+                "phone_number",
+                PhoneNumber.from_string("0710-100-100"),
+                PhoneNumber.from_string("+254 710 100 100"),
+            ),
         ],
     )
-    def test_account_creation_fails_with_db_contraints(self, payload: type[APIPayload], field, value, duplicate):
+    def test_account_creation_fails_with_db_contraints(
+        self, payload: type[APIPayload], field, value, duplicate
+    ):
         """
-        Test that db constraints with multiple 
+        Test that db constraints with multiple
         """
         data1 = payload(**{field: value})
         data2 = payload(**{field: duplicate})
@@ -138,8 +149,10 @@ class TestSuccessfulAccountCreation:
 
         assert User.objects.count() == 1
         assert field in exc.value.detail
-    
-    def test_phone_number_validator_fail_for_wrong_format(self, payload: type[APIPayload], wrong_phone_number):
+
+    def test_phone_number_validator_fail_for_wrong_format(
+        self, payload: type[APIPayload], wrong_phone_number
+    ):
         """
         Assert wrong phone number formats and phone number regions are rejected
         """

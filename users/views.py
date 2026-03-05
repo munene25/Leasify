@@ -189,8 +189,8 @@ class RefreshTokenView(BaseAPIView, CookieMixin):
         try:
             refresh = RefreshToken(refresh_token)
             refresh.set_jti()
-            refresh.set_exp()
             refresh.set_iat()
+            refresh.set_exp()
             tokens = {"refresh": refresh, "access": refresh.access_token}
             res = Response(status=HTTP_200_OK)
             response = self.set_cookies(response=res, **tokens)
@@ -199,7 +199,7 @@ class RefreshTokenView(BaseAPIView, CookieMixin):
             raise InvalidToken()
 
 
-class PasswordChangeView(BaseAPIView):
+class PasswordChangeView(BaseAPIView, CookieMixin):
     permission_classes = [IsAuthenticated]
     serializer_class = PasswordChangeSerializer
     throttle_classes = [UserBurst, ScopedRateThrottle]
@@ -208,7 +208,8 @@ class PasswordChangeView(BaseAPIView):
     def post(self, request):
         data = self.validate_serializer(data=request.data)
         user_change_password(user=request.user, **data)
-        return Response(status=HTTP_200_OK)
+                
+        return self.del_cookies(response=Response(status=HTTP_200_OK), cookies=["access", "refresh"])
 
 
 class RequestEmailVerificationView(BaseAPIView):
