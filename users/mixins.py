@@ -4,7 +4,7 @@ from django.conf import settings
 
 class CookieMixin:
     def set_cookies(self, *, response: Response, **kwargs) -> Response:
-        cookies = getattr(settings, "COOKIE_SETTINGS")
+        cookies = settings.COOKIE_SETTINGS
 
         for key, value in kwargs.items():
             response.set_cookie(
