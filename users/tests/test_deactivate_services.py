@@ -1,9 +1,5 @@
-import pytest
-from datetime import timedelta
-from django.utils import timezone
-from rest_framework.exceptions import ValidationError
 from users.models import User
-from users.services import user_deactivate, account_unsubscribe
+from users.services import user_deactivate, account_unsubscribe, user_remove_roles
 
 class TestUserDeactivation:
     def test_deactivation_succeeds(self, user: User, django_assert_num_queries):
@@ -35,4 +31,25 @@ class TestAccountUnsubscribe:
         with django_assert_num_queries(2):
             account_unsubscribe(mod_acc)
 
-        
+
+class TestRoleRemoval:
+    def test_role_removal_successfull(self, manager_user: User):
+        first_role = manager_user.groups.first()
+
+        assert first_role is not None
+        assert manager_user.roles == [first_role.name]
+        mod_user = user_remove_roles(user=manager_user, roles=[first_role])
+
+        assert mod_user == manager_user
+
+        assert mod_user.roles == []
+        assert mod_user.groups.count() == 0
+
+    def test_multiple_role_removal_successfull(self, user: User, roles_list):
+        user.groups.add(*roles_list)
+        assert list(user.groups.all()) == roles_list
+
+        user_remove_roles(user=user, roles=roles_list)
+
+        assert user.roles == []
+        assert user.groups.count() == 0

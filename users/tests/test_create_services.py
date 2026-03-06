@@ -2,12 +2,12 @@ import pytest
 from rest_framework.exceptions import ValidationError
 from phonenumber_field.phonenumber import PhoneNumber
 from users.models import User
-from users.services import user_account_create
+from users.services import user_account_create, user_add_roles
 from unittest.mock import patch
 from .conftest import APIPayload
 
 
-class TestSuccessfulAccountCreation:
+class TestAccountCreation:
     def test_account_creation_successful(self, payload: type[APIPayload]):
         """
         Test whether account creation is successfull and data is data matches
@@ -161,3 +161,30 @@ class TestSuccessfulAccountCreation:
             user_account_create(**data.to_dict)
         assert "phone_number" in exc.value.detail
         assert User.objects.count() == 0
+
+
+class TestRoleAssignment:
+    def test_role_assignment_succeeds(self, user: User, get_role):
+        """
+        A single role should be successfully added to a user 
+        It also should reflect in the user.role property
+        """
+        assert user.groups.count() == 0
+        role = get_role()
+        mod_user = user_add_roles(user=user, roles=[role])
+        
+        assert mod_user == user
+
+        groups = mod_user.groups 
+
+        assert groups.count() == 1
+        assert role in groups.all()
+        assert user.roles == [role.name]
+
+    def test_multiple_role_assignment_succeeds(self, user: User, roles_list):
+        assert user.groups.count() == 0
+        mod_user = user_add_roles(user=user, roles=roles_list)
+        
+        assert mod_user.groups.count() == len(roles_list)
+        assert list(mod_user.groups.all()) == roles_list
+        assert user.roles == [r.name for r in roles_list]

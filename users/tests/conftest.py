@@ -4,9 +4,11 @@ from faker import Faker
 from phonenumber_field.phonenumber import PhoneNumber
 from users.services import user_account_create
 from typing import Callable, Any
+from django.contrib.auth.models import Group
+import random
+
 
 _fake = Faker("en_KE")
-
 
 @dataclass
 class APIPayload:
@@ -24,11 +26,41 @@ class APIPayload:
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
+@pytest.fixture
+def payload() -> type[APIPayload]:
+    return APIPayload
 
-@pytest.fixture(autouse=True)
-def enable_db_access(db):
-    """Automatically enable db access for all tests."""
-    pass
+
+@pytest.fixture
+def user(payload):
+    return user_account_create(**payload(password="Pa55word!").to_dict)
+
+@pytest.fixture
+def roles_list():
+    return list(Group.objects.all())
+
+@pytest.fixture
+def get_role():
+    def role(name: str | None = None):
+        if not name:
+            name = random.choice(["manager", "tenant", "caretaker"])
+        return Group.objects.get(name=name)
+    return role
+
+@pytest.fixture
+def manager_user(user, get_role):
+    user.groups.add(get_role("manager"))
+    return user
+    
+@pytest.fixture
+def caretaker_user(user, get_role):
+    user.groups.add(get_role("caretaker"))
+    return user
+
+@pytest.fixture
+def tenant_user(user, get_role):
+    user.groups.add(get_role("tenant"))
+    return user
 
 
 @pytest.fixture
@@ -43,25 +75,5 @@ def wrong_phone_number(phone_no, request) -> PhoneNumber:
     return phone_no(request.param)
 
 @pytest.fixture
-def fake():
-    """Return a faker instance with a locale already set"""
-    return Faker("en_KE")
-
-
-@pytest.fixture(autouse=True)
-def settings_override(settings):
-    settings.CELERY_TASK_ALWAYS_EAGER = True
-    settings.CELERY_TASK_EAGER_PROPAGATES = True
-    # django-pytest needs locmem backend to capture the mail
-    # settings.EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
-    settings.LOGGING = None
-
-
-@pytest.fixture
-def payload() -> type[APIPayload]:
-    return APIPayload
-
-
-@pytest.fixture
-def user(payload):
-    return user_account_create(**payload(password="Pa55word!").to_dict)
+def password():
+    return "Pa55word!"

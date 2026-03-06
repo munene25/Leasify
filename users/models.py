@@ -87,7 +87,11 @@ class User(BaseModel, AbstractUser):
         return self.get_full_name()
 
     @property
-    def roles(self) -> list:
+    def roles(self) -> list[str]:
+        """
+        Returns a flattened list of strings representing the user's roles
+        Important because value_list returns tuples: [("manager",), ("caretaker",)]
+        """
         return list(self.groups.values_list("name", flat=True))
 
 

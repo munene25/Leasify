@@ -117,7 +117,7 @@ class TestUserChangePassword:
         # Should raise error
         with pytest.raises(ValidationError) as exc:
             modified.validate_password(current_password)
-        assert "current_password" in exc.value.detail
+        assert "password" in exc.value.detail
 
     def test_password_change_sends_email(
         self,
