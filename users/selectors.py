@@ -1,4 +1,5 @@
 from .models import User
+from django.contrib.auth.models import Group
 from rest_framework.exceptions import NotFound
 import django_filters
 
@@ -35,3 +36,6 @@ def user_get_by_email(user_email):
         return User.objects.get(email=user_email)
     except User.DoesNotExist:
         raise NotFound({"user_email": "user not found"})
+    
+def user_list_roles():
+    return Group.objects.all()

@@ -1,8 +1,10 @@
 from structlog import getLogger
-from users.models import User, Account
 from django.db import transaction
+from django.contrib.auth.models import Group
+from users.models import User, Account
 
 logger = getLogger("users.services.unsub")
+
 
 @transaction.atomic
 def account_unsubscribe(account: Account) -> Account:
@@ -22,7 +24,6 @@ def account_unsubscribe(account: Account) -> Account:
     return account
 
 
-
 @transaction.atomic
 def user_deactivate(user: User) -> User:
     """
@@ -34,10 +35,16 @@ def user_deactivate(user: User) -> User:
 
     :return: deactivated user
     :rtype: User
-    """ 
+    """
     if user.is_active:
         user.is_active = False
         user.save(update_fields=["is_active"])
         logger.info(f"user [user_id: {user.pk}] deactivated.")
     return user
-    
+
+
+@transaction.atomic
+def user_remove_roles(*, user: User, roles: list[Group]) -> User:
+    user.groups.remove(*roles)
+    logger.info(f"Roles [roles: {roles}] removed from [user_id: {user.pk}]")
+    return user

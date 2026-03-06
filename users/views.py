@@ -22,18 +22,21 @@ from .tokens import token_validate, unsubscribe_token_validate
 from .tasks import send_token_email
 from .services import (
     user_account_create,
+    user_add_roles,
     user_login,
     user_update,
     user_email_update,
     user_email_verify,
     user_change_password,
     user_deactivate,
+    user_remove_roles,
     account_unsubscribe,
 )
 from .selectors import (
     user_list,
     user_get_by_id,
     user_get_by_email,
+    user_list_roles,
 )
 from .serializer import (
     UserCreateSerializer,
@@ -306,19 +309,13 @@ class UserRoleDetailView(BaseAPIView):
     def post(self, request, user_id):
         user = user_get_by_id(user_id)
         data = self.validate_serializer(data=request.data)
-        user.groups.add(*data["roles"])
-        logger.info(f"Admin added [roles {data["roles"]}] for [user_id: {user_id}]")
-
+        user_add_roles(user=user, roles=data["roles"])
         return Response(status=HTTP_200_OK)
 
     def delete(self, request, user_id):
         user = user_get_by_id(user_id)
         data = self.validate_serializer(data=request.data)
-        user.groups.remove(*data["roles"])
-        logger.info(
-            f"Admin removed [roles: {data["roles"]}] from [user_id: {user.pk}]",
-        )
-
+        user_remove_roles(user=user, roles=data["roles"])
         return Response(status=HTTP_200_OK)
 
 
@@ -326,6 +323,6 @@ class UserRoleListView(BaseAPIView):
     permission_classes = [IsAdminUser]
 
     def get(self, request):
-        groups = Group.objects.all()
+        groups = user_list_roles()
         serializer = UserRoleListSerializer(many=True, instance=groups)
         return Response(status=HTTP_200_OK, data=serializer.data)

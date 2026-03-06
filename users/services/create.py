@@ -1,9 +1,9 @@
 from structlog import getLogger
-from users.models import User, Account
+from django.contrib.auth.models import Group
 from django.db import transaction
 from phonenumber_field.phonenumber import PhoneNumber
+from users.models import User, Account
 from users.tasks import send_welcome_email
-
 
 logger = getLogger("users.services.create")
 
@@ -52,3 +52,9 @@ def account_create(*, user: User, phone_number: PhoneNumber, bio: str | None = N
     account.full_clean()
     account.save()
     return account
+
+@transaction.atomic
+def user_add_roles(*, user: User, roles: list[Group])-> User:
+    user.groups.add(*roles)
+    logger.info(f"Roles [roles: {roles}] added for [user_id: {user.pk}]")
+    return user
