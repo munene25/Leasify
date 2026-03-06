@@ -1,6 +1,8 @@
 from django.contrib.auth.models import Group, Permission
 from django.db import transaction
 from django.contrib.contenttypes.models import ContentType
+
+
 ROLE_PERMISSIONS = {
     "manager": [
         {"apartment" : ["add_apartment", "view_apartment", "change_apartment", "delete_apartment"]},

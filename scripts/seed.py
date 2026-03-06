@@ -1,6 +1,8 @@
 from decimal import Decimal
 from semesters.selectors import semester_current
+from semesters.models import Semester
 from payments.models import Payment
+from users.models import User
 from datetime import date
 import random
 from phonenumber_field.phonenumber import PhoneNumber
@@ -11,52 +13,86 @@ from payments.services import PaymentCreateService
 from users.services import user_account_create
 from .permissions import setup_roles_and_permissions
 from faker import Faker
+from django.core.management import call_command
+
+
+ITERATIONS = list(range(1, 20))
 
 f = Faker("en_KE")
+
+
 def run():
-    # Create users (use bulk_create for performance)
-    given_range = list(range(1, 20))
-    users = [
-        user_account_create(
-            password="Pa55word!",
-            email=f.email(),
-            phone_number=PhoneNumber.from_string(f.numerify("+254-7##-###-###")),
-            first_name=f.first_name(),
-            last_name=f.last_name(),
-            notify = False
-        ) for _ in given_range
-    ]
-    # Create semesters
+    # setup roles and permissions
+    try:
+        call_command("loaddata", "fixtures/roles.json")
+    except Exception:
+        setup_roles_and_permissions()
 
-    def generate_semesters(start_year=2025, end_year=2029):
-        semesters = []
-        periods = [
-            ((1, 1), (4, 30)),
-            ((5, 1), (8, 31)),
-            ((9, 1), (12, 31)),
+    try:
+        call_command("loaddata", "fixtures/test_users.json")
+        users = User.objects.all()
+    except Exception:
+        users = [
+            user_account_create(
+                password="Pa55word!",
+                email=f.email(),
+                phone_number=PhoneNumber.from_string(f.numerify("+254-7##-###-###")),
+                first_name=f.first_name(),
+                last_name=f.last_name(),
+                notify = False
+            ) for _ in ITERATIONS
         ]
-        for year in range(start_year, end_year + 1):
-            for (sm, sd), (em, ed) in periods:
-                start = date(year, sm, sd)
-                off_season = True if sm == 5 else False
-                end = date(year, em, ed)
-                semesters.append(
-                    {
-                        "start_date": start,
-                        "end_date": end,
-                        "off_season": off_season,
-                    }
-                )
-        return semesters
+        # create super_user
+        user = user_account_create(
+            first_name = "Ed",
+            last_name = "Mune",
+            email = "edmune25@gmail.com",
+            phone_number=PhoneNumber.from_string("+254791573104"),
+            password = "Pa55word!",
+            notify=False
+        )
+        user.is_superuser = True
+        user.is_staff = True
+        user.verified = True
+        user.save()
 
-    semesters = [SemesterService().create(**s) for s in generate_semesters(2025, 2030)]
-    no_of_apts = len(given_range) + 5
-    aps = [
-        {"block": f"{"OLD" if i%2 == 1 else "NEW"}", "unit_number": i, "rent": Decimal(20000)}
-        for i in range(1, no_of_apts + 1)
-    ]
+    try:
+        call_command("loaddata", "fixtures/test_semesters.json")
+    except Exception:
+        def generate_semesters(start_year=2025, end_year=2029):
+            semesters = []
+            periods = [
+                ((1, 1), (4, 30)),
+                ((5, 1), (8, 31)),
+                ((9, 1), (12, 31)),
+            ]
+            for year in range(start_year, end_year + 1):
+                for (sm, sd), (em, ed) in periods:
+                    start = date(year, sm, sd)
+                    off_season = True if sm == 5 else False
+                    end = date(year, em, ed)
+                    semesters.append(
+                        {
+                            "start_date": start,
+                            "end_date": end,
+                            "off_season": off_season,
+                        }
+                    )
+            return semesters
 
-    apartments = [ApartmentService().create(**a) for a in aps]
+        semesters = [SemesterService().create(**s) for s in generate_semesters(2025, 2030)]
+
+    try:
+        call_command("loaddata", "fixtures/test_apartments.json")
+    except Exception:
+
+        no_of_apts = len(ITERATIONS) + 5
+        aps = [
+            {"block": f"{"OLD" if i%2 == 1 else "NEW"}", "unit_number": i, "rent": Decimal(20000)}
+            for i in range(1, no_of_apts + 1)
+        ]
+
+        apartments = [ApartmentService().create(**a) for a in aps]
 
     curr_sem = semester_current().pk
     tenancies = [
@@ -65,11 +101,11 @@ def run():
             apartment_id=i,
             semester_id=curr_sem,
         )
-        for i in given_range
+        for i in ITERATIONS
     ]
 
     # Create payments
-    for num in given_range:
+    for num in ITERATIONS:
         for _ in range(1, 4):
             try:
                 PaymentCreateService(
@@ -82,20 +118,4 @@ def run():
             except:
                 pass
 
-    # Setup Roles and permissions
-    setup_roles_and_permissions()
-
-    # create super_user
-    user = user_account_create(
-        first_name = "Ed",
-        last_name = "Mune",
-        email = "edmune25@gmail.com",
-        phone_number=PhoneNumber.from_string("+254791573104"),
-        password = "Pa55word!",
-        notify=False
-    )
-    user.is_superuser = True
-    user.is_staff = True
-    user.verified = True
-    user.save()
     
