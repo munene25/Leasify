@@ -161,7 +161,11 @@ class LoginView(BaseAPIView, CookieMixin):
 
     def post(self, request):
         data = self.validate_serializer(data=request.data)
-        user, tokens = user_login(**data)
+        user = user_login(**data)
+        refresh = RefreshToken.for_user(user)
+        access = refresh.access_token
+        tokens = {"access": access, "refresh": refresh}
+
         res = Response(status=HTTP_200_OK)
         response = self.set_cookies(response=res, **tokens)
         return response

@@ -54,6 +54,7 @@ def settings_override(settings):
     settings.CELERY_TASK_EAGER_PROPAGATES = True
     # django-pytest needs locmem backend to capture the mail
     # settings.EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+    settings.LOGGING = None
 
 
 @pytest.fixture

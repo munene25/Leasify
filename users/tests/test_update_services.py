@@ -1,7 +1,7 @@
 import pytest
 from users.models import User
 from rest_framework.exceptions import ValidationError
-from users.services.update import user_update, user_change_password
+from users.services import user_update, user_change_password
 from .conftest import APIPayload
 from django.core.mail.message import EmailMessage
 
