@@ -1,5 +1,4 @@
 from structlog import getLogger
-from django.contrib.auth.models import Group
 from common.views import BaseAPIView
 from rest_framework.response import Response
 from rest_framework import serializers
@@ -54,7 +53,6 @@ from .serializer import (
 )
 
 logger = getLogger("users.views")
-
 
 class UserListCreateView(BaseAPIView):
     class FilterSerializer(serializers.Serializer):

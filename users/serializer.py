@@ -1,9 +1,7 @@
-from .models import User
 from rest_framework import serializers
 from phonenumber_field.serializerfields import PhoneNumberField
-from rest_framework.validators import UniqueValidator
 from django.contrib.auth.models import Group
-
+    
 class UserCreateSerializer(serializers.Serializer):
     first_name = serializers.CharField()
     last_name = serializers.CharField()
@@ -11,7 +9,6 @@ class UserCreateSerializer(serializers.Serializer):
     password = serializers.CharField()
     phone_number = PhoneNumberField()
     notify = serializers.BooleanField(required=False)
-
 
 class UserListSerializer(serializers.Serializer):
     user_id = serializers.IntegerField(source="pk")
@@ -52,21 +49,10 @@ class LoginSerializer(serializers.Serializer):
     email = serializers.EmailField()
     password = serializers.CharField()
 
-class PasswordChangeSerializer(serializers.Serializer):
-    current_password = serializers.CharField()
-    new_password = serializers.CharField()
-    confirm_password = serializers.CharField()
-    
-    def validate(self, data):
-        if data.get('new_password') != data.get('confirm_password'):
-            raise serializers.ValidationError({"confirm_password": "Passwords do not match"})
-        data.pop("confirm_password", None)
-        return data
-
 class RequestPasswordResetSerializer(serializers.Serializer):
     email = serializers.EmailField()
 
-class ConfirmPasswordResetSerializer(serializers.Serializer):
+class ConfirmPasswordSerializer(serializers.Serializer):
     new_password = serializers.CharField()
     confirm_password = serializers.CharField()
     
@@ -75,8 +61,16 @@ class ConfirmPasswordResetSerializer(serializers.Serializer):
             raise serializers.ValidationError({"confirm_password": "Passwords do not match"})
         return data
 
+class ConfirmPasswordResetSerializer(ConfirmPasswordSerializer):
+    pass
+
+class PasswordChangeSerializer(ConfirmPasswordSerializer):
+    password = serializers.CharField()
+
+
+
 class UserEmailUpdateSerializer(serializers.Serializer):
-    current_password = serializers.CharField()
+    password = serializers.CharField()
     email = serializers.EmailField()
     
 
