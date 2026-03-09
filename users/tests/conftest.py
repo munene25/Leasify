@@ -23,18 +23,9 @@ class UserCreationPayload:
         return asdict(self)
 
 @pytest.fixture
-def payload() -> type[UserCreationPayload]:
+def payload() -> type:
     return UserCreationPayload
 
-
-
-
-@pytest.fixture
-def phone_no() -> Callable[[str | None], PhoneNumber]:
-    phone = lambda num=None: PhoneNumber.from_string(
-        num or _fake.numerify("+254-7##-###-###")
-    )
-    return phone
 
 @pytest.fixture(params=["+101-999-222-222","+222-222-222-222","+256-722-222-222","+255712345678"],)
 def wrong_phone_number(phone_no, request) -> PhoneNumber:
