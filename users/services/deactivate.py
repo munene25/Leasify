@@ -36,10 +36,9 @@ def user_deactivate(user: User) -> User:
     :return: deactivated user
     :rtype: User
     """
-    if user.is_active:
-        user.is_active = False
-        user.save(update_fields=["is_active"])
-        logger.info(f"user [user_id: {user.pk}] deactivated.")
+    user.is_active = False
+    user.save(update_fields=["is_active"])
+    logger.info(f"user [user_id: {user.pk}] deactivated.")
     return user
 
 

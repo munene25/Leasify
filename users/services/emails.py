@@ -19,8 +19,6 @@ def user_email_verify(user: User) -> User:
     :return: A user that is verified
     :rtype: User 
     """
-    if user.verified:
-        return user
     user.verified = True
     user.save(update_fields=["email"])
     logger.info(f"user verified their email")

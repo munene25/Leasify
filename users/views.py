@@ -246,7 +246,8 @@ class ConfirmEmailVerificationView(BaseAPIView):
 
     def post(self, request, uuid, token):
         user = token_validate(uuid=uuid, token=token)
-        user_email_verify(user)
+        if not user.verified:
+            user_email_verify(user)
         return Response(status=HTTP_200_OK)
 
 
@@ -292,8 +293,8 @@ class UserUnsubscribeView(BaseAPIView):
 
     def get(self, request, uuid):
         user = unsubscribe_token_validate(uuid)
-        account = getattr(user, "account")
-        account_unsubscribe(account)
+        if not user.account.can_receive_emails:
+            account_unsubscribe(user.account)
         return Response(status=HTTP_200_OK)
 
 
