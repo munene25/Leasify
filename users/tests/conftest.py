@@ -2,7 +2,7 @@ import pytest
 from dataclasses import dataclass, field, asdict
 from faker import Faker
 from phonenumber_field.phonenumber import PhoneNumber
-from typing import Callable, Any
+from typing import Any
 
 _fake = Faker("en_KE")
 
@@ -23,7 +23,7 @@ class UserCreationPayload:
         return asdict(self)
 
 @pytest.fixture
-def payload() -> type:
+def payload() -> type[UserCreationPayload]:
     return UserCreationPayload
 
 

@@ -22,12 +22,12 @@ class UserListSerializer(serializers.Serializer):
     )
 
 class UserUpdateSerializer(serializers.Serializer):
-    first_name = serializers.CharField(allow_null=True)
-    last_name = serializers.CharField(allow_null=True)
+    first_name = serializers.CharField()
+    last_name = serializers.CharField()
     # Account fields
-    phone_number = PhoneNumberField(allow_null=True)
-    bio = serializers.CharField(allow_null=True)
-    backup_email = serializers.EmailField(allow_null=True)
+    phone_number = PhoneNumberField()
+    bio = serializers.CharField()
+    backup_email = serializers.EmailField()
 
 class UserDetailSerializer(serializers.Serializer):
     email = serializers.EmailField()

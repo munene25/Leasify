@@ -5,6 +5,7 @@ from faker import Faker
 from django.core.management import call_command
 from django.contrib.auth.models import Group
 from phonenumber_field.phonenumber import PhoneNumber
+from users.models import User
 from users.services import user_account_create
 
 
@@ -44,7 +45,7 @@ def phone_no(fake) -> typing.Callable[[str | None], PhoneNumber]:
 
 
 @pytest.fixture
-def user(fake, phone_no):
+def user(fake, phone_no) -> User:
     return user_account_create(
         first_name=fake.first_name(),
         last_name=fake.last_name(),
@@ -55,12 +56,12 @@ def user(fake, phone_no):
 
 
 @pytest.fixture
-def roles_list():
+def roles_list() -> list[Group]:
     return list(Group.objects.all())
 
 
 @pytest.fixture
-def get_role():
+def get_role() -> typing.Callable[[str, None], Group]:
     def role(name: str | None = None):
         if not name:
             name = random.choice(["manager", "tenant", "caretaker"])
@@ -70,18 +71,18 @@ def get_role():
 
 
 @pytest.fixture
-def manager_user(user, get_role):
+def manager_user(user, get_role) -> User:
     user.groups.add(get_role("manager"))
     return user
 
 
 @pytest.fixture
-def caretaker_user(user, get_role):
+def caretaker_user(user, get_role) -> User:
     user.groups.add(get_role("caretaker"))
     return user
 
 
 @pytest.fixture
-def tenant_user(user, get_role):
+def tenant_user(user, get_role) -> User:
     user.groups.add(get_role("tenant"))
     return user
