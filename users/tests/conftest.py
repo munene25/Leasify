@@ -2,16 +2,12 @@ import pytest
 from dataclasses import dataclass, field, asdict
 from faker import Faker
 from phonenumber_field.phonenumber import PhoneNumber
-from users.services import user_account_create
 from typing import Callable, Any
-from django.contrib.auth.models import Group
-import random
-
 
 _fake = Faker("en_KE")
 
 @dataclass
-class APIPayload:
+class UserCreationPayload:
     first_name: str = field(default_factory=_fake.first_name)
     last_name: str = field(default_factory=_fake.last_name)
     email: str = field(default_factory=_fake.email)
@@ -27,40 +23,10 @@ class APIPayload:
         return asdict(self)
 
 @pytest.fixture
-def payload() -> type[APIPayload]:
-    return APIPayload
+def payload() -> type[UserCreationPayload]:
+    return UserCreationPayload
 
 
-@pytest.fixture
-def user(payload):
-    return user_account_create(**payload(password="Pa55word!").to_dict)
-
-@pytest.fixture
-def roles_list():
-    return list(Group.objects.all())
-
-@pytest.fixture
-def get_role():
-    def role(name: str | None = None):
-        if not name:
-            name = random.choice(["manager", "tenant", "caretaker"])
-        return Group.objects.get(name=name)
-    return role
-
-@pytest.fixture
-def manager_user(user, get_role):
-    user.groups.add(get_role("manager"))
-    return user
-    
-@pytest.fixture
-def caretaker_user(user, get_role):
-    user.groups.add(get_role("caretaker"))
-    return user
-
-@pytest.fixture
-def tenant_user(user, get_role):
-    user.groups.add(get_role("tenant"))
-    return user
 
 
 @pytest.fixture

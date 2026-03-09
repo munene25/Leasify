@@ -2,19 +2,23 @@ import pytest
 from users.models import User
 from rest_framework.exceptions import ValidationError
 from users.services import user_update, user_change_password
-from .conftest import APIPayload
 from django.core.mail.message import EmailMessage
-
+from typing import Callable, Any
 
 class TestUserUpdate:
     def test_updating_existing_data_succeeds(
-        self, payload: type[APIPayload], user: User
+        self, user: User, phone_no: Callable[..., Any]
     ):
         """
-        Updating existing user and account fields should work
+        Updating existing user and account fields should succeed
         """
-        data = payload()
-        mod_user = user_update(user, **data.to_dict)
+        data = {
+            "first_name": "Some first name",
+            "last_name": "Some last name",
+            "phone_number": phone_no(),
+
+        }
+        mod_user = user_update(user, **data)
         mod_account = mod_user.account
         # assert same user returned
         assert user == mod_user
@@ -22,9 +26,9 @@ class TestUserUpdate:
 
         # assert persistence
         assert User.objects.get(pk=mod_user.pk) == user
-        assert mod_user.first_name == data.first_name
-        assert mod_user.last_name == data.last_name
-        assert mod_account.phone_number == data.phone_number
+        assert mod_user.first_name == data["first_name"]
+        assert mod_user.last_name == data["last_name"]
+        assert mod_account.phone_number == data["phone_number"]
 
         # Assert key fields not mod_user
         assert mod_user.email == user.email

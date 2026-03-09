@@ -4,15 +4,15 @@ from phonenumber_field.phonenumber import PhoneNumber
 from users.models import User
 from users.services import user_account_create, user_add_roles
 from unittest.mock import patch
-from .conftest import APIPayload
+from ..conftest import UserCreationPayload
 
 
 class TestAccountCreation:
-    def test_account_creation_successful(self, payload: type[APIPayload]):
+    def test_account_creation_successful(self, payload: type[UserCreationPayload]):
         """
         Test whether account creation is successfull and data is data matches
         """
-        data: APIPayload = payload()
+        data: UserCreationPayload = payload()
         user_account_create(**data.to_dict)
         user = User.objects.get(email=data.email)
         account = user.account
@@ -28,7 +28,7 @@ class TestAccountCreation:
         assert User.objects.count() == 1
 
     def test_skip_mail_sending(
-        self, payload: type[APIPayload], django_capture_on_commit_callbacks
+        self, payload: type[UserCreationPayload], django_capture_on_commit_callbacks
     ):
         """
         Test whether mailing will be ignored with notify flag set to false
@@ -39,7 +39,7 @@ class TestAccountCreation:
         assert User.objects.count() == 1
 
     def test_mail_sent_upon_creation(
-        self, payload: type[APIPayload], mailoutbox, django_capture_on_commit_callbacks
+        self, payload: type[UserCreationPayload], mailoutbox, django_capture_on_commit_callbacks
     ):
         """
         Test normal mail sending with notify flag set to True. Requires always eager for delay calls
@@ -65,7 +65,7 @@ class TestAccountCreation:
 
     @patch("users.tasks.send_welcome_email.delay")
     def test_user_creation_success_on_cache_fail(
-        self, mock, payload: type[APIPayload], django_capture_on_commit_callbacks
+        self, mock, payload: type[UserCreationPayload], django_capture_on_commit_callbacks
     ):
         """
         Regardless of cache failure i.e., celery cant reach broker, user should be created nonetheless
@@ -88,7 +88,7 @@ class TestAccountCreation:
         ],
     )
     def test_password_validators_fail(
-        self, payload: type[APIPayload], password, exception
+        self, payload: type[UserCreationPayload], password, exception
     ):
         """
         Different variations of passwords that should fail validation
@@ -109,7 +109,7 @@ class TestAccountCreation:
         ],
     )
     def test_password_validators_fail_for_user_similarity(
-        self, payload: type[APIPayload], field, value, password
+        self, payload: type[UserCreationPayload], field, value, password
     ):
         """
         Different variations of passwords that should fail based on user similarity
@@ -135,7 +135,7 @@ class TestAccountCreation:
         ],
     )
     def test_account_creation_fails_with_db_contraints(
-        self, payload: type[APIPayload], field, value, duplicate
+        self, payload: type[UserCreationPayload], field, value, duplicate
     ):
         """
         Test that db constraints with multiple
@@ -151,7 +151,7 @@ class TestAccountCreation:
         assert field in exc.value.detail
 
     def test_phone_number_validator_fail_for_wrong_format(
-        self, payload: type[APIPayload], wrong_phone_number
+        self, payload: type[UserCreationPayload], wrong_phone_number
     ):
         """
         Assert wrong phone number formats and phone number regions are rejected
