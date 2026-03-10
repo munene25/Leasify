@@ -37,7 +37,7 @@ from .selectors import (
     user_get_by_email,
     user_list_roles,
 )
-from .serializers import (
+from .serializer import (
     UserCreateSerializer,
     UserListSerializer,
     UserUpdateSerializer,

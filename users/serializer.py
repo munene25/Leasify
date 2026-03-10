@@ -1,7 +1,8 @@
 from rest_framework import serializers
 from phonenumber_field.serializerfields import PhoneNumberField
 from django.contrib.auth.models import Group
-    
+
+
 class UserCreateSerializer(serializers.Serializer):
     first_name = serializers.CharField()
     last_name = serializers.CharField()
@@ -10,24 +11,24 @@ class UserCreateSerializer(serializers.Serializer):
     phone_number = PhoneNumberField()
     notify = serializers.BooleanField(required=False)
 
+
 class UserListSerializer(serializers.Serializer):
     user_id = serializers.IntegerField(source="pk")
     full_name = serializers.CharField()
     email = serializers.EmailField()
     verified = serializers.BooleanField()
-    phone_number = PhoneNumberField(
-        source="account.phone_number",
-        allow_null=True,
-        required=False,
-    )
+    phone_number = PhoneNumberField(source="account.phone_number")
+
 
 class UserUpdateSerializer(serializers.Serializer):
+    """ This serializer is instantiated with 'partial' flag"""
     first_name = serializers.CharField()
     last_name = serializers.CharField()
     # Account fields
-    phone_number = PhoneNumberField()
     bio = serializers.CharField()
     backup_email = serializers.EmailField()
+    phone_number = PhoneNumberField()
+
 
 class UserDetailSerializer(serializers.Serializer):
     email = serializers.EmailField()
@@ -36,11 +37,8 @@ class UserDetailSerializer(serializers.Serializer):
     last_name = serializers.CharField()
     email_verified = serializers.BooleanField(source="verified")
     joined_at = serializers.DateTimeField(source="created_at")
-    phone_number = PhoneNumberField(
-        source="account.phone_number",
-        allow_null=True,
-    )
-    bio = serializers.CharField(source="account.bio", allow_null=True)
+    phone_number = PhoneNumberField(source="account.phone_number")
+    bio = serializers.CharField(source="account.bio")
     next_email_change = serializers.DateTimeField(allow_null=True)
     roles = serializers.ListField()
 
@@ -49,37 +47,49 @@ class LoginSerializer(serializers.Serializer):
     email = serializers.EmailField()
     password = serializers.CharField()
 
+
 class RequestPasswordResetSerializer(serializers.Serializer):
     email = serializers.EmailField()
 
-class ConfirmPasswordSerializer(serializers.Serializer):
+
+class BasePasswordSerializer(serializers.Serializer):
+    """
+    Base password serializer with confirm password validation
+    """
     new_password = serializers.CharField()
     confirm_password = serializers.CharField()
-    
+
     def validate(self, data):
-        if data.get('new_password') != data.get('confirm_password'):
+        if data["new_password"] != data["confirm_password"]:
             raise serializers.ValidationError({"confirm_password": "Passwords do not match"})
+        data.pop("confirm_password")
         return data
 
-class ConfirmPasswordResetSerializer(ConfirmPasswordSerializer):
+
+class ConfirmPasswordResetSerializer(BasePasswordSerializer):
     pass
 
-class PasswordChangeSerializer(ConfirmPasswordSerializer):
-    password = serializers.CharField()
 
+class PasswordChangeSerializer(BasePasswordSerializer):
+    password = serializers.CharField()
 
 
 class UserEmailUpdateSerializer(serializers.Serializer):
     password = serializers.CharField()
     email = serializers.EmailField()
-    
+
 
 class UserRoleDetailSerializer(serializers.Serializer):
+    """
+    Instantiated with a user object
+    Roles is a user attribute
+    """
     roles = serializers.ListField()
+
 
 class UserRoleCreateSerializer(serializers.Serializer):
     roles = serializers.SlugRelatedField(slug_field="name", many=True, queryset=Group.objects.all())
 
+
 class UserRoleListSerializer(serializers.Serializer):
     name = serializers.CharField()
-    permissions = serializers.StringRelatedField(many=True)

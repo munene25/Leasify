@@ -15,5 +15,4 @@ from phonenumber_field.phonenumber import PhoneNumber, phonenumbers
 from django.contrib.auth.models import Permission
 
 def run():
-    phone = phonenumbers.parse("+255-222-222-222")
-    print(phone)
+    pass
