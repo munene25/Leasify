@@ -3,15 +3,20 @@ from users import serializers, models
 from zoneinfo import ZoneInfo
 
 
-def test_user_list_serializer_resolves_related_fields(user):
-    data = [user]
-    serializer = serializers.UserListSerializer(instance=data, many=True)
+class TestUserListSerializer:
+    def test_user_list_serializer_resolves_related_fields(self, user):
+        """
+        Assert that a list is properly serialized
+        fields with "source" should resolve correctly
+        """
+        data = [user]
+        serializer = serializers.UserListSerializer(instance=data, many=True)
 
-    assert len(serializer.data) == 1
-    s = serializer.data[0]
+        assert len(serializer.data) == 1
+        s = serializer.data[0]
 
-    assert s["user_id"] == user.pk
-    assert s["phone_number"] == user.account.phone_number.as_e164
+        assert s["user_id"] == user.pk
+        assert s["phone_number"] == user.account.phone_number.as_e164
 
 def test_user_detail_serializer_resolves_related_fields(manager_user, settings):
     u = manager_user
@@ -22,6 +27,7 @@ def test_user_detail_serializer_resolves_related_fields(manager_user, settings):
     assert s["email_verified"] == u.verified
 
 
+    # test timezone
     local_tz = ZoneInfo(settings.TIME_ZONE)
     assert s["joined_at"] == u.created_at.astimezone(local_tz).isoformat()
     
