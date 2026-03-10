@@ -4,12 +4,15 @@ from django.contrib.auth.models import Group
 
 
 class UserCreateSerializer(serializers.Serializer):
+    """
+    Need to set the boolean field's default value otherwise defaults to false
+    """
     first_name = serializers.CharField()
     last_name = serializers.CharField()
     email = serializers.EmailField()
     password = serializers.CharField()
     phone_number = PhoneNumberField()
-    notify = serializers.BooleanField(required=False)
+    notify = serializers.BooleanField(required=False, default=True)
 
 
 class UserListSerializer(serializers.Serializer):

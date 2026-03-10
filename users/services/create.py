@@ -8,7 +8,7 @@ from users.tasks import send_welcome_email
 logger = getLogger("users.services.create")
 
 @transaction.atomic
-def user_account_create(*, password: str, email: str, phone_number: PhoneNumber, first_name:str, last_name: str , notify: bool = True) -> User:
+def user_account_create(*, password: str, email: str, phone_number: PhoneNumber, first_name:str, last_name: str , notify: bool) -> User:
     email = User.objects.normalize_email(email)
     user = User(
         email=email,
@@ -22,7 +22,7 @@ def user_account_create(*, password: str, email: str, phone_number: PhoneNumber,
     user.save()
     account_create(user=user, phone_number=phone_number)
 
-    if notify:
+    if notify == True:
         transaction.on_commit(lambda: send_welcome_email.delay(user.pk))
     
     logger.info(f"user {user.get_full_name()} [user_id: {user.pk}] created an account")

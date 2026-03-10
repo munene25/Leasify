@@ -4,7 +4,7 @@ from rest_framework.response import Response
 from rest_framework import serializers
 from rest_framework.exceptions import NotFound, PermissionDenied
 from rest_framework.permissions import AllowAny, IsAuthenticated, IsAdminUser
-from rest_framework.status import HTTP_200_OK, HTTP_202_ACCEPTED, HTTP_204_NO_CONTENT
+from rest_framework import status
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from common.permissions import check_perms
@@ -74,7 +74,7 @@ class UserListCreateView(BaseAPIView):
     def post(self, request):
         data = self.validate_serializer(data=request.data)
         user_account_create(**data)
-        return Response(status=HTTP_200_OK)
+        return Response(data={"message": "user account created"}, status=status.HTTP_201_CREATED)
 
 
 class UserDetailUpdateDestroyView(BaseAPIView):
@@ -85,7 +85,7 @@ class UserDetailUpdateDestroyView(BaseAPIView):
         check_perms(request.user, "user.view_user")
         user = user_get_by_id(user_id)
         serialzer_class = UserDetailSerializer(instance=user)
-        return Response(status=HTTP_200_OK, data=serialzer_class.data)
+        return Response(status=status.HTTP_200_OK, data=serialzer_class.data)
 
     def patch(self, request, user_id):
         check_perms(request.user, "user.edit_user")
@@ -97,7 +97,7 @@ class UserDetailUpdateDestroyView(BaseAPIView):
 
         user_update(user, **data)
         logger.info(f"Admin modified user data. [user_id: {user_id}] data")
-        return Response(status=HTTP_200_OK)
+        return Response(status=status.HTTP_200_OK)
 
     def delete(self, request, user_id):
         check_perms(request.user, "user.delete_user")
@@ -109,7 +109,7 @@ class UserDetailUpdateDestroyView(BaseAPIView):
         user_deactivate(user=user)
         logger.info(f"Admin deactivated user.", target_id=user_id)
         return Response(
-            status=HTTP_200_OK,
+            status=status.HTTP_200_OK,
             data={"message": "User deactivated, deletion not available"},
         )
 
@@ -121,16 +121,16 @@ class MeView(BaseAPIView, CookieMixin):
     def get(self, request):
         user = user_get_by_id(request.user.pk)
         serializer = UserDetailSerializer(instance=user)
-        return Response(status=HTTP_200_OK, data=serializer.data)
+        return Response(status=status.HTTP_200_OK, data=serializer.data)
 
     def patch(self, request):
         data = self.validate_serializer(data=request.data, partial=True)
         user_update(user=request.user, **data)
-        return Response(status=HTTP_200_OK)
+        return Response(status=status.HTTP_200_OK)
 
     def delete(self, request):
         user_deactivate(user=request.user)
-        res = Response(status=HTTP_204_NO_CONTENT)
+        res = Response(status=status.HTTP_204_NO_CONTENT)
         logger.info(f"User deleted self.")
         response = self.del_cookies(cookies=["access", "refresh"], response=res)
         return response
@@ -145,7 +145,7 @@ class EmailUpdateView(BaseAPIView):
     def post(self, request, view):
         data = self.validate_serializer(data=request.data, partial=False)
         user_email_update(user=request.user, **data)
-        return Response(status=HTTP_200_OK)
+        return Response(status=status.HTTP_200_OK)
 
 
 class LoginView(BaseAPIView, CookieMixin):
@@ -162,7 +162,7 @@ class LoginView(BaseAPIView, CookieMixin):
         access = refresh.access_token
         tokens = {"access": access, "refresh": refresh}
 
-        res = Response(status=HTTP_200_OK)
+        res = Response(status=status.HTTP_200_OK)
         response = self.set_cookies(response=res, **tokens)
         return response
 
@@ -171,7 +171,7 @@ class LogoutView(BaseAPIView, CookieMixin):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        res = Response(status=HTTP_200_OK)
+        res = Response(status=status.HTTP_200_OK)
         response = self.del_cookies(cookies=["access", "refresh"], response=res)
         logger.info(f"Logout successful")
         return response
@@ -191,7 +191,7 @@ class RefreshTokenView(BaseAPIView, CookieMixin):
             refresh.set_iat()
             refresh.set_exp()
             tokens = {"refresh": refresh, "access": refresh.access_token}
-            res = Response(status=HTTP_200_OK)
+            res = Response(status=status.HTTP_200_OK)
             response = self.set_cookies(response=res, **tokens)
             return response
         except TokenError:
@@ -208,7 +208,7 @@ class PasswordChangeView(BaseAPIView, CookieMixin):
         data = self.validate_serializer(data=request.data)
         user_change_password(user=request.user, **data)
 
-        return self.del_cookies(response=Response(status=HTTP_200_OK), cookies=["access", "refresh"])
+        return self.del_cookies(response=Response(status=status.HTTP_200_OK), cookies=["access", "refresh"])
 
 
 class RequestEmailVerificationView(BaseAPIView):
@@ -229,7 +229,7 @@ class RequestEmailVerificationView(BaseAPIView):
                 "User email verification request",
                 extra={"actor": f"user: {request.user}"},
             )
-        return Response(status=HTTP_202_ACCEPTED)
+        return Response(status=status.HTTP_202_ACCEPTED)
 
 
 class ConfirmEmailVerificationView(BaseAPIView):
@@ -240,7 +240,7 @@ class ConfirmEmailVerificationView(BaseAPIView):
         user = token_validate(uuid=uuid, token=token)
         if not user.verified:
             user_email_verify(user)
-        return Response(status=HTTP_200_OK)
+        return Response(status=status.HTTP_200_OK)
 
 
 class RequestPasswordResetView(BaseAPIView):
@@ -264,7 +264,7 @@ class RequestPasswordResetView(BaseAPIView):
                 action_cta="Reset password",
             )
             logger.info("User request password reset")
-        return Response(status=HTTP_202_ACCEPTED)
+        return Response(status=status.HTTP_202_ACCEPTED)
 
 
 class ConfirmPasswordResetView(BaseAPIView):
@@ -276,7 +276,7 @@ class ConfirmPasswordResetView(BaseAPIView):
         user = token_validate(uuid=uuid, token=token)
         data = self.validate_serializer(data=request.data)
         user_change_password(user=user, **data)
-        return Response(status=HTTP_200_OK)
+        return Response(status=status.HTTP_200_OK)
 
 
 class UserUnsubscribeView(BaseAPIView):
@@ -287,7 +287,7 @@ class UserUnsubscribeView(BaseAPIView):
         user = unsubscribe_token_validate(uuid)
         if not user.account.can_receive_emails:
             account_unsubscribe(user.account)
-        return Response(status=HTTP_200_OK)
+        return Response(status=status.HTTP_200_OK)
 
 
 class UserRoleDetailView(BaseAPIView):
@@ -297,19 +297,19 @@ class UserRoleDetailView(BaseAPIView):
     def get(self, request, user_id):
         user = user_get_by_id(user_id)
         serializer = UserRoleDetailSerializer(instance=user)
-        return Response(status=HTTP_200_OK, data=serializer.data)
+        return Response(status=status.HTTP_200_OK, data=serializer.data)
 
     def post(self, request, user_id):
         user = user_get_by_id(user_id)
         data = self.validate_serializer(data=request.data)
         user_add_roles(user=user, roles=data["roles"])
-        return Response(status=HTTP_200_OK)
+        return Response(status=status.HTTP_200_OK)
 
     def delete(self, request, user_id):
         user = user_get_by_id(user_id)
         data = self.validate_serializer(data=request.data)
         user_remove_roles(user=user, roles=data["roles"])
-        return Response(status=HTTP_200_OK)
+        return Response(status=status.HTTP_200_OK)
 
 
 class UserRoleListView(BaseAPIView):
@@ -318,4 +318,4 @@ class UserRoleListView(BaseAPIView):
     def get(self, request):
         groups = user_list_roles()
         serializer = UserRoleListSerializer(many=True, instance=groups)
-        return Response(status=HTTP_200_OK, data=serializer.data)
+        return Response(status=status.HTTP_200_OK, data=serializer.data)

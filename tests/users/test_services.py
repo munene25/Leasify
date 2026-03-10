@@ -26,19 +26,18 @@ class TestAccountCreation:
         """
         Test whether account creation is successfull and data is data matches
         """
-        data = user_create_payload
-        user_account_create(**data)
-        user = User.objects.get(email=data["email"])
+        user_account_create(**user_create_payload)
+        user = User.objects.get(email=user_create_payload["email"])
         account = user.account
         # Assert reverse relationship
         assert user == account.user
-        assert user.first_name == data["first_name"]
-        assert user.last_name == data["last_name"]
-        assert user.email == data["email"]
+        assert user.first_name == user_create_payload["first_name"]
+        assert user.last_name == user_create_payload["last_name"]
+        assert user.email == user_create_payload["email"]
         # Assert password hashed correctly
-        assert user.password != data["password"]
-        assert account.phone_number == data["phone_number"]
-        user.validate_password(data["password"])
+        assert user.password != user_create_payload["password"]
+        assert account.phone_number == user_create_payload["phone_number"]
+        user.validate_password(user_create_payload["password"])
         assert User.objects.count() == 1
 
     def test_skip_mail_sending_when_flag_set_to_false(
@@ -50,7 +49,7 @@ class TestAccountCreation:
         Test whether mailing will be ignored with notify flag set to false
         """
         with django_capture_on_commit_callbacks() as callback:
-            user_account_create(**user_create_payload, notify=False)
+            user_account_create(**user_create_payload)
         assert len(callback) == 0
         assert User.objects.count() == 1
 
@@ -61,15 +60,17 @@ class TestAccountCreation:
         django_capture_on_commit_callbacks,
     ):
         """
-        Test normal mail sending with notify flag set to True. Requires always eager for delay calls
+        Test normal mail sending with notify flag set to True. 
+        Requires always eager for delay calls
         """
         from config.emails import EmailConfig
 
         config = EmailConfig.load()
 
-        data = user_create_payload
+        user_create_payload["notify"] = True
+        
         with django_capture_on_commit_callbacks() as callback:
-            user_account_create(**data, notify=True)
+            user_account_create(**user_create_payload)
         assert User.objects.count() == 1
         # Assert callback stores the mail sender
         assert len(callback) == 1
@@ -77,7 +78,7 @@ class TestAccountCreation:
         callback[0]()
         assert len(mailoutbox) == 1
         mail = mailoutbox[0]
-        assert mail.to == [data["email"]]
+        assert mail.to == [user_create_payload["email"]]
         assert mail.from_email == config.default_from_email
         assert mail.subject == f"Welcome to {config.app_name}"
         assert "email-verify" in mail.body
@@ -93,7 +94,7 @@ class TestAccountCreation:
         Regardless of cache failure i.e., celery cant reach broker, user should be created nonetheless
         """
         # Cache raises an exception
-
+        user_create_payload["notify"] = True
         mock.side_effect = Exception("Cache Down")
 
         with pytest.raises(Exception, match="Cache Down"):
@@ -173,6 +174,7 @@ class TestAccountCreation:
             "email" : "testemail1@gmail.com",
             "password": "Pa55word!",
             "phone_number": phone_no(),
+            "notify": False
         }
         data2: UserCreatePayload = {
             "first_name": "testname",
@@ -180,6 +182,7 @@ class TestAccountCreation:
             "email" : "testemail2@gmail.com",
             "password": "Pa55word!",
             "phone_number": phone_no(),
+            "notify": False
         }
         data1[field] = value
         data2[field] = duplicate

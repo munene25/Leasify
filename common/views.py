@@ -23,7 +23,7 @@ class BaseAPIView(APIView):
             user_id=request.user.pk if request.user.is_authenticated else None,
         )
 
-    def _run_validation(self, serializer_cls: Type[Serializer], *, data: dict, partial: bool = False) -> dict:
+    def _run_validation(self, serializer_cls: Type[Serializer], *, data: dict, partial: bool) -> dict:
         """Run DRF serializer validation and return validated data."""
         serializer = serializer_cls(data=data, partial=partial)
         serializer.is_valid(raise_exception=True)

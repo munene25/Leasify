@@ -9,6 +9,7 @@ class UserCreatePayload(typing.TypedDict):
     email: str
     password: str
     phone_number: PhoneNumber
+    notify: bool
 
 
 class UserUpdatePayload(typing.TypedDict, total=False):
@@ -27,6 +28,7 @@ def user_create_payload(fake, password, phone_no) -> UserCreatePayload:
         "email": fake.email(),
         "password": password,
         "phone_number": phone_no(),
+        "notify": False
     }
 
 

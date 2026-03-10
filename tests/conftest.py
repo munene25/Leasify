@@ -7,6 +7,7 @@ from django.contrib.auth.models import Group
 from phonenumber_field.phonenumber import PhoneNumber
 from users.models import User
 from users.services import user_account_create
+from rest_framework.test import APIClient
 
 
 @pytest.fixture(scope="session")
@@ -22,12 +23,16 @@ def enable_db_access(db):
 
 
 @pytest.fixture(autouse=True)
-def settings_override(settings):
+def globals(settings):
     settings.CELERY_TASK_ALWAYS_EAGER = True
     settings.CELERY_TASK_EAGER_PROPAGATES = True
-    # django-pytest needs locmem backend to capture the mail
-    # settings.EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+    settings.EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
     settings.LOGGING = None
+    settings.CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        }
+    }
 
 
 
@@ -52,6 +57,7 @@ def user(fake, phone_no) -> User:
         password="Pa55word!",
         email=fake.email(),
         phone_number=phone_no(),
+        notify=False,
     )
 
 @pytest.fixture
@@ -102,4 +108,29 @@ def phone_no(fake) -> typing.Callable[[str | None], PhoneNumber]:
     return lambda num=None: PhoneNumber.from_string(
         num or fake.numerify("+254-7##-###-###")
     )
+
+
+@pytest.fixture
+def client():
+    return APIClient()
+
+@pytest.fixture
+def auth_manager(client, manager_user):
+    client.force_authenticate(user=manager_user)
+    return client
+
+@pytest.fixture
+def auth_user(client, user):
+    client.force_authenticate(user=user)
+    return client
+
+@pytest.fixture
+def auth_tenant(client, tenant_user):
+    client.force_authenticate(user=tenant_user)
+    return client
+
+@pytest.fixture
+def auth_caretaker(client, caretaker_user):
+    client.force_authenticate(user=caretaker_user)
+    return client
 
