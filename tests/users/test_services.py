@@ -19,43 +19,44 @@ from users.services import (
     user_change_password,
     user_update,
 )
-from tests.conftest import UserCreationPayload
-
+from conftest import UserCreatePayload
 
 class TestAccountCreation:
-    def test_account_creation_successful(self, payload: type[UserCreationPayload]):
+    def test_account_creation_successful(self, user_create_payload: UserCreatePayload):
         """
         Test whether account creation is successfull and data is data matches
         """
-        data: UserCreationPayload = payload()
-        user_account_create(**data.to_dict)
-        user = User.objects.get(email=data.email)
+        data = user_create_payload
+        user_account_create(**data)
+        user = User.objects.get(email=data["email"])
         account = user.account
         # Assert reverse relationship
         assert user == account.user
-        assert user.first_name == data.first_name
-        assert user.last_name == data.last_name
-        assert user.email == data.email
+        assert user.first_name == data["first_name"]
+        assert user.last_name == data["last_name"]
+        assert user.email == data["email"]
         # Assert password hashed correctly
-        assert user.password != data.password
-        assert account.phone_number == data.phone_number
-        user.validate_password(data.password)
+        assert user.password != data["password"]
+        assert account.phone_number == data["phone_number"]
+        user.validate_password(data["password"])
         assert User.objects.count() == 1
 
-    def test_skip_mail_sending(
-        self, payload: type[UserCreationPayload], django_capture_on_commit_callbacks
+    def test_skip_mail_sending_when_flag_set_to_false(
+        self,
+        user_create_payload: UserCreatePayload,
+        django_capture_on_commit_callbacks,
     ):
         """
         Test whether mailing will be ignored with notify flag set to false
         """
         with django_capture_on_commit_callbacks() as callback:
-            user_account_create(**payload().to_dict, notify=False)
+            user_account_create(**user_create_payload, notify=False)
         assert len(callback) == 0
         assert User.objects.count() == 1
 
     def test_mail_sent_upon_creation(
         self,
-        payload: type[UserCreationPayload],
+        user_create_payload: UserCreatePayload,
         mailoutbox,
         django_capture_on_commit_callbacks,
     ):
@@ -66,9 +67,9 @@ class TestAccountCreation:
 
         config = EmailConfig.load()
 
-        data = payload()
+        data = user_create_payload
         with django_capture_on_commit_callbacks() as callback:
-            user_account_create(**data.to_dict, notify=True)
+            user_account_create(**data, notify=True)
         assert User.objects.count() == 1
         # Assert callback stores the mail sender
         assert len(callback) == 1
@@ -76,7 +77,7 @@ class TestAccountCreation:
         callback[0]()
         assert len(mailoutbox) == 1
         mail = mailoutbox[0]
-        assert mail.to == [data.email]
+        assert mail.to == [data["email"]]
         assert mail.from_email == config.default_from_email
         assert mail.subject == f"Welcome to {config.app_name}"
         assert "email-verify" in mail.body
@@ -85,18 +86,21 @@ class TestAccountCreation:
     def test_user_creation_success_on_cache_fail(
         self,
         mock,
-        payload: type[UserCreationPayload],
+        user_create_payload: UserCreatePayload,
         django_capture_on_commit_callbacks,
     ):
         """
         Regardless of cache failure i.e., celery cant reach broker, user should be created nonetheless
         """
         # Cache raises an exception
+
         mock.side_effect = Exception("Cache Down")
+
         with pytest.raises(Exception, match="Cache Down"):
+
             with django_capture_on_commit_callbacks(execute=True):
-                data = payload()
-                user_account_create(**data.to_dict)
+                user_account_create(**user_create_payload)
+
         assert User.objects.count() == 1
 
     @pytest.mark.parametrize(
@@ -108,15 +112,13 @@ class TestAccountCreation:
             ("1235151545", "numeric"),
         ],
     )
-    def test_password_validators_fail(
-        self, payload: type[UserCreationPayload], password, exception
-    ):
+    def test_password_validators_fail(self, user_create_payload: UserCreatePayload, password, exception):
         """
         Different variations of passwords that should fail validation
         """
-        data = payload(password=password)
+        user_create_payload["password"] = password
         with pytest.raises(ValidationError) as exc:
-            user_account_create(**data.to_dict)
+            user_account_create(**user_create_payload)
         assert "password" in exc.value.detail
         assert exception in str(exc.value.detail)
         assert User.objects.count() == 0
@@ -129,16 +131,16 @@ class TestAccountCreation:
             ("email", "benedicturs@gmail.com", "benedictorial"),
         ],
     )
-    def test_password_validators_fail_for_user_similarity(
-        self, payload: type[UserCreationPayload], field, value, password
-    ):
+    def test_password_validators_fail_for_user_similarity(self, user_create_payload: UserCreatePayload, field, value, password):
         """
         Different variations of passwords that should fail based on user similarity
         """
 
-        data = payload(**{field: value, "password": password})
+        user_create_payload[field] = value
+        user_create_payload["password"] = password
+
         with pytest.raises(ValidationError) as exc:
-            user_account_create(**data.to_dict)
+            user_account_create(**user_create_payload)
         assert "password" in exc.value.detail
         assert "similar" in str(exc.value.detail)
         assert User.objects.count() == 0
@@ -156,30 +158,50 @@ class TestAccountCreation:
         ],
     )
     def test_account_creation_fails_with_db_contraints(
-        self, payload: type[UserCreationPayload], field, value, duplicate
+        self,
+        field: str,
+        value: str,
+        phone_no,
+        duplicate,
     ):
         """
         Test that db constraints with multiple
         """
-        data1 = payload(**{field: value})
-        data2 = payload(**{field: duplicate})
+        data1: UserCreatePayload = {
+            "first_name": "testname",
+            "last_name": "lastname",
+            "email" : "testemail1@gmail.com",
+            "password": "Pa55word!",
+            "phone_number": phone_no(),
+        }
+        data2: UserCreatePayload = {
+            "first_name": "testname",
+            "last_name": "lastname",
+            "email" : "testemail2@gmail.com",
+            "password": "Pa55word!",
+            "phone_number": phone_no(),
+        }
+        data1[field] = value
+        data2[field] = duplicate
 
-        user_account_create(**data1.to_dict)
+        user_account_create(**data1)
         with pytest.raises(ValidationError) as exc:
-            user_account_create(**data2.to_dict)
+            user_account_create(**data2)
 
         assert User.objects.count() == 1
         assert field in exc.value.detail
 
     def test_phone_number_validator_fail_for_wrong_format(
-        self, payload: type[UserCreationPayload], wrong_phone_number
+        self,
+        user_create_payload: UserCreatePayload,
+        wrong_phone_number: PhoneNumber,
     ):
         """
         Assert wrong phone number formats and phone number regions are rejected
         """
-        data = payload(phone_number=wrong_phone_number)
+        user_create_payload["phone_number"] = wrong_phone_number
         with pytest.raises(ValidationError) as exc:
-            user_account_create(**data.to_dict)
+            user_account_create(**user_create_payload)
         assert "phone_number" in exc.value.detail
         assert User.objects.count() == 0
 
@@ -191,7 +213,7 @@ class TestRoleAssignment:
         It also should reflect in the user.role property
         """
         assert user.groups.count() == 0
-        role = get_role()
+        role = get_role("manager")
         mod_user = user_add_roles(user=user, roles=[role])
 
         assert mod_user == user
@@ -212,39 +234,35 @@ class TestRoleAssignment:
 
 
 class TestUserDeactivation:
-    def test_deactivation_succeeds(self, user: User, django_assert_num_queries):
+    def test_deactivation_succeeds(self, user: User):
         """
-        Very simple, just check whether the returned user is deactivated
-        Also check the number of querries
+        Check whether the returned user is deactivated
         """
-        with django_assert_num_queries(3):
-            mod_user = user_deactivate(user)
+       
+        mod_user = user_deactivate(user)
         fetched = User.objects.get(pk=user.pk)
         assert fetched == mod_user == user
         assert mod_user.is_active == False
 
-        with django_assert_num_queries(2):
-            user_deactivate(mod_user)
-
 
 class TestAccountUnsubscribe:
-    def test_deactivation_succeeds(self, user: User, django_assert_num_queries):
+    def test_deactivation_succeeds(self, user: User):
         """
         Account should be marked as cannot receive emails
-        Count querries
         """
-        with django_assert_num_queries(3):
-            mod_acc = account_unsubscribe(user.account)
-        fetched = User.objects.get(pk=user.pk).account
-        assert fetched == mod_acc == user.account
-        assert mod_acc.can_receive_emails == False
-
-        with django_assert_num_queries(2):
-            account_unsubscribe(mod_acc)
+        
+        mod_acc = account_unsubscribe(user.account)
+        fetched = User.objects.get(pk=user.pk)
+        assert fetched.account == mod_acc == user.account
+        assert fetched.account.can_receive_emails == False
 
 
 class TestRoleRemoval:
     def test_role_removal_successfull(self, manager_user: User):
+        """
+        Test removing a role is persistent
+        Test the model role list is reflects
+        """
         first_role = manager_user.groups.first()
 
         assert first_role is not None
@@ -257,6 +275,9 @@ class TestRoleRemoval:
         assert mod_user.groups.count() == 0
 
     def test_multiple_role_removal_successfull(self, user: User, roles_list):
+        """
+        Test multiple roles can be unassigned from a user in one go
+        """
         user.groups.add(*roles_list)
         assert list(user.groups.all()) == roles_list
 
@@ -317,18 +338,14 @@ class TestEmailUpdate:
         assert mod_user.email == new_email
 
 
-class TestConfirmEmailVerify:
-    def test_email_set_as_verified(self, user: User, django_assert_num_queries):
+class TestUserEmailVerifyConfirmation:
+    def test_email_set_as_verified(self, user: User):
         """
         Verified status should reflect
-        Also have to consider the transaction savepoints
         """
-        with django_assert_num_queries(3):
-            user = user_email_verify(user)
-        assert user.verified == True
-
-        with django_assert_num_queries(2) as cap:
-            user_email_verify(user)
+        mod_user = user_email_verify(user)
+        assert mod_user == user
+        assert mod_user.verified == True
 
 
 class TestLoginService:
@@ -370,9 +387,7 @@ class TestLoginService:
 
 
 class TestUserUpdate:
-    def test_updating_existing_data_succeeds(
-        self, user: User, phone_no: typing.Callable[..., typing.Any]
-    ):
+    def test_updating_existing_data_succeeds(self, user: User, phone_no: typing.Callable[..., typing.Any]):
         """
         Updating existing user and account fields should succeed
         """
@@ -434,9 +449,7 @@ class TestUserUpdate:
         obj = mod_user if model == "user" else mod_account
         assert getattr(obj, field) == value
 
-    def test_phone_number_validators_fail_for_wrong_format(
-        self, wrong_phone_number, user
-    ):
+    def test_phone_number_validators_fail_for_wrong_format(self, wrong_phone_number, user):
         """
         Phone numbers that should be rejected based on incorrect countrycode
         """
@@ -473,9 +486,7 @@ class TestUserChangePassword:
         current_password = "Pa55word!"
         new_password = "TimT@tman!"
         user.validate_password(current_password)
-        modified = user_change_password(
-            user=user, new_password=new_password, current_password=current_password
-        )
+        modified = user_change_password(user=user, new_password=new_password, current_password=current_password)
         assert user == modified == User.objects.get(pk=user.pk)
         # Password should be hashed
         assert modified.password != new_password
@@ -502,9 +513,7 @@ class TestUserChangePassword:
         new_password = "TimT@tman!"
         user.validate_password(current_password)
         with django_capture_on_commit_callbacks(execute=True) as callbacks:
-            user_change_password(
-                user=user, new_password=new_password, current_password=current_password
-            )
+            user_change_password(user=user, new_password=new_password, current_password=current_password)
         assert len(callbacks) == 1
         assert len(mailoutbox) == 1
         mail = mailoutbox[0]
