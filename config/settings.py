@@ -1,4 +1,3 @@
-
 """
 Django settings for config project.
 
@@ -99,13 +98,12 @@ REST_FRAMEWORK = {
     "PAGE_SIZE": 5,
     "EXCEPTION_HANDLER": "drf_standardized_errors.handler.exception_handler",
     "DEFAULT_THROTTLE_RATES": {
-        "anon_burst": "20/minute",
-        "anon_sustained": "500/day",
-        "user_burst": "30/minute",
-        "user_sustained": "500/day",
+        "anon_sustained": "50/day",
+        "user_sustained": "100/day",
         "login_limit": "5/hour",
         "password_changes": "3/day",
         "email_verification": "3/day",
+        "email_change": "1/day",
     },
 }
 
@@ -136,15 +134,15 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 # # Redis Caching
-# CACHES = {
-#     "default": {
-#         "BACKEND": "django_redis.cache.RedisCache",
-#         "LOCATION": "redis://localhost:6379/1",
-#         "OPTIONS": {
-#             "CLIENT_CLASS": "django_redis.client.DefaultClient",
-#         },
-#     }
-# }
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": "redis://localhost:6379/1",
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+        },
+    }
+}
 
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
@@ -170,7 +168,6 @@ STATIC_URL = "static/"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 
-
 # Cors settings
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGINS = [SITE_URL, "http://localhost:8000"]
@@ -185,7 +182,7 @@ SIMPLE_JWT = {
     "REFRESH_TOKEN_LIFETIME": timedelta(weeks=2),
     "CHEK_USER_IS_ACTIVE": True,
     "CHECK_REVOKE_TOKEN": True,
-    "REVOKE_TOKEN_CLAIM": "token-version" 
+    "REVOKE_TOKEN_CLAIM": "token-version",
 }
 
 # Cookie Authentication

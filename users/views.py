@@ -10,11 +10,8 @@ from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from common.permissions import check_perms
 from common.pagination import get_paginated_response
 from common.throttling import (
-    AnonBurst,
     AnonSustained,
-    UserBurst,
-    ScopedRateThrottle,
-    EmailBaseThrottle,
+    EmailScopedThrottle,
 )
 from .mixins import CookieMixin
 from .tokens import token_validate, unsubscribe_token_validate
@@ -49,10 +46,11 @@ from .serializer import (
     UserRoleCreateSerializer,
     UserRoleDetailSerializer,
     UserRoleListSerializer,
-    UserEmailUpdateSerializer
+    UserEmailUpdateSerializer,
 )
 
 logger = getLogger("users.views")
+
 
 class UserListCreateView(BaseAPIView):
     class FilterSerializer(serializers.Serializer):
@@ -63,18 +61,15 @@ class UserListCreateView(BaseAPIView):
         phone_number = serializers.CharField()
 
     serializer_class = UserCreateSerializer
-    throttle_classes = [AnonBurst, AnonSustained]
+    throttle_classes = [AnonSustained]
     filter_serialzer = FilterSerializer
 
     def get(self, request):
-
         check_perms(request.user, "users.view_users")
         filters = self.validate_filter(data=request.query_params)
         qs = user_list(filters)
 
-        return get_paginated_response(
-            s_cls=UserListSerializer, qs=qs, req=request, view=self
-        )
+        return get_paginated_response(s_cls=UserListSerializer, qs=qs, req=request, view=self)
 
     def post(self, request):
         data = self.validate_serializer(data=request.data)
@@ -97,9 +92,7 @@ class UserDetailUpdateDestroyView(BaseAPIView):
         data = self.validate_serializer(data=request.data, partial=True)
         user = user_get_by_id(user_id)
         if user.is_superuser or user.is_staff:
-            logger.warning(
-                f"modifying staff data data not allowed.", target_id=user_id
-            )
+            logger.warning(f"modifying staff data data not allowed.", target_id=user_id)
             raise PermissionDenied()
 
         user_update(user, **data)
@@ -110,9 +103,7 @@ class UserDetailUpdateDestroyView(BaseAPIView):
         check_perms(request.user, "user.delete_user")
         user = user_get_by_id(user_id)
         if user.is_superuser or user.is_staff:
-            logger.warning(
-                f"deactivating staff not allowed", target_id=user_id
-            )
+            logger.warning(f"deactivating staff not allowed", target_id=user_id)
             raise PermissionDenied()
 
         user_deactivate(user=user)
@@ -144,21 +135,25 @@ class MeView(BaseAPIView, CookieMixin):
         response = self.del_cookies(cookies=["access", "refresh"], response=res)
         return response
 
+
 class EmailUpdateView(BaseAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = UserEmailUpdateSerializer
+    throttle_classes = [EmailScopedThrottle]
+    throttle_scope = "email_change"
 
     def post(self, request, view):
         data = self.validate_serializer(data=request.data, partial=False)
         user_email_update(user=request.user, **data)
+        return Response(status=HTTP_200_OK)
 
 
 class LoginView(BaseAPIView, CookieMixin):
-    throttle_classes = [EmailBaseThrottle]
-    throttle_scope = "login_limit"
     authentication_classes = []
     permission_classes = [AllowAny]
     serializer_class = LoginSerializer
+    throttle_classes = [EmailScopedThrottle]
+    throttle_scope = "login_limit"
 
     def post(self, request):
         data = self.validate_serializer(data=request.data)
@@ -185,7 +180,6 @@ class LogoutView(BaseAPIView, CookieMixin):
 class RefreshTokenView(BaseAPIView, CookieMixin):
     authentication_classes = []
     permission_classes = [AllowAny]
-    throttle_classes = [AnonBurst, AnonSustained]
 
     def post(self, request):
         refresh_token = request.COOKIES.get("refresh")
@@ -207,19 +201,19 @@ class RefreshTokenView(BaseAPIView, CookieMixin):
 class PasswordChangeView(BaseAPIView, CookieMixin):
     permission_classes = [IsAuthenticated]
     serializer_class = PasswordChangeSerializer
-    throttle_classes = [UserBurst, ScopedRateThrottle]
+    throttle_classes = [EmailScopedThrottle]
     throttle_scope = "password_changes"
 
     def post(self, request):
         data = self.validate_serializer(data=request.data)
         user_change_password(user=request.user, **data)
-                
+
         return self.del_cookies(response=Response(status=HTTP_200_OK), cookies=["access", "refresh"])
 
 
 class RequestEmailVerificationView(BaseAPIView):
     permission_classes = [IsAuthenticated]
-    throttle_classes = [UserBurst, ScopedRateThrottle]
+    throttle_classes = [EmailScopedThrottle]
     throttle_scope = "email_verification"
 
     def post(self, request):
@@ -253,7 +247,7 @@ class RequestPasswordResetView(BaseAPIView):
     authentication_classes = []
     permission_classes = [AllowAny]
     serializer_class = RequestPasswordResetSerializer
-    throttle_classes = [AnonBurst, EmailBaseThrottle]
+    throttle_classes = [EmailScopedThrottle]
     throttle_scope = "email_verification"
 
     def post(self, request):
