@@ -17,11 +17,11 @@ def user_email_verify(user: User) -> User:
     :type user: User
 
     :return: A user that is verified
-    :rtype: User 
+    :rtype: User
     """
     user.verified = True
     user.save(update_fields=["email"])
-    logger.info(f"user verified their email")
+    logger.info(f"user [user_id: {user.pk}] verified their email")
     return user
 
 
@@ -55,5 +55,5 @@ def user_email_update(user: User, email: str, password: str) -> User:
 
     user.full_clean()
     user.save(update_fields=["email", "verified", "last_email_change"])
-    logger.info(f"email address changed for user [{user}]")
+    logger.info(f"user [user_id: {user.pk}] email updated.")
     return user
