@@ -1,6 +1,7 @@
 from structlog import getLogger
 from common.views import BaseAPIView
 from rest_framework.response import Response
+from rest_framework.request import Request
 from rest_framework import serializers
 from rest_framework.exceptions import NotFound, PermissionDenied
 from rest_framework.permissions import AllowAny, IsAuthenticated, IsAdminUser
@@ -58,14 +59,16 @@ class UserListCreateView(BaseAPIView):
         email = serializers.CharField()
         first_name = serializers.CharField()
         last_name = serializers.CharField()
+        active = serializers.BooleanField(allow_null=True)
         phone_number = serializers.CharField()
 
+    filter_class = FilterSerializer
     serializer_class = UserCreateSerializer
     throttle_classes = [AnonSustained]
     filter_serialzer = FilterSerializer
 
-    def get(self, request):
-        check_perms(request.user, "users.view_users")
+    def get(self, request: Request):
+        check_perms(request.user, "users.view_user")
         filters = self.validate_filter(data=request.query_params)
         qs = user_list(filters)
 
@@ -74,7 +77,7 @@ class UserListCreateView(BaseAPIView):
     def post(self, request):
         data = self.validate_serializer(data=request.data)
         user_account_create(**data)
-        return Response(data={"message": "user account created"}, status=status.HTTP_201_CREATED)
+        return Response(status=status.HTTP_201_CREATED)
 
 
 class UserDetailUpdateDestroyView(BaseAPIView):
