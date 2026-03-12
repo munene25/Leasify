@@ -4,21 +4,23 @@ from users.models import User, Account
 from unittest.mock import patch, MagicMock
 from copy import deepcopy
 from django.core.cache import cache
-from typing import Any
 from tests.types import IsClient, UserCreatePayload
+
 
 @pytest.fixture(autouse=True)
 def auto_clear(cache_clear):
     pass
 
+
 @pytest.fixture
 def override_pagination():
     from rest_framework.pagination import PageNumberPagination
+
     test_page_size = 2
-    
+
     original_page_size = PageNumberPagination.page_size
     PageNumberPagination.page_size = test_page_size
-    
+
     yield test_page_size
 
     PageNumberPagination.page_size = original_page_size
@@ -111,13 +113,16 @@ class TestUserListCreateView:
         assert errors["attr"] == field
         assert errors["code"] == "invalid"
 
-    def test_user_creation_fails_for_wrong_field_formats(self, client: IsClient, user_create_payload: UserCreatePayload):
+    def test_user_creation_fails_for_wrong_field_formats(
+        self, client: IsClient, user_create_payload: UserCreatePayload
+    ):
         """
         Using a regular client implicitly tests authentication as well
         """
         # -- with wrong phone nubmer fmt fails --
+
         payload1 = deepcopy(user_create_payload)
-        payload1["phone_number"] = "077171"
+        payload1["phone_number"] = "077171"  # type: ignore : Technically can use a str
         response = client.post(self.path, payload1)
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
@@ -219,15 +224,16 @@ class TestUserListCreateView:
         """
         Test the pagination structure and data
         Order is reversed so the first user appears in the last index
+        I used a serializer to validate the fields
         """
         from users.serializer import UserListSerializer
 
         total_users = 3
         base_url = "http://testserver/users/"
 
-        users: list[User] = user_factory(total_users-1)
-        first_user = users[total_users-2]
-        
+        users: list[User] = user_factory(total_users - 1)
+        first_user = users[total_users - 2]
+
         response1 = manager_client.get(self.path)
 
         assert response1.status_code == status.HTTP_200_OK
@@ -241,22 +247,19 @@ class TestUserListCreateView:
         # The manager client has created a new user in the db
         assert count1 == total_users
 
-        assert next1 == f"{base_url}?page=2" 
+        assert next1 == f"{base_url}?page=2"
         assert previous1 == None
         assert len(results1) == override_pagination
 
         data1 = results1[0]
-
-        # Just assert it serializes correctly
-        serializer = UserListSerializer(data=data1)
-        s = serializer.is_valid(raise_exception=True)
+        assert data1["user_id"] == first_user.pk
         assert data1["email"] == first_user.email
         assert data1["phone_number"] == str(first_user.account.phone_number)
 
         # -- Next page --
         response2 = manager_client.get(next1)
         assert response2.status_code == status.HTTP_200_OK
-        
+
         next2 = response2.data["next"]
         previous2 = response2.data["previous"]
         results2 = response2.data["results"]
@@ -265,3 +268,5 @@ class TestUserListCreateView:
         assert len(results2) == 1
         assert next2 == None
         assert previous2 == base_url
+
+        

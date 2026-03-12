@@ -76,7 +76,7 @@ class TestBasePasswordSerializer:
 
 class TestUpdateSerializer:
     def test_serializer_ommits_unnamed_fields(self):
-        from tests.users.conftest import UserUpdatePayload
+        from tests.types import UserUpdatePayload
 
         data: UserUpdatePayload = {
             "first_name": "Fred",

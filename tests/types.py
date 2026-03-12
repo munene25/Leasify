@@ -9,7 +9,7 @@ class UserCreatePayload(TypedDict):
     last_name: str
     email: str
     password: str
-    phone_number: PhoneNumber | str
+    phone_number: PhoneNumber
     notify: bool
 
 

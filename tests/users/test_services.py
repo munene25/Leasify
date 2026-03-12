@@ -19,7 +19,7 @@ from users.services import (
     user_change_password,
     user_update,
 )
-from conftest import UserCreatePayload
+from tests.types import UserCreatePayload
 
 class TestAccountCreation:
     def test_account_creation_successful(self, user_create_payload: UserCreatePayload):
@@ -442,7 +442,7 @@ class TestUserUpdate:
             ("first_name", "user", "Mike"),
         ],
     )
-    def test_inserting_new_data_succeeds(self, field, model, value, user):
+    def test_inserting_new_data_succeeds(self, field: str, model: str, value, user: User):
         """
         Originally, these fields do not exist on the db,
         User should be able to add and data
@@ -470,7 +470,7 @@ class TestUserUpdate:
             ("last_name", "Munene!"),
         ],
     )
-    def test_name_field_validators_fail(self, user, field, value):
+    def test_name_field_validators_fail(self, user: User, field: str, value):
         """
         Short names and unexpected punctuations are not allowed.
         """
