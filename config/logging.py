@@ -15,6 +15,17 @@ DICT_LOG = {
                 structlog.stdlib.PositionalArgumentsFormatter(),
             ],
         },
+        "dev": {
+            "()": structlog.stdlib.ProcessorFormatter,
+            "processor": structlog.dev.ConsoleRenderer(sort_keys=True,),
+            "foreign_pre_chain": [
+                structlog.contextvars.merge_contextvars,
+                structlog.processors.TimeStamper(fmt="%Y-%m-%d %H:%M:%S"),
+                structlog.stdlib.add_logger_name,
+                structlog.stdlib.add_log_level,
+                structlog.stdlib.PositionalArgumentsFormatter(),
+            ],
+        },
     },
     "handlers": {
         "file": {
@@ -22,9 +33,13 @@ DICT_LOG = {
             "filename": "logs/log.jsonl",
             "formatter": "standard",
         },
+        "console": {
+            "class": "logging.StreamHandler", 
+            "formatter": "dev", "stream": "ext://sys.stdout"
+        },
     },
     "root": {
-        "handlers": ["file"],
+        "handlers": ["console"],
         "level": "INFO",
     },
     "loggers": {
@@ -33,7 +48,7 @@ DICT_LOG = {
             "propagate": True,
         },
         "django": {
-            "level": "WARNING",  
+            "level": "WARNING",
             "propagate": False,
         },
         "django.request": {
@@ -49,7 +64,7 @@ def configure_logging():
         processors=[
             structlog.contextvars.merge_contextvars,
             structlog.stdlib.filter_by_level,
-            structlog.processors.TimeStamper(fmt="iso"),
+            structlog.processors.TimeStamper(),
             structlog.stdlib.add_logger_name,
             structlog.stdlib.add_log_level,
             structlog.processors.StackInfoRenderer(),
