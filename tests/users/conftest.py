@@ -1,23 +1,8 @@
 import pytest
-import typing
+from tests.types import UserCreatePayload
 from phonenumber_field.phonenumber import PhoneNumber
 
 
-class UserCreatePayload(typing.TypedDict):
-    first_name: str
-    last_name: str
-    email: str
-    password: str
-    phone_number: PhoneNumber
-    notify: bool
-
-
-class UserUpdatePayload(typing.TypedDict, total=False):
-    first_name: str
-    last_name: str
-    bio: str
-    backup_email: str
-    phone_number: PhoneNumber
 
 
 @pytest.fixture

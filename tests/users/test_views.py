@@ -1,31 +1,27 @@
 import pytest
-from rest_framework import exceptions, status
-from rest_framework.response import Response
+from rest_framework import status
 from users.models import User, Account
 from unittest.mock import patch, MagicMock
-from tests.users.conftest import UserCreatePayload
 from copy import deepcopy
 from django.core.cache import cache
-from typing import Protocol, Any
-
-
-class IsResponse(Protocol):
-    @property
-    def status_code(self) -> int: ...
-
-    @property
-    def data(self) -> dict[str, Any]: ...
-
-
-class IsClient(Protocol):
-    def post(self, path: str, payload: dict[str, Any]) -> IsResponse: ...
-    def patch(self, path: str, payload: dict[str, Any]) -> IsResponse: ...
-    def get(self, path: str) -> IsResponse: ...
-
+from typing import Any
+from tests.types import IsClient, UserCreatePayload
 
 @pytest.fixture(autouse=True)
 def auto_clear(cache_clear):
     pass
+
+@pytest.fixture
+def override_pagination():
+    from rest_framework.pagination import PageNumberPagination
+    test_page_size = 2
+    
+    original_page_size = PageNumberPagination.page_size
+    PageNumberPagination.page_size = test_page_size
+    
+    yield test_page_size
+
+    PageNumberPagination.page_size = original_page_size
 
 
 @pytest.fixture
@@ -56,7 +52,7 @@ class TestUserListCreateView:
         self,
         client: IsClient,
         mailoutbox: list,
-        user_create_payload: dict[str, Any],
+        user_create_payload: UserCreatePayload,
         django_capture_on_commit_callbacks,
     ):
         """
@@ -115,7 +111,7 @@ class TestUserListCreateView:
         assert errors["attr"] == field
         assert errors["code"] == "invalid"
 
-    def test_user_creation_fails_for_wrong_field_formats(self, client: IsClient, user_create_payload: dict):
+    def test_user_creation_fails_for_wrong_field_formats(self, client: IsClient, user_create_payload: UserCreatePayload):
         """
         Using a regular client implicitly tests authentication as well
         """
@@ -157,7 +153,7 @@ class TestUserListCreateView:
         mock: MagicMock,
         override_throttles,
         client: IsClient,
-        user_create_payload: dict[str, Any],
+        user_create_payload: UserCreatePayload,
     ):
         """
         Patch the account create func to speed up
@@ -218,3 +214,54 @@ class TestUserListCreateView:
         # -- with an authorized user with sufficient permission should pass --
         response3 = manager_client.get(self.path)
         assert response3.status_code == status.HTTP_200_OK
+
+    def test_get_user_list_pagination(self, user_factory, manager_client: IsClient, override_pagination):
+        """
+        Test the pagination structure and data
+        Order is reversed so the first user appears in the last index
+        """
+        from users.serializer import UserListSerializer
+
+        total_users = 3
+        base_url = "http://testserver/users/"
+
+        users: list[User] = user_factory(total_users-1)
+        first_user = users[total_users-2]
+        
+        response1 = manager_client.get(self.path)
+
+        assert response1.status_code == status.HTTP_200_OK
+        assert response1.data is not None and isinstance(response1.data, dict)
+
+        count1 = response1.data["count"]
+        next1 = response1.data["next"]
+        previous1 = response1.data["previous"]
+        results1 = response1.data["results"]
+
+        # The manager client has created a new user in the db
+        assert count1 == total_users
+
+        assert next1 == f"{base_url}?page=2" 
+        assert previous1 == None
+        assert len(results1) == override_pagination
+
+        data1 = results1[0]
+
+        # Just assert it serializes correctly
+        serializer = UserListSerializer(data=data1)
+        s = serializer.is_valid(raise_exception=True)
+        assert data1["email"] == first_user.email
+        assert data1["phone_number"] == str(first_user.account.phone_number)
+
+        # -- Next page --
+        response2 = manager_client.get(next1)
+        assert response2.status_code == status.HTTP_200_OK
+        
+        next2 = response2.data["next"]
+        previous2 = response2.data["previous"]
+        results2 = response2.data["results"]
+        data2 = results2[0]
+
+        assert len(results2) == 1
+        assert next2 == None
+        assert previous2 == base_url

@@ -62,10 +62,9 @@ class UserListCreateView(BaseAPIView):
         active = serializers.BooleanField(allow_null=True)
         phone_number = serializers.CharField()
 
-    filter_class = FilterSerializer
     serializer_class = UserCreateSerializer
     throttle_classes = [AnonSustained]
-    filter_serialzer = FilterSerializer
+    filter_class = FilterSerializer
 
     def get(self, request: Request):
         check_perms(request.user, "users.view_user")
