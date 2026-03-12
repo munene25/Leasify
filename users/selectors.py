@@ -1,14 +1,17 @@
-from .models import User
+from typing import Any
 from django.contrib.auth.models import Group
+from django.http import QueryDict
 from rest_framework.exceptions import NotFound
 import django_filters
+from users.models import User
 
 
-def user_list(filters: dict|None = None):
+def user_list(filters: QueryDict | dict[str, Any] |None = None):
     class UserFilter(django_filters.FilterSet):
         first_name = django_filters.CharFilter(lookup_expr="icontains")
         last_name = django_filters.CharFilter(lookup_expr="icontains")
         email = django_filters.CharFilter(lookup_expr="icontains")
+        active = django_filters.BooleanFilter(field_name="is_active")
         phone_number = django_filters.NumberFilter(field_name="account__phone_number", lookup_expr="icontains")
         class Meta:
             model = User
