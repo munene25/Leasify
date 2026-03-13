@@ -290,3 +290,43 @@ class TestUserListCreateView:
         assert user4.email == data7[0]["email"]
 
 
+class TestUserDetailUpdateDestroyView:
+    path: str = "/users/"
+
+    def test_user_detail_succeeds(self, user_create_payload, user: User, manager_client: IsClient):
+        """
+        test for get, patch and delete routes success in one place
+        """
+        def get_message(response) -> dict[str, str]:
+            """helper function """
+            assert response.status_code == status.HTTP_200_OK
+            return response.data
+        
+        # -- Test get data is accurate --
+        pld = user_create_payload
+        path = self.path + str(user.pk)
+        response1 = manager_client.get(path)
+        data1 = get_message(response1)
+        assert data1["email"] == user.email
+        assert data1["first_name"] == user.first_name
+        assert data1["last_name"] == user.last_name
+        assert data1["bio"] == user.account.bio
+        assert data1["phone_number"] == str(user.account.phone_number)
+        
+        # -- Test patching data succeds --
+        pld["phone_number"] = "+254720202202"
+        response2 = manager_client.patch(path, pld)
+        data2 = get_message(response2)
+        fetched = User.objects.get(pk=user.pk)
+        assert fetched.email == data2["email"]
+        assert data2["phone_number"] == str(fetched.account.phone_number) == pld["phone_number"]
+        assert data2["first_name"] == fetched.first_name == pld["first_name"]
+        assert data2["last_name"] == fetched.last_name == pld["last_name"]
+        
+        reponse3 = manager_client.delete(path)
+        data3 = get_message(reponse3)
+        fetched2 = User.objects.get(pk=user.pk)
+        assert fetched2.is_active == False
+
+    def test_user_detail_view_authentication(self, user_client, caretaker_client):
+        pass

@@ -17,6 +17,7 @@ class UserCreateSerializer(serializers.Serializer):
 
 class UserListSerializer(serializers.Serializer):
     user_id = serializers.IntegerField(source="pk")
+    is_active = serializers.BooleanField()
     full_name = serializers.CharField()
     email = serializers.EmailField()
     verified = serializers.BooleanField()

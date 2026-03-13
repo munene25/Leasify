@@ -87,7 +87,7 @@ class UserDetailUpdateDestroyView(BaseAPIView):
         return Response(status=status.HTTP_200_OK, data=serialzer_class.data)
 
     def patch(self, request, user_id):
-        check_perms(request.user, "users.edit_user")
+        check_perms(request.user, "users.change_user")
         data = self.validate_serializer(data=request.data, partial=True)
         user = user_get_by_id(user_id)
         if user.is_superuser or user.is_staff:
