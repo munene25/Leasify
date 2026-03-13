@@ -15,6 +15,40 @@ def django_db_setup(django_db_setup, django_db_blocker):
     with django_db_blocker.unblock():
         call_command("loaddata", "fixtures/roles.json")
 
+@pytest.fixture
+def override_pagination():
+    from rest_framework.pagination import PageNumberPagination
+
+    test_page_size = 2
+
+    original_page_size = PageNumberPagination.page_size
+    PageNumberPagination.page_size = test_page_size
+
+    yield test_page_size
+
+    PageNumberPagination.page_size = original_page_size
+
+
+@pytest.fixture
+def override_throttles():
+    from rest_framework.throttling import SimpleRateThrottle
+
+    original_rates = SimpleRateThrottle.THROTTLE_RATES
+
+    SimpleRateThrottle.THROTTLE_RATES = {
+        "anon_sustained": "1/min",
+        "user_sustained": "1/min",
+        "login_limit": "1/min",
+        "password_changes": "1/min",
+        "email_verification": "1/min",
+        "email_change": "1/min",
+    }
+
+    yield
+
+    SimpleRateThrottle.THROTTLE_RATES = original_rates
+    # Cache clearing in a seperate fixture
+
 
 @pytest.fixture(autouse=True)
 def enable_db_access(db):

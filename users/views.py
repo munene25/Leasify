@@ -56,11 +56,8 @@ logger = getLogger("users.views")
 class UserListCreateView(BaseAPIView):
     class FilterSerializer(serializers.Serializer):
         id = serializers.IntegerField()
-        email = serializers.CharField()
-        first_name = serializers.CharField()
-        last_name = serializers.CharField()
-        active = serializers.BooleanField(allow_null=True)
-        phone_number = serializers.CharField()
+        search = serializers.CharField()
+        is_active = serializers.BooleanField(allow_null=True)
 
     serializer_class = UserCreateSerializer
     throttle_classes = [AnonSustained]
@@ -70,7 +67,6 @@ class UserListCreateView(BaseAPIView):
         check_perms(request.user, "users.view_user")
         filters = self.validate_filter(data=request.query_params)
         qs = user_list(filters)
-
         return get_paginated_response(s_cls=UserListSerializer, qs=qs, req=request, view=self)
 
     def post(self, request):
@@ -80,17 +76,18 @@ class UserListCreateView(BaseAPIView):
 
 
 class UserDetailUpdateDestroyView(BaseAPIView):
+    """ Admins or Authroized groups can modify the users details"""
     serializer_class = UserUpdateSerializer
     permission_classes = [IsAuthenticated]
 
     def get(self, request, user_id):
-        check_perms(request.user, "user.view_user")
+        check_perms(request.user, "users.view_user")
         user = user_get_by_id(user_id)
         serialzer_class = UserDetailSerializer(instance=user)
         return Response(status=status.HTTP_200_OK, data=serialzer_class.data)
 
     def patch(self, request, user_id):
-        check_perms(request.user, "user.edit_user")
+        check_perms(request.user, "users.edit_user")
         data = self.validate_serializer(data=request.data, partial=True)
         user = user_get_by_id(user_id)
         if user.is_superuser or user.is_staff:
@@ -102,7 +99,7 @@ class UserDetailUpdateDestroyView(BaseAPIView):
         return Response(status=status.HTTP_200_OK)
 
     def delete(self, request, user_id):
-        check_perms(request.user, "user.delete_user")
+        check_perms(request.user, "users.delete_user")
         user = user_get_by_id(user_id)
         if user.is_superuser or user.is_staff:
             logger.warning(f"deactivating staff not allowed", target_id=user_id)

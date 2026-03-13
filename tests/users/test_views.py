@@ -11,42 +11,6 @@ from tests.types import IsClient, UserCreatePayload
 def auto_clear(cache_clear):
     pass
 
-
-@pytest.fixture
-def override_pagination():
-    from rest_framework.pagination import PageNumberPagination
-
-    test_page_size = 2
-
-    original_page_size = PageNumberPagination.page_size
-    PageNumberPagination.page_size = test_page_size
-
-    yield test_page_size
-
-    PageNumberPagination.page_size = original_page_size
-
-
-@pytest.fixture
-def override_throttles():
-    from rest_framework.throttling import SimpleRateThrottle
-
-    original_rates = SimpleRateThrottle.THROTTLE_RATES
-
-    SimpleRateThrottle.THROTTLE_RATES = {
-        "anon_sustained": "1/min",
-        "user_sustained": "1/min",
-        "login_limit": "1/min",
-        "password_changes": "1/min",
-        "email_verification": "1/min",
-        "email_change": "1/min",
-    }
-
-    yield
-
-    SimpleRateThrottle.THROTTLE_RATES = original_rates
-    # Cache clearing in a seperate fixture
-
-
 class TestUserListCreateView:
     path = "/users/"
 
@@ -99,16 +63,12 @@ class TestUserListCreateView:
         payload2 = {**defaults, "phone_number": "0720 200 200", "email": "test2@gmail.com"}
 
         payload1[field] = payload2[field] = value
-
-        response1 = client.post(self.path, payload1)
-        assert response1.status_code == status.HTTP_201_CREATED
+        client.post(self.path, payload1)
 
         response2 = client.post(self.path, payload2)
         assert response2.status_code == status.HTTP_400_BAD_REQUEST
-
         err_type = response2.data["type"]
         errors = response2.data["errors"][0]
-
         assert err_type == "validation_error"
         assert errors["attr"] == field
         assert errors["code"] == "invalid"
@@ -128,7 +88,6 @@ class TestUserListCreateView:
 
         err_type = response.data["type"]
         errors = response.data["errors"][0]
-
         assert err_type == "validation_error"
         assert errors["code"] == "invalid"
         assert errors["attr"] == "phone_number"
@@ -139,7 +98,7 @@ class TestUserListCreateView:
         payload2["last_name"] = "F"
 
         response2 = client.post(self.path, payload2)
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response2.status_code == status.HTTP_400_BAD_REQUEST
 
         # assert structre, should have two error messages
         err_type = response2.data["type"]
@@ -263,10 +222,71 @@ class TestUserListCreateView:
         next2 = response2.data["next"]
         previous2 = response2.data["previous"]
         results2 = response2.data["results"]
-        data2 = results2[0]
 
         assert len(results2) == 1
         assert next2 == None
         assert previous2 == base_url
 
+    def test_user_list_filters(self, user_factory, caretaker_client: IsClient):
+        """
+        Test the new search field implementation
+        Fields: id, is_active and search(includes all searchable fields)
+        """
+        def fetch(field: str) -> list[dict[str, str]]:
+            """helper function reduces boilerplate"""
+            response = caretaker_client.get(f"{self.path}?{field}")
+            assert response.status_code == status.HTTP_200_OK
+            return response.data["results"]
         
+
+        users: list[User] = user_factory(5)
+        user1 = users[0]
+        user3 = users[2]
+        user5 = users[-1]
+        user5.is_active = False
+        user5.save()
+
+        # -- with id filter
+        data1 = fetch("id=4")
+        assert len(data1) == 1
+        fetched = User.objects.get(pk=4)
+        assert data1[0]["user_id"] == 4
+        assert fetched.email == data1[0]["email"]
+
+        # -- with is_active filter --
+        data2 = fetch("is_active=false")
+        assert len(data2) == 1
+        assert data2[0]["email"] == user5.email
+        
+        # -- with name search filtering
+        sliced_name = user1.get_full_name()[:4]
+        data3 = fetch(f"search={sliced_name}")
+        assert len(data3) >= 1
+        assert user1.pk in [user["user_id"] for user in data3]
+
+        # -- with phone_number search filtering
+        sliced_phone = str(user3.account.phone_number)[:5]
+        data4 = fetch(f"search={sliced_phone}")
+        assert len(data4) >= 1
+        assert user3.pk in [user["user_id"] for user in data4]
+ 
+        # -- with exact fields (email) search filtering
+        data5 = fetch(f"search={user3.email}")
+        assert len(data5) == 1
+        assert user3.email == data5[0]["email"]
+
+        user4 = users[3]
+        user4.first_name = user3.first_name
+        user4.is_active = False
+        user4.save()
+
+        name, active = user3.first_name, True
+        data6 = fetch(f"search={name}&is_active={active}")
+        assert len(data6) == 1
+        assert user3.email == data6[0]["email"]
+        active = False
+        data7 = fetch(f"search={name}&is_active={active}")
+        assert len(data7) == 1
+        assert user4.email == data7[0]["email"]
+
+

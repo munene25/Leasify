@@ -1,25 +1,34 @@
 from typing import Any
-from django.contrib.auth.models import Group
 from django.http import QueryDict
+from django.contrib.auth.models import Group
 from rest_framework.exceptions import NotFound
 import django_filters
 from users.models import User
+from django.db import models
 
 
-def user_list(filters: QueryDict | dict[str, Any] |None = None):
+
+def user_list(filters: dict[str, Any] | QueryDict | None = None):
+    """
+    Fetches the user list with filtering
+    """
     class UserFilter(django_filters.FilterSet):
-        first_name = django_filters.CharFilter(lookup_expr="icontains")
-        last_name = django_filters.CharFilter(lookup_expr="icontains")
-        email = django_filters.CharFilter(lookup_expr="icontains")
-        active = django_filters.BooleanFilter(field_name="is_active")
-        phone_number = django_filters.NumberFilter(field_name="account__phone_number", lookup_expr="icontains")
+        search = django_filters.CharFilter(method="search_fields")
+
         class Meta:
             model = User
-            fields = ['id']
+            fields = ("is_active", "id")
+        
+        def search_fields(self, queryset, name, value):
+            qs = queryset.filter(
+                models.Q(first_name__icontains=value) | 
+                models.Q(last_name__icontains=value) |
+                models.Q(email__icontains=value) | 
+                models.Q(account__phone_number__contains=value)  
+            )
+            return qs
 
-            
     users = User.objects.select_related("account").all()
-    filters = filters or {}
     return UserFilter(filters, users).qs
 
 def user_get_locked(user_id: int):
