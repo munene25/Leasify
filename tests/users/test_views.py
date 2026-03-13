@@ -1,4 +1,5 @@
 import pytest
+from typing import Any
 from rest_framework import status
 from users.models import User, Account
 from unittest.mock import patch, MagicMock
@@ -10,6 +11,24 @@ from tests.types import IsClient, UserCreatePayload
 @pytest.fixture(autouse=True)
 def auto_clear(cache_clear):
     pass
+
+
+def parse_error(response, status_code: int, err_type: str = "client_error", err_len: int = 1) -> list[dict[str, str]]:
+    """
+    Helper func parsing errors
+    """
+    assert response.status_code == status_code
+    assert response.data["type"] == err_type
+    errors: list[dict[str, str]] = response.data["errors"]
+    assert len(errors) == err_len
+    return errors
+
+
+def parse_message(response, status_code: int = status.HTTP_200_OK) -> dict[str, Any]:
+    """helper function"""
+    assert response.status_code == status_code
+    return response.data
+
 
 class TestUserListCreateView:
     path = "/users/"
@@ -66,10 +85,7 @@ class TestUserListCreateView:
         client.post(self.path, payload1)
 
         response2 = client.post(self.path, payload2)
-        assert response2.status_code == status.HTTP_400_BAD_REQUEST
-        err_type = response2.data["type"]
-        errors = response2.data["errors"][0]
-        assert err_type == "validation_error"
+        errors = parse_error(response2, status.HTTP_400_BAD_REQUEST, "validation_error")[0]
         assert errors["attr"] == field
         assert errors["code"] == "invalid"
 
@@ -84,11 +100,7 @@ class TestUserListCreateView:
         payload1 = deepcopy(user_create_payload)
         payload1["phone_number"] = "077171"  # type: ignore : Technically can use a str
         response = client.post(self.path, payload1)
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
-
-        err_type = response.data["type"]
-        errors = response.data["errors"][0]
-        assert err_type == "validation_error"
+        errors = parse_error(response, status.HTTP_400_BAD_REQUEST, "validation_error")[0]
         assert errors["code"] == "invalid"
         assert errors["attr"] == "phone_number"
 
@@ -98,14 +110,7 @@ class TestUserListCreateView:
         payload2["last_name"] = "F"
 
         response2 = client.post(self.path, payload2)
-        assert response2.status_code == status.HTTP_400_BAD_REQUEST
-
-        # assert structre, should have two error messages
-        err_type = response2.data["type"]
-        errors = response2.data["errors"]
-        # Two fields were input incorrectly hence 2 errors
-        assert len(errors) == 2
-        assert err_type == "validation_error"
+        errors = parse_error(response2, status.HTTP_400_BAD_REQUEST, "validation_error", err_len=2)
         assert errors[0]["attr"] == "first_name"
         assert errors[1]["attr"] == "last_name"
 
@@ -129,13 +134,8 @@ class TestUserListCreateView:
 
         # -- with second request should throttle --
         response2 = client.post(self.path, user_create_payload)
-        assert response2.status_code == status.HTTP_429_TOO_MANY_REQUESTS
+        errors = parse_error(response2, status.HTTP_429_TOO_MANY_REQUESTS)[0]
         assert mock.call_count == 1
-
-        # test structure of the response
-        err_type = response2.data["type"]
-        errors = response2.data["errors"][0]
-        assert err_type == "client_error"
         assert errors["code"] == "throttled"
 
         # -- With third request should succeed after clearing cache
@@ -157,23 +157,13 @@ class TestUserListCreateView:
         # -- with unauthenticated user should raise Unauthorized --
         response = client.get(self.path)
         # Unauthorized will first be raised
-        assert response.status_code == status.HTTP_401_UNAUTHORIZED
-
-        # test repsonse structure
-        err_type = response.data["type"]
-        errors = response.data["errors"][0]
-        assert err_type == "client_error"
+        errors = parse_error(response, status.HTTP_401_UNAUTHORIZED)[0]
         assert errors["code"] == "not_authenticated"
 
         # -- with an authenticated but unauthorized user should raise 403 --
         response2 = tenant_client.get(self.path)
-        assert response2.status_code == status.HTTP_403_FORBIDDEN
-
-        # test response structure
-        err_type = response2.data["type"]
-        errors = response2.data["errors"][0]
-        assert err_type == "client_error"
-        assert errors["code"] == "permission_denied"
+        errors2 = parse_error(response2, status.HTTP_403_FORBIDDEN)[0]
+        assert errors2["code"] == "permission_denied"
 
         # -- with an authorized user with sufficient permission should pass --
         response3 = manager_client.get(self.path)
@@ -183,25 +173,21 @@ class TestUserListCreateView:
         """
         Test the pagination structure and data
         Order is reversed so the first user appears in the last index
-        I used a serializer to validate the fields
         """
-        from users.serializer import UserListSerializer
 
         total_users = 3
         base_url = "http://testserver/users/"
 
-        users: list[User] = user_factory(total_users - 1)
-        first_user = users[total_users - 2]
+        users: list[User] = user_factory(total_users)
+        first_user = users[-1]
 
         response1 = manager_client.get(self.path)
-
-        assert response1.status_code == status.HTTP_200_OK
-        assert response1.data is not None and isinstance(response1.data, dict)
-
-        count1 = response1.data["count"]
-        next1 = response1.data["next"]
-        previous1 = response1.data["previous"]
-        results1 = response1.data["results"]
+        data = parse_message(response1)
+        
+        count1 = data["count"]
+        next1 = data["next"]
+        previous1 = data["previous"]
+        results1 = data["results"]
 
         # The manager client has created a new user in the db
         assert count1 == total_users
@@ -210,7 +196,7 @@ class TestUserListCreateView:
         assert previous1 == None
         assert len(results1) == override_pagination
 
-        data1 = results1[0]
+        data1: dict = results1[0]
         assert data1["user_id"] == first_user.pk
         assert data1["email"] == first_user.email
         assert data1["phone_number"] == str(first_user.account.phone_number)
@@ -227,17 +213,17 @@ class TestUserListCreateView:
         assert next2 == None
         assert previous2 == base_url
 
-    def test_user_list_filters(self, user_factory, caretaker_client: IsClient):
+    def test_user_list_filtering_via_query_params(self, user_factory, caretaker_client: IsClient):
         """
-        Test the new search field implementation
+        Test the new search field implementation for the query_params
         Fields: id, is_active and search(includes all searchable fields)
         """
+
         def fetch(field: str) -> list[dict[str, str]]:
             """helper function reduces boilerplate"""
             response = caretaker_client.get(f"{self.path}?{field}")
             assert response.status_code == status.HTTP_200_OK
             return response.data["results"]
-        
 
         users: list[User] = user_factory(5)
         user1 = users[0]
@@ -246,40 +232,41 @@ class TestUserListCreateView:
         user5.is_active = False
         user5.save()
 
-        # -- with id filter
-        data1 = fetch("id=4")
-        assert len(data1) == 1
-        fetched = User.objects.get(pk=4)
-        assert data1[0]["user_id"] == 4
-        assert fetched.email == data1[0]["email"]
+        # -- with id filter --
+        # ? ID filter temporarily removed, might reinstate
+        # data1 = fetch("id=4")
+        # assert len(data1) == 1
+        # fetched = User.objects.get(pk=4)
+        # assert data1[0]["user_id"] == 4
+        # assert fetched.email == data1[0]["email"]
 
         # -- with is_active filter --
         data2 = fetch("is_active=false")
         assert len(data2) == 1
         assert data2[0]["email"] == user5.email
-        
-        # -- with name search filtering
+
+        # -- with name search filtering --
         sliced_name = user1.get_full_name()[:4]
         data3 = fetch(f"search={sliced_name}")
         assert len(data3) >= 1
         assert user1.pk in [user["user_id"] for user in data3]
 
-        # -- with phone_number search filtering
+        # -- with phone_number search filtering --
         sliced_phone = str(user3.account.phone_number)[:5]
         data4 = fetch(f"search={sliced_phone}")
         assert len(data4) >= 1
         assert user3.pk in [user["user_id"] for user in data4]
- 
-        # -- with exact fields (email) search filtering
+
+        # -- with exact fields (email) search filtering --
         data5 = fetch(f"search={user3.email}")
         assert len(data5) == 1
         assert user3.email == data5[0]["email"]
 
+        # -- with multiple field searches --
         user4 = users[3]
         user4.first_name = user3.first_name
         user4.is_active = False
         user4.save()
-
         name, active = user3.first_name, True
         data6 = fetch(f"search={name}&is_active={active}")
         assert len(data6) == 1
@@ -289,6 +276,21 @@ class TestUserListCreateView:
         assert len(data7) == 1
         assert user4.email == data7[0]["email"]
 
+    def test_user_list_ommits_qs_filters_correctly(self, caretaker_user, caretaker_client: IsClient, manager_client: IsClient, super_user):
+        """
+        The qs should exclude the fetching user, staff and superusers
+        """
+
+        response = manager_client.get(self.path)
+        data = response.data["results"]
+        ## only caretaker user should appear
+        assert len(data) == 1
+        result = data[0]
+        assert caretaker_user.pk == result["user_id"]
+        response2 = caretaker_client.get(self.path)
+        data = parse_message(response2)
+        assert len(data["results"]) == 0
+
 
 class TestUserDetailUpdateDestroyView:
     path: str = "/users/"
@@ -297,36 +299,73 @@ class TestUserDetailUpdateDestroyView:
         """
         test for get, patch and delete routes success in one place
         """
-        def get_message(response) -> dict[str, str]:
-            """helper function """
-            assert response.status_code == status.HTTP_200_OK
-            return response.data
-        
+
         # -- Test get data is accurate --
         pld = user_create_payload
         path = self.path + str(user.pk)
         response1 = manager_client.get(path)
-        data1 = get_message(response1)
+        data1 = parse_message(response1)
         assert data1["email"] == user.email
         assert data1["first_name"] == user.first_name
         assert data1["last_name"] == user.last_name
         assert data1["bio"] == user.account.bio
         assert data1["phone_number"] == str(user.account.phone_number)
-        
+
         # -- Test patching data succeds --
         pld["phone_number"] = "+254720202202"
         response2 = manager_client.patch(path, pld)
-        data2 = get_message(response2)
+        data2 = parse_message(response2)
         fetched = User.objects.get(pk=user.pk)
         assert fetched.email == data2["email"]
         assert data2["phone_number"] == str(fetched.account.phone_number) == pld["phone_number"]
         assert data2["first_name"] == fetched.first_name == pld["first_name"]
         assert data2["last_name"] == fetched.last_name == pld["last_name"]
-        
+
         reponse3 = manager_client.delete(path)
-        data3 = get_message(reponse3)
+        parse_message(reponse3)
         fetched2 = User.objects.get(pk=user.pk)
         assert fetched2.is_active == False
 
-    def test_user_detail_view_authentication(self, user_client, caretaker_client):
-        pass
+    def test_user_detail_view_authentication(self, user_client: IsClient, caretaker_client: IsClient):
+        """
+        Pemission denied for regular users
+        Patch and delete should raise permission denied for caretakers
+        """
+        status_code = status.HTTP_403_FORBIDDEN
+        path = self.path + "1"
+
+        response1 = user_client.get(path)
+        error1 = parse_error(response1, status_code)[0]
+        assert error1["code"] == "permission_denied"
+
+        response2 = caretaker_client.get(path)
+        data2 = parse_message(response2)
+        assert data2["email"] == User.objects.get(pk=1).email
+
+        response3 = caretaker_client.patch(path, {"first_name": "Felix"})
+        error3 = parse_error(response3, status_code)[0]
+        assert error3["code"] == "permission_denied"
+
+        respnse4 = caretaker_client.delete(path)
+        errors4 = parse_error(respnse4, status_code)[0]
+        assert errors4["code"] == "permission_denied"
+
+    def test_modifying_priviledged_users_fails(self, manager_client: IsClient, super_user):
+        """
+        Priviledged users cant be modified or retrieved
+        """
+        status_code = status.HTTP_404_NOT_FOUND
+        path = self.path + str(super_user.pk)
+
+        response1 = manager_client.get(path)
+        error1 = parse_error(response1, status_code)[0]
+        assert error1["code"] == "not_found"
+        
+        response2 = manager_client.patch(path, {"first_name": "first"})
+        error2 = parse_error(response2, status_code)[0]
+        assert error2["code"] == "not_found"
+        
+        response3 = manager_client.delete(path)
+        error3 = parse_error(response3, status_code)[0]
+        assert error3["code"] == "not_found"
+

@@ -34,6 +34,8 @@ from .selectors import (
     user_get_by_id,
     user_get_by_email,
     user_list_roles,
+    user_get_safe,
+    PRIVILEGED_USERS,
 )
 from .serializer import (
     UserCreateSerializer,
@@ -65,7 +67,10 @@ class UserListCreateView(BaseAPIView):
     def get(self, request: Request):
         check_perms(request.user, "users.view_user")
         filters = self.validate_filter(data=request.query_params)
-        qs = user_list(filters)
+        # Exclude the current user from the list
+        # using the same exclude ANDs the search meaning:
+        # Qs only includes priviledged and current
+        qs = user_list(filters).exclude(pk=request.user.pk)
         return get_paginated_response(s_cls=UserListSerializer, qs=qs, req=request, view=self)
 
     def post(self, request):
@@ -75,25 +80,21 @@ class UserListCreateView(BaseAPIView):
 
 
 class UserDetailUpdateDestroyView(BaseAPIView):
-    """ Admins or Authroized groups can modify users details"""
+    """ Allows Admins or Authroized groups to modify users details"""
 
     serializer_class = UserUpdateSerializer
     permission_classes = [IsAuthenticated]
 
     def get(self, request, user_id):
         check_perms(request.user, "users.view_user")
-        user = user_get_by_id(user_id)
+        user = user_get_safe(user_id)
         serialzer_class = UserDetailSerializer(instance=user)
         return Response(status=status.HTTP_200_OK, data=serialzer_class.data)
 
     def patch(self, request, user_id):
         check_perms(request.user, "users.change_user")
         data = self.validate_serializer(data=request.data, partial=True)
-        user = user_get_by_id(user_id)
-        if user.is_superuser or user.is_staff:
-            logger.warning(f"modifying staff data data not allowed.", target_id=user_id)
-            raise PermissionDenied()
-
+        user = user_get_safe(user_id)
         mod = user_update(user, **data)
         output = UserDetailSerializer(instance=mod)
         logger.info(f"Admin modified user data. [user_id: {user_id}] data")
@@ -102,11 +103,7 @@ class UserDetailUpdateDestroyView(BaseAPIView):
 
     def delete(self, request, user_id):
         check_perms(request.user, "users.delete_user")
-        user = user_get_by_id(user_id)
-        if user.is_superuser or user.is_staff:
-            logger.warning(f"deactivating staff not allowed", target_id=user_id)
-            raise PermissionDenied()
-
+        user = user_get_safe(user_id)
         user_deactivate(user=user)
         logger.info(f"Admin deactivated user.", target_id=user_id)
         return Response(

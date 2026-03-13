@@ -126,6 +126,13 @@ def get_role() -> typing.Callable[[str], Group]:
     """
     return lambda name: Group.objects.get(name=name)
 
+@pytest.fixture
+def super_user(user_factory):
+    u: User = user_factory()[0]
+    u.is_superuser = True
+    u.save(update_fields=["is_superuser"])
+    return u
+
 
 @pytest.fixture
 def manager_user(user_factory, get_role) -> User:
@@ -195,10 +202,9 @@ def caretaker_client(caretaker_user) -> APIClient:
     return client
 
 
+
 @pytest.fixture
-def super_user_client(user) -> APIClient:
+def super_user_client(super_user) -> APIClient:
     client = APIClient()
-    user.is_superuser = True
-    user.save(update_fields=["is_superuser"])
-    client.force_authenticate(user=user)
+    client.force_authenticate(user=super_user)
     return client
