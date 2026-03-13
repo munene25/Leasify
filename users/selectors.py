@@ -17,7 +17,7 @@ def user_list(filters: dict[str, Any] | QueryDict | None = None):
 
         class Meta:
             model = User
-            fields = ("is_active", "id")
+            fields = ("is_active",)
         
         def search_fields(self, queryset, name, value):
             qs = queryset.filter(

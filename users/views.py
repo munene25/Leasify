@@ -55,7 +55,6 @@ logger = getLogger("users.views")
 
 class UserListCreateView(BaseAPIView):
     class FilterSerializer(serializers.Serializer):
-        id = serializers.IntegerField()
         search = serializers.CharField()
         is_active = serializers.BooleanField(allow_null=True)
 
@@ -76,7 +75,8 @@ class UserListCreateView(BaseAPIView):
 
 
 class UserDetailUpdateDestroyView(BaseAPIView):
-    """ Admins or Authroized groups can modify the users details"""
+    """ Admins or Authroized groups can modify users details"""
+
     serializer_class = UserUpdateSerializer
     permission_classes = [IsAuthenticated]
 
@@ -94,9 +94,11 @@ class UserDetailUpdateDestroyView(BaseAPIView):
             logger.warning(f"modifying staff data data not allowed.", target_id=user_id)
             raise PermissionDenied()
 
-        user_update(user, **data)
+        mod = user_update(user, **data)
+        output = UserDetailSerializer(instance=mod)
         logger.info(f"Admin modified user data. [user_id: {user_id}] data")
-        return Response(status=status.HTTP_200_OK)
+
+        return Response(data=output.data, status=status.HTTP_200_OK)
 
     def delete(self, request, user_id):
         check_perms(request.user, "users.delete_user")
@@ -109,7 +111,7 @@ class UserDetailUpdateDestroyView(BaseAPIView):
         logger.info(f"Admin deactivated user.", target_id=user_id)
         return Response(
             status=status.HTTP_200_OK,
-            data={"message": "User deactivated, deletion not available"},
+            data={"message": "User deactivated"},
         )
 
 
