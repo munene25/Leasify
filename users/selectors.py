@@ -14,6 +14,7 @@ class PerRoleExclusion:
     A tiered mapping of how each role affects which users can be viewed by the group/role
     ! It also excludes the current user from the queryset
     """
+    SUPERUSER = Q()
     HIGH = Q(is_superuser=True)
     MODERATE = HIGH | Q(groups__name="manager")
     LOW = MODERATE | Q(groups__name="caretaker")
@@ -21,7 +22,7 @@ class PerRoleExclusion:
     @classmethod
     def for_user(cls, user: User):
         if user.is_superuser:
-            base = Q()
+            base = cls.SUPERUSER
         elif "manager" in user.roles:
             base = cls.HIGH
         elif "caretaker" in user.roles:
