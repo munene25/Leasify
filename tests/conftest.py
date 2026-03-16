@@ -1,4 +1,3 @@
-import random
 import pytest
 import typing
 from faker import Faker

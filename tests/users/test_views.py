@@ -33,7 +33,7 @@ def parse_message(response, status_code: int = status.HTTP_200_OK) -> dict[str, 
 class TestUserListCreateView:
     path = "/users/"
 
-    def test_post_creates_a_user(
+    def test_user_creation_successful(
         self,
         client: IsClient,
         mailoutbox: list,
@@ -73,7 +73,7 @@ class TestUserListCreateView:
             ("email", "felix@gmail.com"),
         ],
     )
-    def test_creating_user_fails_for_db_constraints(self, field: str, value: str, client: IsClient):
+    def test_user_creation_fails_for_db_constraints(self, field: str, value: str, client: IsClient):
         """
         Similar email and phone number should raise 400
         """
@@ -145,7 +145,7 @@ class TestUserListCreateView:
         assert response3.status_code == status.HTTP_201_CREATED
         assert mock.call_count == 2
 
-    def test_get_user_list_authentication_authorization(
+    def test_user_list_authentication_and_authorization(
         self, client: IsClient, manager_client: IsClient, tenant_client: IsClient
     ):
         """
@@ -169,7 +169,7 @@ class TestUserListCreateView:
         response3 = manager_client.get(self.path)
         assert response3.status_code == status.HTTP_200_OK
 
-    def test_get_user_list_pagination(self, user_factory, manager_client: IsClient, override_pagination):
+    def test_user_list_pagination(self, user_factory, manager_client: IsClient, override_pagination):
         """
         Test the pagination structure and data
         Order is reversed so the first user appears in the last index
@@ -183,7 +183,7 @@ class TestUserListCreateView:
 
         response1 = manager_client.get(self.path)
         data = parse_message(response1)
-        
+
         count1 = data["count"]
         next1 = data["next"]
         previous1 = data["previous"]
@@ -276,20 +276,39 @@ class TestUserListCreateView:
         assert len(data7) == 1
         assert user4.email == data7[0]["email"]
 
-    def test_user_list_ommits_qs_filters_correctly(self, caretaker_user, caretaker_client: IsClient, manager_client: IsClient, super_user):
+    def test_user_list_ommits_results_from_qs_correctly(
+        self,
+        user_factory,
+        caretaker_user: User,
+        caretaker_client: IsClient,
+        manager_user: User,
+        manager_client: IsClient,
+        super_user_client: IsClient,
+    ):
         """
-        The qs should exclude the fetching user, staff and superusers
+        The list qs should ommit certain types of users based on the fetching user priviledges
         """
+        from django.contrib.auth.models import Group
 
-        response = manager_client.get(self.path)
-        data = response.data["results"]
-        ## only caretaker user should appear
-        assert len(data) == 1
-        result = data[0]
-        assert caretaker_user.pk == result["user_id"]
-        response2 = caretaker_client.get(self.path)
-        data = parse_message(response2)
-        assert len(data["results"]) == 0
+        new_user: User = user_factory()[0]
+        new_user.groups.add(Group.objects.get(name="manager"))
+
+        # Super user should view 3 users excluding themselves
+        respnse1 = super_user_client.get(self.path)
+        data1 = parse_message(respnse1)["results"]
+        assert len(data1) == 3
+        assert {new_user.pk, caretaker_user.pk, manager_user.pk} == {f["user_id"] for f in data1}
+
+        # Manager user should be able to view other managers, caretakers, ommits super_users
+        # Only caretaker and new_user should appear
+        response2 = manager_client.get(self.path)
+        data2 = parse_message(response2)["results"]
+        assert len(data2) == 2
+        assert {new_user.pk, caretaker_user.pk} == {f["user_id"] for f in data2}
+
+        response3 = caretaker_client.get(self.path)
+        data3 = parse_message(response3)
+        assert len(data3["results"]) == 0
 
 
 class TestUserDetailUpdateDestroyView:
@@ -352,7 +371,7 @@ class TestUserDetailUpdateDestroyView:
 
     def test_modifying_priviledged_users_fails(self, manager_client: IsClient, super_user):
         """
-        Priviledged users cant be modified or retrieved
+        Priviledged users can't be modified or retrieved
         """
         status_code = status.HTTP_404_NOT_FOUND
         path = self.path + str(super_user.pk)
@@ -360,12 +379,11 @@ class TestUserDetailUpdateDestroyView:
         response1 = manager_client.get(path)
         error1 = parse_error(response1, status_code)[0]
         assert error1["code"] == "not_found"
-        
+
         response2 = manager_client.patch(path, {"first_name": "first"})
         error2 = parse_error(response2, status_code)[0]
         assert error2["code"] == "not_found"
-        
+
         response3 = manager_client.delete(path)
         error3 = parse_error(response3, status_code)[0]
         assert error3["code"] == "not_found"
-
