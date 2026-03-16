@@ -1,20 +1,46 @@
 from typing import Any
+import django_filters
 from django.http import QueryDict
+from django.db.models import Q
 from django.contrib.auth.models import Group
 from rest_framework.exceptions import NotFound
-import django_filters
 from users.models import User
-from django.db import models
+from django.db.models.query import QuerySet
+from common.helpers import not_found
 
-PRIVILEGED_USERS = (
-    models.Q(is_superuser=True) |
-    models.Q(is_staff=True) |
-    models.Q(groups__name="manager")
-)
 
-def user_list(filters: dict[str, Any] | QueryDict | None = None):
+class PerRoleExclusion:
     """
-    Fetches the user list with filtering
+    A tiered mapping of how each role affects which users can be viewed by the group/role
+    ! It also excludes the current user from the queryset
+    """
+    HIGH = Q(is_superuser=True)
+    MODERATE = HIGH | Q(groups__name="manager")
+    LOW = MODERATE | Q(groups__name="caretaker")
+
+    @classmethod
+    def for_user(cls, user: User):
+        if user.is_superuser:
+            base = Q()
+        elif "manager" in user.roles:
+            base = cls.HIGH
+        elif "caretaker" in user.roles:
+            base = cls.MODERATE
+        else:
+            base = cls.LOW
+
+        return base | Q(pk=user.pk)
+
+
+BASE_QS = User.objects.select_related("account")
+
+# Initialize the not_found wrapper for most common exception
+raise_not_found = not_found("user_id", "User with given id not found")
+
+def user_list_for(*, user: User, filters: dict[str, Any] | QueryDict | None = None) -> QuerySet:
+    """
+    Fetches the visible user list for the requesting user
+    Allows filtering for fiels search and is_active
     """
 
     class UserFilter(django_filters.FilterSet):
@@ -26,48 +52,57 @@ def user_list(filters: dict[str, Any] | QueryDict | None = None):
 
         def search_fields(self, queryset, name, value):
             qs = queryset.filter(
-                models.Q(first_name__icontains=value)
-                | models.Q(last_name__icontains=value)
-                | models.Q(email__icontains=value)
-                | models.Q(account__phone_number__contains=value)
+                Q(first_name__icontains=value)
+                | Q(last_name__icontains=value)
+                | Q(email__icontains=value)
+                | Q(account__phone_number__contains=value)
             )
             return qs
 
-    users = User.objects.select_related("account").exclude(PRIVILEGED_USERS)
+    exclusions = PerRoleExclusion.for_user(user)
+    users = BASE_QS.exclude(exclusions)
     return UserFilter(filters, users).qs
 
+def user_list():
+    return BASE_QS.all()
 
-def user_get_locked(user_id: int) -> User:
-    try:
-        return User.objects.select_related("account").select_for_update().get(pk=user_id)
-    except User.DoesNotExist:
-        raise NotFound({"user_email": "user not found"})
+@raise_not_found
+def user_get(user_id: int) -> User:
+    """
+    The primary way to fetch data for non admin routes and within domain in general
+    """
+    return BASE_QS.get(pk=user_id)
 
 
-def user_get_by_id(user_id: int):
-    try:
-        return User.objects.select_related("account").get(pk=user_id)
-    except User.DoesNotExist:
+def user_get_for(*, user: User, user_id: int) -> User:
+    """
+    This is primarily for admin routes to exclude certain users from the queryset
+    User will *only* be able to view users visible to them.
+    """
+    exclusions = PerRoleExclusion.for_user(user)
+    matched_user = BASE_QS.filter(pk=user_id).exclude(exclusions).first()
+    if matched_user is None:
         raise NotFound({"user_id": "user not found"})
+    return matched_user
+
+
+@not_found("email", "User with given email not found")
+def user_get_by_email(user_email) -> User:
+    return User.objects.get(email=user_email)
 
 
 
-def user_get_safe(user_id: int) -> User:
+@raise_not_found
+def user_get_locked(user_id: int) -> User:
     """
-    Fetch based on user_id
-    Omits priviledged users defined in PRIVILEDGED_USERS
+    Necessary for locking row access while updating
     """
-    user = User.objects.filter(pk=user_id).exclude(PRIVILEGED_USERS).first()
-    if user is not None: return user
-    else: raise NotFound({"user_id": "user not found"})
+    return BASE_QS.select_for_update().get(pk=user_id)
 
 
-def user_get_by_email(user_email):
-    try:
-        return User.objects.get(email=user_email)
-    except User.DoesNotExist:
-        raise NotFound({"user_email": "user not found"})
 
-
-def user_list_roles():
+def groups_list():
+    """
+    Just decided to have this here because it is highly coupled with the user model
+    """
     return Group.objects.all()

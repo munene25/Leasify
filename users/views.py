@@ -30,12 +30,11 @@ from .services import (
     account_unsubscribe,
 )
 from .selectors import (
-    user_list,
-    user_get_by_id,
+    user_list_for,
+    user_get_for,
+    user_get,
     user_get_by_email,
-    user_list_roles,
-    user_get_safe,
-    PRIVILEGED_USERS,
+    groups_list,
 )
 from .serializer import (
     UserCreateSerializer,
@@ -56,6 +55,12 @@ logger = getLogger("users.views")
 
 
 class UserListCreateView(BaseAPIView):
+    """
+    Provides a way to view the list (depending on the level of access) of registered users
+    Also a create user via post
+
+    The get method is a priviledged route hence permissions are checked and _for selectors are used 
+    """
     class FilterSerializer(serializers.Serializer):
         search = serializers.CharField()
         is_active = serializers.BooleanField(allow_null=True)
@@ -67,10 +72,7 @@ class UserListCreateView(BaseAPIView):
     def get(self, request: Request):
         check_perms(request.user, "users.view_user")
         filters = self.validate_filter(data=request.query_params)
-        # Exclude the current user from the list
-        # using the same exclude ANDs the search meaning:
-        # Qs only includes priviledged and current
-        qs = user_list(filters).exclude(pk=request.user.pk)
+        qs = user_list_for(user=request.user, filters=filters)
         return get_paginated_response(s_cls=UserListSerializer, qs=qs, req=request, view=self)
 
     def post(self, request):
@@ -80,21 +82,24 @@ class UserListCreateView(BaseAPIView):
 
 
 class UserDetailUpdateDestroyView(BaseAPIView):
-    """ Allows Admins or Authroized groups to modify users details"""
-
+    """
+    Allows Admins or Authroized groups to modify users details
+    All methods require priviledged access
+    Selectors with _for should be used
+    """
     serializer_class = UserUpdateSerializer
     permission_classes = [IsAuthenticated]
 
     def get(self, request, user_id):
         check_perms(request.user, "users.view_user")
-        user = user_get_safe(user_id)
+        user = user_get_for(user= request.user ,user_id=user_id)
         serialzer_class = UserDetailSerializer(instance=user)
         return Response(status=status.HTTP_200_OK, data=serialzer_class.data)
 
     def patch(self, request, user_id):
         check_perms(request.user, "users.change_user")
         data = self.validate_serializer(data=request.data, partial=True)
-        user = user_get_safe(user_id)
+        user = user_get_for(user= request.user ,user_id=user_id)
         mod = user_update(user, **data)
         output = UserDetailSerializer(instance=mod)
         logger.info(f"Admin modified user data. [user_id: {user_id}] data")
@@ -103,7 +108,7 @@ class UserDetailUpdateDestroyView(BaseAPIView):
 
     def delete(self, request, user_id):
         check_perms(request.user, "users.delete_user")
-        user = user_get_safe(user_id)
+        user = user_get_for(user=request.user, user_id=user_id)
         user_deactivate(user=user)
         logger.info(f"Admin deactivated user.", target_id=user_id)
         return Response(
@@ -113,11 +118,14 @@ class UserDetailUpdateDestroyView(BaseAPIView):
 
 
 class MeView(BaseAPIView, CookieMixin):
+    """
+    This is the self management view for users to modify their own data
+    """
     serializer_class = UserUpdateSerializer
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        user = user_get_by_id(request.user.pk)
+        user = user_get(request.user.pk)
         serializer = UserDetailSerializer(instance=user)
         return Response(status=status.HTTP_200_OK, data=serializer.data)
 
@@ -293,18 +301,18 @@ class UserRoleDetailView(BaseAPIView):
     serializer_class = UserRoleCreateSerializer
 
     def get(self, request, user_id):
-        user = user_get_by_id(user_id)
+        user = user_get_for(user=request.user, user_id=user_id)
         serializer = UserRoleDetailSerializer(instance=user)
         return Response(status=status.HTTP_200_OK, data=serializer.data)
 
     def post(self, request, user_id):
-        user = user_get_by_id(user_id)
+        user = user_get_for(user=request.user, user_id=user_id)
         data = self.validate_serializer(data=request.data)
         user_add_roles(user=user, roles=data["roles"])
         return Response(status=status.HTTP_200_OK)
 
     def delete(self, request, user_id):
-        user = user_get_by_id(user_id)
+        user = user_get_for(user=request.user, user_id=user_id)
         data = self.validate_serializer(data=request.data)
         user_remove_roles(user=user, roles=data["roles"])
         return Response(status=status.HTTP_200_OK)
@@ -314,6 +322,6 @@ class UserRoleListView(BaseAPIView):
     permission_classes = [IsAdminUser]
 
     def get(self, request):
-        groups = user_list_roles()
+        groups = groups_list()
         serializer = UserRoleListSerializer(many=True, instance=groups)
         return Response(status=status.HTTP_200_OK, data=serializer.data)

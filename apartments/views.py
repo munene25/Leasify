@@ -2,9 +2,9 @@ from rest_framework.response import Response
 from common.views import BaseAPIView
 from rest_framework import status
 from semesters.selectors import semester_current
-from . import selectors
-from .services import ApartmentService
-from .serializer import (
+from apartments import selectors
+from apartments.services import ApartmentService
+from apartments.serializer import (
     ApartmentCreateSerializer,
     ApartmentDetailSerializer,
     ApartmentListSerializer,

@@ -2,7 +2,7 @@ from rest_framework import serializers
 
 from semesters.serializer import SemesterListSerializer
 from phonenumber_field.serializerfields import PhoneNumberField
-from users.selectors import user_list
+from users.models import User
 from apartments.selectors import apartment_list
 from semesters.selectors import semester_list
 
@@ -16,7 +16,7 @@ class TenancyListSerializer(serializers.Serializer):
     payment_status = serializers.CharField()
 
 class TenancyCreateSerializer(serializers.Serializer):
-    user_id = serializers.PrimaryKeyRelatedField(queryset=user_list())
+    user_id = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
     semester_id = serializers.PrimaryKeyRelatedField(queryset=semester_list())
     apartment_id = serializers.PrimaryKeyRelatedField(queryset=apartment_list())
 
