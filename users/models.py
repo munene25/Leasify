@@ -61,7 +61,7 @@ class User(BaseModel, AbstractUser):
     def clean(self):
         """Properly attatch password requirement messages to the error message"""
         super().clean()
-        password = getattr(self, "_raw_password", None)
+        password = getattr(self, "_password", None)
         if password is not None:
             try:
                 validate_password(password, self)

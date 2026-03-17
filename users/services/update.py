@@ -85,15 +85,14 @@ def user_change_password(*, user: User, new_password: str, current_password: str
     :param new_password: The password to be set if operation is successful
     :type new_password: str
     :param current_password: The current raw password of the user. Can be none in password recovery flows
-    :type current_password: str
+    :type current_password: str | None
 
     :return: Modified User object
     :rtype: User 
     """
-    # ! Password changes automatically invalidate issued tokens
+    # ! Password changes automatically invalidate issued cookies
     if current_password:
         user.check_password(current_password)
-    setattr(user, "_raw_password", new_password)
     user.set_password(new_password)
     user.full_clean()
     user.save()

@@ -6,7 +6,7 @@ from django.contrib.auth import authenticate
 
 logger = getLogger("users.services.login")
 
-def user_login(*, email: str, password: str) -> AbstractUser:
+def user_authenticate(*, email: str, password: str) -> AbstractUser:
     """
     Authenticates the user and updates their last login
     Incorrect credentials or inactive users raise Authentication Error
@@ -23,10 +23,9 @@ def user_login(*, email: str, password: str) -> AbstractUser:
     user = authenticate(email=normalized_email, password=password)
     if user is None:
         err = "No credentials match the email and password you provided"
-        logger.warning(f"Invalid password or email for [user_emai: {email}]")
+        logger.warning(f"Failed login attempt for [user_emai: {email}]")
         raise AuthenticationFailed({"email": [err], "password": [err]})
 
-    user.last_login = timezone.now()
-    user.save(update_fields=["last_login"])
+    # user_login from django.contrib.auth.user_login will update last_login
     logger.info(f"user [user_id: {user.pk} authenticated")
     return user

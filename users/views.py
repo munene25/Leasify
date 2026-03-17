@@ -3,24 +3,22 @@ from common.views import BaseAPIView
 from rest_framework.response import Response
 from rest_framework.request import Request
 from rest_framework import serializers
-from rest_framework.exceptions import NotFound, PermissionDenied
+from rest_framework.exceptions import NotFound
 from rest_framework.permissions import AllowAny, IsAuthenticated, IsAdminUser
 from rest_framework import status
-from rest_framework_simplejwt.tokens import RefreshToken
-from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from common.permissions import check_perms
+from django.contrib.auth import login, logout, update_session_auth_hash
 from common.pagination import get_paginated_response
 from common.throttling import (
     AnonSustained,
     EmailScopedThrottle,
 )
-from .mixins import CookieMixin
-from .tokens import token_validate, unsubscribe_token_validate
-from .tasks import send_token_email
-from .services import (
+from users.tokens import token_validate, unsubscribe_token_validate
+from users.tasks import send_token_email
+from users.services import (
     user_account_create,
     user_add_roles,
-    user_login,
+    user_authenticate,
     user_update,
     user_email_update,
     user_email_verify,
@@ -29,14 +27,14 @@ from .services import (
     user_remove_roles,
     account_unsubscribe,
 )
-from .selectors import (
+from users.selectors import (
     user_list_for,
     user_get_for,
     user_get,
     user_get_by_email,
     groups_list,
 )
-from .serializer import (
+from users.serializer import (
     UserCreateSerializer,
     UserListSerializer,
     UserUpdateSerializer,
@@ -76,8 +74,8 @@ class UserListCreateView(BaseAPIView):
         return get_paginated_response(s_cls=UserListSerializer, qs=qs, req=request, view=self)
 
     def post(self, request):
-        data = self.validate_serializer(data=request.data)
-        user_account_create(**data)
+        incoming = self.validate_serializer(data=request.data)
+        user_account_create(**incoming)
         return Response(status=status.HTTP_201_CREATED)
 
 
@@ -98,13 +96,13 @@ class UserDetailUpdateDestroyView(BaseAPIView):
 
     def patch(self, request, user_id):
         check_perms(request.user, "users.change_user")
-        data = self.validate_serializer(data=request.data, partial=True)
+        incoming = self.validate_serializer(data=request.data, partial=True)
         user = user_get_for(user= request.user ,user_id=user_id)
-        mod = user_update(user, **data)
-        output = UserDetailSerializer(instance=mod)
+        mod = user_update(user, **incoming)
+        outgoing = UserDetailSerializer(instance=mod)
         logger.info(f"Admin modified user data. [user_id: {user_id}] data")
 
-        return Response(data=output.data, status=status.HTTP_200_OK)
+        return Response(data=outgoing.data, status=status.HTTP_200_OK)
 
     def delete(self, request, user_id):
         check_perms(request.user, "users.delete_user")
@@ -117,7 +115,7 @@ class UserDetailUpdateDestroyView(BaseAPIView):
         )
 
 
-class MeView(BaseAPIView, CookieMixin):
+class MeView(BaseAPIView):
     """
     This is the self management view for users to modify their own data
     """
@@ -130,16 +128,54 @@ class MeView(BaseAPIView, CookieMixin):
         return Response(status=status.HTTP_200_OK, data=serializer.data)
 
     def patch(self, request):
-        data = self.validate_serializer(data=request.data, partial=True)
-        user_update(user=request.user, **data)
+        incoming = self.validate_serializer(data=request.data, partial=True)
+        user_update(user=request.user, **incoming)
         return Response(status=status.HTTP_200_OK)
 
     def delete(self, request):
         user_deactivate(user=request.user)
-        res = Response(status=status.HTTP_204_NO_CONTENT)
-        logger.info(f"User deleted self.")
-        response = self.del_cookies(cookies=["access", "refresh"], response=res)
-        return response
+        
+        logger.info(f"User deactivated self.")
+        # Remove and flush the session
+        logout(request.user)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class LoginView(BaseAPIView):
+    """Initializes the session on user authentication"""
+    authentication_classes = []
+    permission_classes = [AllowAny]
+    serializer_class = LoginSerializer
+    throttle_classes = [EmailScopedThrottle]
+    throttle_scope = "login_limit"
+
+    def post(self, request):
+        incoming = self.validate_serializer(data=request.data)
+        user = user_authenticate(**incoming)
+        # initialize the session
+        login(request, user=user)
+        # ? Could add the session_key on the session itself for easy management
+        outgoing = UserDetailSerializer(instance=user)
+        return Response(data=outgoing.data, status=status.HTTP_200_OK)
+
+class LogoutView(BaseAPIView):
+    """Delete current user session from the cache"""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        # First store the id to log later
+        user_id = request.user.pk
+        logout(request)
+        logger.info(f"User [user_id: {user_id} logged out]")
+        return Response(data={"message": "You have been logged out"}, status=status.HTTP_200_OK)
+
+class RefreshSession(BaseAPIView):
+    """frontend should on page mount or on interval hit 'refresh' to extend the session lifespan currently set to 2 weeks"""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+       request.session.set_expiry(None)
+       return Response({"message": "Session refreshed"})
 
 
 class EmailUpdateView(BaseAPIView):
@@ -149,72 +185,22 @@ class EmailUpdateView(BaseAPIView):
     throttle_scope = "email_change"
 
     def post(self, request, view):
-        data = self.validate_serializer(data=request.data, partial=False)
-        user_email_update(user=request.user, **data)
+        incoming = self.validate_serializer(data=request.data, partial=False)
+        user_email_update(user=request.user, **incoming)
         return Response(status=status.HTTP_200_OK)
 
 
-class LoginView(BaseAPIView, CookieMixin):
-    authentication_classes = []
-    permission_classes = [AllowAny]
-    serializer_class = LoginSerializer
-    throttle_classes = [EmailScopedThrottle]
-    throttle_scope = "login_limit"
-
-    def post(self, request):
-        data = self.validate_serializer(data=request.data)
-        user = user_login(**data)
-        refresh = RefreshToken.for_user(user)
-        access = refresh.access_token
-        tokens = {"access": access, "refresh": refresh}
-
-        res = Response(status=status.HTTP_200_OK)
-        response = self.set_cookies(response=res, **tokens)
-        return response
-
-
-class LogoutView(BaseAPIView, CookieMixin):
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request):
-        res = Response(status=status.HTTP_200_OK)
-        response = self.del_cookies(cookies=["access", "refresh"], response=res)
-        logger.info(f"Logout successful")
-        return response
-
-
-class RefreshTokenView(BaseAPIView, CookieMixin):
-    authentication_classes = []
-    permission_classes = [AllowAny]
-
-    def post(self, request):
-        refresh_token = request.COOKIES.get("refresh")
-        if not refresh_token:
-            raise InvalidToken()
-        try:
-            refresh = RefreshToken(refresh_token)
-            refresh.set_jti()
-            refresh.set_iat()
-            refresh.set_exp()
-            tokens = {"refresh": refresh, "access": refresh.access_token}
-            res = Response(status=status.HTTP_200_OK)
-            response = self.set_cookies(response=res, **tokens)
-            return response
-        except TokenError:
-            raise InvalidToken()
-
-
-class PasswordChangeView(BaseAPIView, CookieMixin):
+class PasswordChangeView(BaseAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = PasswordChangeSerializer
     throttle_classes = [EmailScopedThrottle]
     throttle_scope = "password_changes"
 
     def post(self, request):
-        data = self.validate_serializer(data=request.data)
-        user_change_password(user=request.user, **data)
-
-        return self.del_cookies(response=Response(status=status.HTTP_200_OK), cookies=["access", "refresh"])
+        incoming = self.validate_serializer(data=request.data)
+        user_change_password(user=request.user, **incoming)
+        update_session_auth_hash(request, request.user)
+        return Response(status=status.HTTP_200_OK)
 
 
 class RequestEmailVerificationView(BaseAPIView):
@@ -257,9 +243,9 @@ class RequestPasswordResetView(BaseAPIView):
     throttle_scope = "email_verification"
 
     def post(self, request):
-        data = self.validate_serializer(data=request.data)
+        incoming = self.validate_serializer(data=request.data)
         try:
-            user = user_get_by_email(data["email"])
+            user = user_get_by_email(incoming["email"])
         except NotFound:
             pass
         else:
@@ -280,8 +266,8 @@ class ConfirmPasswordResetView(BaseAPIView):
 
     def post(self, request, uuid, token):
         user = token_validate(uuid=uuid, token=token)
-        data = self.validate_serializer(data=request.data)
-        user_change_password(user=user, **data)
+        incoming = self.validate_serializer(data=request.data)
+        user_change_password(user=user, **incoming)
         return Response(status=status.HTTP_200_OK)
 
 
@@ -307,14 +293,14 @@ class UserRoleDetailView(BaseAPIView):
 
     def post(self, request, user_id):
         user = user_get_for(user=request.user, user_id=user_id)
-        data = self.validate_serializer(data=request.data)
-        user_add_roles(user=user, roles=data["roles"])
+        incoming = self.validate_serializer(data=request.data)
+        user_add_roles(user=user, roles=incoming["roles"])
         return Response(status=status.HTTP_200_OK)
 
     def delete(self, request, user_id):
         user = user_get_for(user=request.user, user_id=user_id)
-        data = self.validate_serializer(data=request.data)
-        user_remove_roles(user=user, roles=data["roles"])
+        incoming = self.validate_serializer(data=request.data)
+        user_remove_roles(user=user, roles=incoming["roles"])
         return Response(status=status.HTTP_200_OK)
 
 

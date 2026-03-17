@@ -3,12 +3,10 @@
 # Exit on error
 set -e
 
-# List your Django apps here
 APPS=("apartments" "payments" "semesters" "tenancy" "users")
 
-echo "🧹 Cleaning pycache and migrations for project apps..."
+echo "Cleaning pycache and migrations for project apps..."
 
-# Remove all __pycache__ folders across the project
 find . -type d -name "__pycache__" -exec rm -rf {} +
 
 # Loop through each app and clean migrations
@@ -30,15 +28,14 @@ if [ -f "db.sqlite3" ]; then
 fi
 
 # Run Django migrations again
-# Note: Ensure your virtual environment is activated before running this!
-echo "🏗️ Making migrations..."
+echo "Making migrations..."
 python3 manage.py makemigrations
 
-echo "🚀 Applying migrations..."
+echo "Applying migrations..."
 python3 manage.py migrate
 
-echo "🌱 Seeding database from seed.py..."
+echo "Seeding database from seed.py..."
 # Assumes you have django-extensions installed for runscript
 python3 manage.py runscript seed
 
-echo "✅ Project reset complete!"
+echo "Project reset complete!"

@@ -16,7 +16,6 @@ def user_account_create(*, password: str, email: str, phone_number: PhoneNumber,
         last_name=last_name,
         verified=False,
     )
-    setattr(user, "_raw_password", password)
     user.set_password(password)
     user.full_clean()
     user.save()

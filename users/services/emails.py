@@ -28,7 +28,7 @@ def user_email_verify(user: User) -> User:
 @transaction.atomic
 def user_email_update(user: User, email: str, password: str) -> User:
     """
-    Email updater that limits email changes to once per 2 weeks.
+    Email updater that limits email changes based on EMAIL_COOLDOWN in model.
 
     :param user: User obj
     :type user: User
