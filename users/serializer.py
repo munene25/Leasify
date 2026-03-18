@@ -36,15 +36,26 @@ class UserUpdateSerializer(serializers.Serializer):
 
 class UserDetailSerializer(serializers.Serializer):
     email = serializers.EmailField()
-    backup_email = serializers.EmailField(source="account.backup_email", allow_null=True)
     first_name = serializers.CharField()
     last_name = serializers.CharField()
-    email_verified = serializers.BooleanField(source="verified")
     joined_at = serializers.DateTimeField(source="created_at")
-    phone_number = PhoneNumberField(source="account.phone_number")
-    bio = serializers.CharField(source="account.bio")
+    email_verified = serializers.BooleanField(source="verified")
     next_email_change = serializers.DateTimeField(allow_null=True)
+    phone_number = PhoneNumberField(source="account.phone_number")
+    backup_email = serializers.EmailField(source="account.backup_email", allow_null=True)
+    bio = serializers.CharField(source="account.bio")
     roles = serializers.ListField()
+
+class AdminUserUpdateSerializer(serializers.Serializer):
+    """Fields an admin can modify for the user"""
+    first_name = serializers.CharField()
+    last_name = serializers.CharField()
+    # Account fields
+    phone_number = PhoneNumberField()
+
+class AdminUserDetailSerializer(UserDetailSerializer):
+    """Admin serializer for user details. Includes a crucial user_id"""
+    user_id = serializers.IntegerField(source="pk")
 
 
 class LoginSerializer(serializers.Serializer):
