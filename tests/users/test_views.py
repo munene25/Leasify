@@ -151,14 +151,17 @@ class TestUserListCreateView:
         """
         No authentication class on the view
         Authentication is handled after the view instantiates
-        Permission denied: Unauthorized users |  Unauthorized: unauthenticated users
+        Permission denied 403: authenticated but unauthorized users
+
+        Apparetntly once user is already authenticated, it does not matter what else is done, the response will be a 403
         """
 
         # -- with unauthenticated user should raise Unauthorized --
         response = client.get(self.path)
-        # Unauthorized will first be raised
-        errors = parse_error(response, status.HTTP_401_UNAUTHORIZED)[0]
+        # Unauthorized should be raised for unauthenticated
+        errors = parse_error(response, status.HTTP_403_FORBIDDEN)[0]
         assert errors["code"] == "not_authenticated"
+        assert errors["detail"] == "Authentication credentials were not provided."
 
         # -- with an authenticated but unauthorized user should raise 403 --
         response2 = tenant_client.get(self.path)

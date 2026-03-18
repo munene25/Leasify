@@ -66,7 +66,12 @@ class UserListCreateView(BaseAPIView):
     serializer_class = UserCreateSerializer
     throttle_classes = [AnonSustained]
     filter_class = FilterSerializer
-
+    
+    def get_permissions(self):
+        if self.request.method == "GET":
+            return [IsAuthenticated()]
+        else: return []
+        
     def get(self, request: Request):
         check_perms(request.user, "users.view_user")
         filters = self.validate_filter(data=request.query_params)
@@ -143,7 +148,7 @@ class MeView(BaseAPIView):
 
 class LoginView(BaseAPIView):
     """Initializes the session on user authentication"""
-    authentication_classes = []
+
     permission_classes = [AllowAny]
     serializer_class = LoginSerializer
     throttle_classes = [EmailScopedThrottle]
@@ -160,6 +165,7 @@ class LoginView(BaseAPIView):
 
 class LogoutView(BaseAPIView):
     """Delete current user session from the cache"""
+
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
@@ -171,6 +177,7 @@ class LogoutView(BaseAPIView):
 
 class RefreshSession(BaseAPIView):
     """frontend should on page mount or on interval hit 'refresh' to extend the session lifespan currently set to 2 weeks"""
+    
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
@@ -225,7 +232,7 @@ class RequestEmailVerificationView(BaseAPIView):
 
 
 class ConfirmEmailVerificationView(BaseAPIView):
-    authentication_classes = []
+
     permission_classes = [AllowAny]
 
     def post(self, request, uuid, token):
@@ -236,7 +243,7 @@ class ConfirmEmailVerificationView(BaseAPIView):
 
 
 class RequestPasswordResetView(BaseAPIView):
-    authentication_classes = []
+
     permission_classes = [AllowAny]
     serializer_class = RequestPasswordResetSerializer
     throttle_classes = [EmailScopedThrottle]
@@ -260,7 +267,7 @@ class RequestPasswordResetView(BaseAPIView):
 
 
 class ConfirmPasswordResetView(BaseAPIView):
-    authentication_classes = []
+
     permission_classes = [AllowAny]
     serializer_class = ConfirmPasswordResetSerializer
 
@@ -272,7 +279,6 @@ class ConfirmPasswordResetView(BaseAPIView):
 
 
 class UserUnsubscribeView(BaseAPIView):
-    authentication_classes = []
     permission_classes = [AllowAny]
 
     def get(self, request, uuid):

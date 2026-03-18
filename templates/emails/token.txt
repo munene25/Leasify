@@ -6,12 +6,12 @@ Greetings {{ recipient_name }},
 We received a request to complete a {{ action_cta }} action on your account.
 Use the link below to continue.
 
-{{ url }}
+{{ token_url }}
 
 
 If you did not make this request, you can safely ignore this email.
 
 If the link doesn’t work, copy and paste it into your browser:
-{{ url }}
+{{ token_url }}
 
 {% endblock %}

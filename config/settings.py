@@ -22,11 +22,11 @@ load_dotenv()
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Site settings
-SITE_DOMAIN = os.getenv("SITE_DOMAIN", "localhost")
-SITE_URL = os.getenv("SITE_URL", "http://localhost:5173")
+FRONTEND_DOMAIN = os.getenv("FRONTEND_DOMAIN", "localhost")
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
 APP_NAME = "Bisika Apartments"
 COMPANY_NAME = "Bisika Apartments Ltd."
-COMPANY_ADRESS = "Embu, Kenya"
+COMPANY_ADDRESS = "Embu, Kenya"
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
@@ -37,7 +37,7 @@ SECRET_KEY = os.environ.get("SECURITY_KEY")
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = [SITE_DOMAIN, "localhost", "127.0.0.1"]
+ALLOWED_HOSTS = [FRONTEND_DOMAIN, "localhost", "127.0.0.1"]
 
 
 INSTALLED_APPS = [
@@ -94,14 +94,14 @@ CSRF_COOKIE_SAMESITE = 'Lax'
 SESSION_COOKIE_SAMESITE = 'Lax'
 CSRF_COOKIE_HTTPONLY = True
 SESSION_COOKIE_HTTPONLY = True
-CSRF_TRUSTED_ORIGINS = [SITE_URL]
+CSRF_TRUSTED_ORIGINS = [FRONTEND_URL]
 
 # PROD ONLY
 # CSRF_COOKIE_SECURE = True
 # SESSION_COOKIE_SECURE = True
 
 CORS_ALLOW_CREDENTIALS = True
-CORS_ALLOWED_ORIGINS = [SITE_URL]
+CORS_ALLOWED_ORIGINS = [FRONTEND_URL]
 
 CORS_EXPOSE_HEADERS = ['Content-Type', 'X-CSRFToken']
 
@@ -216,8 +216,8 @@ EMAIL_HOST = os.getenv("EMAIL_HOST")
 EMAIL_PORT = 2525
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
-DEFAULT_FROM_EMAIL = f"no-reply@{SITE_DOMAIN}"
-SUPPORT_EMAIL = f"support@{SITE_DOMAIN}"
+DEFAULT_FROM_EMAIL = f"no-reply@{FRONTEND_DOMAIN}"
+SUPPORT_EMAIL = f"support@{FRONTEND_DOMAIN}"
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
 ADMINS = ["edmune25@gmail.com"]  # Logging email alerts in prod
 

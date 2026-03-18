@@ -6,13 +6,11 @@ from users.models import User
 from .selectors import user_get
 from django.conf import settings
 
-BASE_URL: str | None = getattr(settings, "SITE_URL", None)
+BASE_URL: str | None = getattr(settings, "FRONTEND_URL")
 
 def token_url_generate(user: User, path: str) -> str:
     uuid = urlsafe_base64_encode(force_bytes(user.pk))
     token = default_token_generator.make_token(user)
-    if BASE_URL is None:
-        raise RuntimeError("SITE_URL not configured in settings")
     return f"{BASE_URL}/{path}/{uuid}/{token}"
 
 
@@ -29,8 +27,6 @@ def token_validate(*, uuid: str, token: str) -> User:
 
 def unsubscribe_url_for(user: User):
     uuid = urlsafe_base64_encode(force_bytes(user.pk))
-    if BASE_URL is None:
-        raise RuntimeError("SITE_URL not configured in settings")
     return f"{BASE_URL}/unsubscribe/{uuid}"
 
 def unsubscribe_token_validate(uuid) -> User:
