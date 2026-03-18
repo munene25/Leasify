@@ -11,4 +11,4 @@ def get_paginated_response(*, s_cls, qs, req, view):
 
     serializer = s_cls(qs, many=True)
 
-    return Response(data=serializer.data)
+    return Response(data=serializer.data, status=200)

@@ -1,5 +1,5 @@
 import structlog
-from typing import override, Type, cast
+from typing import override, cast
 from django.http import QueryDict
 from rest_framework.views import APIView
 from rest_framework.serializers import Serializer
@@ -7,8 +7,10 @@ from rest_framework.exceptions import ValidationError
 
 
 class BaseAPIView(APIView):
-    filter_class: Type[Serializer] | None = None
-    serializer_class: Type[Serializer] | None = None
+    filter_class: type[Serializer] | None = None
+    serializer_class: type[Serializer] | None = None
+
+    
 
     @override
     def perform_authentication(self, request):
@@ -24,7 +26,7 @@ class BaseAPIView(APIView):
             user_id=request.user.pk if request.user.is_authenticated else None,
         )
 
-    def _run_validation(self, serializer_cls: Type[Serializer], *, data: dict | QueryDict, partial: bool) -> dict:
+    def _run_validation(self, serializer_cls: type[Serializer], *, data: dict | QueryDict, partial: bool) -> dict:
         """Run DRF serializer validation and return validated data."""
         serializer = serializer_cls(data=data, partial=partial)
         serializer.is_valid(raise_exception=True)

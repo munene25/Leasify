@@ -88,27 +88,32 @@ TEMPLATES = [
         },
     },
 ]
-# Sessions & CSRF
-# https://docs.djangoproject.com/en/5.2/topics/http/sessions/
-CSRF_COOKIE_SAMESITE = 'Lax'
-SESSION_COOKIE_SAMESITE = 'Lax'
-CSRF_COOKIE_HTTPONLY = True
-SESSION_COOKIE_HTTPONLY = True
+## CSRF
+CSRF_COOKIE_SAMESITE = "Lax"
+CSRF_COOKIE_HTTPONLY = False
 CSRF_TRUSTED_ORIGINS = [FRONTEND_URL]
+# ?PROD ONLY
+# ?CSRF_COOKIE_SECURE = True
 
-# PROD ONLY
-# CSRF_COOKIE_SECURE = True
-# SESSION_COOKIE_SECURE = True
 
+
+## SESSIONS
+SESSION_COOKIE_SAMESITE = "Lax"
+SESSION_COOKIE_HTTPONLY = True
+SESSION_ENGINE = "django.contrib.sessions.backends.cache"
+# ?PROD ONLY
+# ?SESSION_COOKIE_SECURE = True
+
+## CORS
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGINS = [FRONTEND_URL]
 
-CORS_EXPOSE_HEADERS = ['Content-Type', 'X-CSRFToken']
 
-
-
+## Rest
 REST_FRAMEWORK = {
-    "DEFAULT_AUTHENTICATION_CLASSES": ("rest_framework.authentication.SessionAuthentication",),
+    "DEFAULT_AUTHENTICATION_CLASSES": (
+        "config.auth.SessionAuthentication",
+    ),
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 5,
     "EXCEPTION_HANDLER": "drf_standardized_errors.handler.exception_handler",
@@ -124,7 +129,7 @@ REST_FRAMEWORK = {
 
 WSGI_APPLICATION = "config.wsgi.application"
 
-# logging
+## Logging
 LOGGING = DICT_LOG
 configure_logging()
 
@@ -139,7 +144,7 @@ DATABASES = {
 }
 
 
-# Password validation
+## Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
 
 AUTH_PASSWORD_VALIDATORS = [
@@ -148,7 +153,7 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 
-# Caching
+## Caching
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
@@ -190,27 +195,15 @@ STATIC_URL = "static/"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 
-
-# User model
+## User model
 AUTH_USER_MODEL = "users.User"
 
 
-# Cookie Authentication
-COOKIE_SETTINGS = {
-    "AUTH_COOKIE": "access",  # Cookie name. Enables cookies if value is set.
-    "AUTH_COOKIE_DOMAIN": None,  # A string like "example.com", or None for standard domain cookie.
-    "AUTH_COOKIE_SECURE": False,  # Whether the auth cookies should be secure (https:// only).
-    "AUTH_COOKIE_HTTP_ONLY": True,  # Http only cookie flag.It's not fetch by javascript.
-    "AUTH_COOKIE_PATH": "/",  # The path of the auth cookie.
-    "AUTH_COOKIE_SAMESITE": "Lax",  # Whether to set the flag restricting cookie leaks on cross-site requests.                                   # This can be 'Lax', 'Strict', or None to disable the flag.
-}
-
-
-# DRF standardized Errors
+## DRF standardized Errors
 DRF_STANDARDIZED_ERRORS = {"ENABLE_IN_DEBUG_FOR_UNHANDLED_EXCEPTIONS": True}
 
 
-# EMAILS
+## EMAILS
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_HOST = os.getenv("EMAIL_HOST")
 EMAIL_PORT = 2525
@@ -222,7 +215,7 @@ EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
 ADMINS = ["edmune25@gmail.com"]  # Logging email alerts in prod
 
 
-# CELERY
+## CELERY
 CELERY_BROKER_URL = ("redis://localhost:6379/3",)
 CELERY_TASK_IGNORE_RESULT = False
 CELERY_RESULT_EXPIRES = 3600

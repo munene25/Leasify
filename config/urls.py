@@ -16,10 +16,17 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
+from rest_framework.decorators import api_view
+from django.http.response import JsonResponse
+from django.views.decorators.csrf import ensure_csrf_cookie
 
+@ensure_csrf_cookie
+def ping(request):
+    return JsonResponse({"message": "pong"})
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('', ping, name="ping"),
     path('users/', include("users.urls"), name='users'),
     path('apartments/', include("apartments.urls"), name='apartments'),
     path('semesters/', include("semesters.urls"), name='semesters'),
