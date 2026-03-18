@@ -56,6 +56,7 @@ def enable_db_access(db):
 
 @pytest.fixture(scope="function")
 def cache_clear():
+    cache.clear()
     yield
     cache.clear()
 
@@ -171,6 +172,10 @@ def phone_no(fake) -> typing.Callable[[str | None], PhoneNumber]:
 @pytest.fixture
 def client() -> APIClient:
     return APIClient()
+
+@pytest.fixture
+def csrf_client() -> APIClient:
+    return APIClient(enforce_csrf_checks=True)
 
 
 @pytest.fixture

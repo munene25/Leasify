@@ -1,33 +1,12 @@
 import pytest
-from typing import Any
 from rest_framework import status
 from users.models import User, Account
 from unittest.mock import patch, MagicMock
 from copy import deepcopy
 from django.core.cache import cache
 from tests.types import IsClient, UserCreatePayload
+from tests.helpers import parse_error, parse_message
 
-
-@pytest.fixture(autouse=True)
-def auto_clear(cache_clear):
-    pass
-
-
-def parse_error(response, status_code: int, err_type: str = "client_error", err_len: int = 1) -> list[dict[str, str]]:
-    """
-    Helper func parsing errors
-    """
-    assert response.status_code == status_code
-    assert response.data["type"] == err_type
-    errors: list[dict[str, str]] = response.data["errors"]
-    assert len(errors) == err_len
-    return errors
-
-
-def parse_message(response, status_code: int = status.HTTP_200_OK) -> dict[str, Any]:
-    """helper function"""
-    assert response.status_code == status_code
-    return response.data
 
 
 class TestUserListCreateView:
@@ -73,7 +52,7 @@ class TestUserListCreateView:
             ("email", "felix@gmail.com"),
         ],
     )
-    def test_user_creation_fails_for_db_constraints(self, field: str, value: str, client: IsClient):
+    def test_user_creation_fails_for_db_constraints(self, cache_clear, field: str, value: str, client: IsClient):
         """
         Similar email and phone number should raise 400
         """
@@ -119,7 +98,8 @@ class TestUserListCreateView:
     @patch("users.views.user_account_create")
     def test_user_creation_throttles(
         self,
-        mock: MagicMock,
+        mock: MagicMock,    
+        cache_clear,
         override_throttles,
         client: IsClient,
         user_create_payload: UserCreatePayload,
@@ -146,20 +126,20 @@ class TestUserListCreateView:
         assert mock.call_count == 2
 
     def test_user_list_authentication_and_authorization(
-        self, client: IsClient, manager_client: IsClient, tenant_client: IsClient
+        self, cache_clear, client: IsClient, manager_client: IsClient, tenant_client: IsClient
     ):
         """
         No authentication class on the view
         Authentication is handled after the view instantiates
         Permission denied 403: authenticated but unauthorized users
-
-        Apparetntly once user is already authenticated, it does not matter what else is done, the response will be a 403
+        Authentication failed 401: unauthenticated users
+        ! With Session Authentication, 401 errors are coerced into 403
         """
 
         # -- with unauthenticated user should raise Unauthorized --
         response = client.get(self.path)
         # Unauthorized should be raised for unauthenticated
-        errors = parse_error(response, status.HTTP_403_FORBIDDEN)[0]
+        errors = parse_error(response, status.HTTP_401_UNAUTHORIZED)[0]
         assert errors["code"] == "not_authenticated"
         assert errors["detail"] == "Authentication credentials were not provided."
 
@@ -172,7 +152,7 @@ class TestUserListCreateView:
         response3 = manager_client.get(self.path)
         assert response3.status_code == status.HTTP_200_OK
 
-    def test_user_list_pagination(self, user_factory, manager_client: IsClient, override_pagination):
+    def test_user_list_pagination(self, manager_client: IsClient, user_factory,  override_pagination):
         """
         Test the pagination structure and data
         Order is reversed so the first user appears in the last index
@@ -314,7 +294,7 @@ class TestUserListCreateView:
         assert len(data3["results"]) == 0
 
 
-class TestUserDetailUpdateDestroyView:
+class TestAdminUserDetailUpdateDestroyView:
     path: str = "/users/"
 
     def test_user_detail_succeeds(self, user_create_payload, user: User, manager_client: IsClient):
@@ -327,6 +307,7 @@ class TestUserDetailUpdateDestroyView:
         path = self.path + str(user.pk)
         response1 = manager_client.get(path)
         data1 = parse_message(response1)
+        assert data1["user_id"] == user.pk
         assert data1["email"] == user.email
         assert data1["first_name"] == user.first_name
         assert data1["last_name"] == user.last_name
@@ -339,6 +320,7 @@ class TestUserDetailUpdateDestroyView:
         data2 = parse_message(response2)
         fetched = User.objects.get(pk=user.pk)
         assert fetched.email == data2["email"]
+        assert data2["user_id"] == fetched.pk
         assert data2["phone_number"] == str(fetched.account.phone_number) == pld["phone_number"]
         assert data2["first_name"] == fetched.first_name == pld["first_name"]
         assert data2["last_name"] == fetched.last_name == pld["last_name"]
@@ -372,7 +354,15 @@ class TestUserDetailUpdateDestroyView:
         errors4 = parse_error(respnse4, status_code)[0]
         assert errors4["code"] == "permission_denied"
 
-    def test_modifying_priviledged_users_fails(self, manager_client: IsClient, super_user):
+        response5 = user_client.patch(path, {"first_name": "Felix"})
+        error5 = parse_error(response5, status_code)[0]
+        assert error5["code"] == "permission_denied"
+
+        response5 = user_client.delete(path)
+        error5 = parse_error(response5, status_code)[0]
+        assert error5["code"] == "permission_denied"
+
+    def test_modifying_priviledged_users_fails(self, manager_client: IsClient, super_user: User):
         """
         Priviledged users can't be modified or retrieved
         """
@@ -390,3 +380,98 @@ class TestUserDetailUpdateDestroyView:
         response3 = manager_client.delete(path)
         error3 = parse_error(response3, status_code)[0]
         assert error3["code"] == "not_found"
+
+class TestMeView:
+    path = "/users/me"
+
+    def test_user_can_get_patch_and_delete_successfully(self, user: User, client: IsClient, password: str):
+        """
+        Users should be able to get correct data
+        No user_id should be present in the serializer
+        Users should be able modify the specified fields
+        
+        Bug fixed: was passing the request.user into logout
+        Fixed: With custom auth class, 401 is raised
+        """
+        logged_in = client.login(email=user.email, password=password)
+        assert logged_in == True
+        response1 = client.get(self.path)
+        data1 = parse_message(response1)
+        
+        # User id should not be visible
+        assert data1.get("user_id", None) is None
+        assert data1["first_name"] == user.first_name
+        assert data1["last_name"] == user.last_name
+        assert data1["email_verified"] == user.verified
+        assert data1["backup_email"] == user.account.backup_email
+        assert data1["phone_number"] == str(user.account.phone_number)
+        assert data1["next_email_change"] == None
+        assert data1["roles"] == []
+
+        updates = {"first_name": "Zane", "email": "testemail1@gmail.com", "phone_number": "+254 710 111 110", "bio": "A regular bio", "roles": ["manager"]}
+        response2 = client.patch(self.path, updates)
+        data2 = parse_message(response2)
+        user.refresh_from_db()
+        assert data2.get("user_id", None) is None
+        assert data2["first_name"] == updates["first_name"] == user.first_name
+        assert data2["phone_number"] == updates["phone_number"].replace(" ", "") == user.account.phone_number
+        assert data2["bio"] == updates["bio"] == user.account.bio
+        assert data2["email"] != updates["email"] and data2["email"] == user.email
+        assert data2["roles"]  != updates["roles"] and data2["roles"] == []
+        
+
+        # Unauthorized will be raised
+        response3 = client.delete(self.path)
+        data = parse_message(response3, status.HTTP_204_NO_CONTENT)
+        assert data["message"] == "account deactivated successfully"
+        user.refresh_from_db()
+        assert user.is_active == False
+        response4 = client.get(self.path)
+        error =  parse_error(response4, status.HTTP_401_UNAUTHORIZED)[0]
+        assert error["code"] == "not_authenticated"
+
+    def test_unauthenticated_requests_fail(self, client: IsClient):
+        """
+        Should outright deny services for users with"""
+        response1 = client.get(self.path)
+        error1 = parse_error(response1, status_code=status.HTTP_401_UNAUTHORIZED)[0]
+        assert error1["code"] == "not_authenticated"
+
+
+class TestUserLoginView:
+    from django.contrib.sessions.backends.cache import SessionStore
+    
+    store = SessionStore
+    path = "/users/login"
+
+    def test_user_login_successful(self, user: User, csrf_client: IsClient, password: str):
+        """
+        Csrf is enforced
+        authentication is valid
+        """
+        cookies = csrf_client.get("/").cookies
+        assert len(cookies) == 1
+        token = cookies["csrftoken"].value
+        credentials = {"email": user.email, "password": password}
+
+        # -- With csrf tokens  --
+        response1 = csrf_client.post(self.path, credentials , HTTP_X_CSRFTOKEN=token)
+        data1 = parse_message(response1)
+        assert data1["email"] == user.email
+
+        session_id = response1.cookies["sessionid"].value
+        session = self.store(session_key=session_id)
+        session_data = session.load()
+        
+        assert len(session_data) > 1
+
+        # -- Without csrf token --
+        response2 = csrf_client.post(self.path, credentials)
+        data2 = parse_error(response2, 403)
+       
+        # -- WIth csrf token Wrong credentials --
+        response3 = csrf_client.post(self.path, credentials, HTTP_X_CSRFTOKEN=token)
+        data3 = parse_error(response3, 403)
+
+
+    
