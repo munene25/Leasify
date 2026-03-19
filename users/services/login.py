@@ -16,13 +16,13 @@ def user_authenticate(*, email: str, password: str) -> AbstractUser:
     :param password: user's password
     :type password: str
 
-    :return: returns a user or will raise an error if authentication failed 
+    :return: returns a user or will raise an 401 if authentication failed 
     :rtype: User
     """
     normalized_email = BaseUserManager.normalize_email(email)
     user = authenticate(email=normalized_email, password=password)
     if user is None:
-        err = "No credentials match the email and password you provided"
+        err = "Incorrect email or password"
         logger.warning(f"Failed login attempt for [user_emai: {email}]")
         raise AuthenticationFailed({"email": [err], "password": [err]})
 

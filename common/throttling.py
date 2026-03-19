@@ -35,7 +35,9 @@ class EmailScopedThrottle(ThrottleLogsMixin, ScopedRateThrottle):
         if not email:
             return None
         ident = hashlib.sha256(email.lower().encode()).hexdigest()
-        return self.cache_format % {"scope": self.scope, "ident": ident}
+        cache_key = self.cache_format % {"scope": self.scope, "ident": ident}
+        setattr(view, "throttle_cache_key", cache_key)
+        return cache_key
 
 
 class UserSustained(ThrottleLogsMixin, UserRateThrottle):

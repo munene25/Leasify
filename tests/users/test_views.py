@@ -1,5 +1,7 @@
 import pytest
 from rest_framework import status
+from django.utils import timezone
+from datetime import timedelta
 from users.models import User, Account
 from unittest.mock import patch, MagicMock
 from copy import deepcopy
@@ -448,16 +450,19 @@ class TestUserLoginView:
         """
         Csrf is enforced
         authentication is valid
+        last login updated.
         """
-        cookies = csrf_client.get("/").cookies
-        assert len(cookies) == 1
-        token = cookies["csrftoken"].value
+        csrftoken = csrf_client.get("/").cookies["csrftoken"].value
+        header = {"HTTP_X_CSRFTOKEN" : csrftoken}
         credentials = {"email": user.email, "password": password}
 
         # -- With csrf tokens  --
-        response1 = csrf_client.post(self.path, credentials , HTTP_X_CSRFTOKEN=token)
+        response1 = csrf_client.post(self.path, credentials , **header)
         data1 = parse_message(response1)
         assert data1["email"] == user.email
+        user.refresh_from_db()
+        assert user.last_login is not None
+        assert (user.last_login - timezone.now()) <= timedelta(seconds=1)
 
         session_id = response1.cookies["sessionid"].value
         session = self.store(session_key=session_id)
@@ -467,11 +472,38 @@ class TestUserLoginView:
 
         # -- Without csrf token --
         response2 = csrf_client.post(self.path, credentials)
-        data2 = parse_error(response2, 403)
+        parse_error(response2, 403)
        
         # -- WIth csrf token Wrong credentials --
-        response3 = csrf_client.post(self.path, credentials, HTTP_X_CSRFTOKEN=token)
-        data3 = parse_error(response3, 403)
+        response3 = csrf_client.post(self.path, credentials, **header)
+        parse_error(response3, 403)
 
 
+    def test_throttling(self, user: User, client: IsClient, password: str, override_throttles, cache_clear):
+        """
+        Email scoped throttling should throttle based on email addresses not attempts
+        """
+        credentials = {"email": user.email, "password": password}
+        bad_credentials = {"email": user.email, "password": "password"}
+
+        # First attempt should be successful
+        response1 = client.post(self.path, credentials)
+        data1 = parse_message(response1)
+        
+        # A second time should qualify as a successfull login 
+        response2 = client.post(self.path, credentials)
+        data2 = parse_message(response2)
+
+        # First wrong attempt should raise 401 for bad request
+        response3 = client.post(self.path, bad_credentials)
+        error3 = parse_error(response3, status.HTTP_401_UNAUTHORIZED, err_len=2)
+        assert error3[0]["code"] == "authentication_failed"
+  
+
+        response4 =  client.post(self.path, bad_credentials)
+        error4 = parse_error(response4, status.HTTP_429_TOO_MANY_REQUESTS)[0]
+        assert error4["code"] == "throttled"
+
+
+        
     

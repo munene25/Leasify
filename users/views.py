@@ -5,6 +5,7 @@ from rest_framework import serializers
 from rest_framework.exceptions import NotFound
 from rest_framework.permissions import AllowAny, IsAuthenticated, IsAdminUser
 from rest_framework import status
+from django.core.cache import cache
 from common.views import BaseAPIView
 from common.permissions import check_perms
 from django.contrib.auth import login, logout, update_session_auth_hash
@@ -58,7 +59,7 @@ class UserListCreateView(BaseAPIView):
     def get_permissions(self):
         if self.request.method == "GET":
             return [IsAuthenticated()]
-        else: return []
+        else: return [AllowAny]
         
     def get(self, request: Request):
         check_perms(request.user, "users.view_user")
@@ -159,6 +160,13 @@ class LoginView(BaseAPIView):
         # initialize the session
         login(request, user=user)
 
+        # On login success, remove the email from history
+        cache_key:str = getattr(self, "throttle_cache_key")
+        history = cache.get(cache_key)
+        del history[0]
+        cache.set(cache_key, history)
+
+        # Serialize data and respond
         outgoing = sc.UserDetailSerializer(instance=user)
         return Response(data=outgoing.data, status=status.HTTP_200_OK)
 
