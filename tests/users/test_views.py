@@ -1,14 +1,14 @@
 import pytest
-from rest_framework import status
-from django.utils import timezone
-from datetime import timedelta
-from users.models import User, Account
-from unittest.mock import patch, MagicMock
 from copy import deepcopy
+from datetime import timedelta
+from unittest.mock import patch, MagicMock
+from django.utils import timezone
+from django.contrib.sessions.backends.cache import SessionStore
 from django.core.cache import cache
+from rest_framework import status
+from users.models import User, Account
 from tests.types import IsClient, UserCreatePayload
 from tests.helpers import parse_error, parse_message
-
 
 
 class TestUserListCreateView:
@@ -441,16 +441,13 @@ class TestMeView:
 
 
 class TestUserLoginView:
-    from django.contrib.sessions.backends.cache import SessionStore
-    
-    store = SessionStore
     path = "/users/login"
 
     def test_user_login_successful(self, user: User, csrf_client: IsClient, password: str):
         """
-        Csrf is enforced
-        authentication is valid
-        last login updated.
+        Csrf should be explicitly enforced even for unauthenticated users
+        last login should be updated.
+        A session should be created.
         """
         csrftoken = csrf_client.get("/").cookies["csrftoken"].value
         header = {"HTTP_X_CSRFTOKEN" : csrftoken}
@@ -465,14 +462,16 @@ class TestUserLoginView:
         assert (user.last_login - timezone.now()) <= timedelta(seconds=1)
 
         session_id = response1.cookies["sessionid"].value
-        session = self.store(session_key=session_id)
+        session = SessionStore(session_key=session_id)
         session_data = session.load()
         
         assert len(session_data) > 1
 
         # -- Without csrf token --
         response2 = csrf_client.post(self.path, credentials)
-        parse_error(response2, 403)
+        error = parse_error(response2, 403)[0]
+        assert "CSRF Failed" in error["detail"] 
+        
        
         # -- WIth csrf token Wrong credentials --
         response3 = csrf_client.post(self.path, credentials, **header)
@@ -504,6 +503,35 @@ class TestUserLoginView:
         error4 = parse_error(response4, status.HTTP_429_TOO_MANY_REQUESTS)[0]
         assert error4["code"] == "throttled"
 
+class TestLogoutView:
+    path = "/users/logout"
+    
+    def test_user_logut_successful(self, manager_user: User, client: IsClient, password: str):
+        """
+        Trying with manager client for variety
+        Session should not exist
+        Cookie should be unavailable
+        Subsequent request should be denied
+        """
+        session = SessionStore()
+        response1 = client.post('/users/login', {"email": manager_user.email, "password": password})
+        session_id = response1.cookies["sessionid"].value
+        assert session.exists(session_id) == True
 
         
-    
+        response2 = client.post(self.path, {})
+        data2 = parse_message(response2)
+        assert "logged out" in data2["message"]
+        assert response2.cookies["sessionid"].value is ""
+        assert session.exists(session_id) == False
+
+        response3 = client.get("/users/")
+        parse_error(response3, status.HTTP_401_UNAUTHORIZED)
+
+
+    def test_authentication(self, client):
+        res1 = client.post(self.path, {})
+        error = parse_error(res1, status.HTTP_401_UNAUTHORIZED)[0]
+        assert error["code"] == "not_authenticated"
+
+        

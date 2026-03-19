@@ -59,7 +59,7 @@ class UserListCreateView(BaseAPIView):
     def get_permissions(self):
         if self.request.method == "GET":
             return [IsAuthenticated()]
-        else: return [AllowAny]
+        else: return [AllowAny()]
         
     def get(self, request: Request):
         check_perms(request.user, "users.view_user")
@@ -142,9 +142,8 @@ class MeView(BaseAPIView):
 
 class LoginView(BaseAPIView):
     """
-    Initializes the session on user authentication.
-    Needs csrf protection as Django does
-    Unauthenticated request's normally do not check csrf
+    Grant the user a session if authentication passes, otherwise raise 401
+    Throttles based on failed attempts, Successful request do not count as attempts. 
     """
     from config.auth import ForceCSRFAuthentication
     
@@ -160,7 +159,7 @@ class LoginView(BaseAPIView):
         # initialize the session
         login(request, user=user)
 
-        # On login success, remove the email from history
+        # On login success, remove the attempt from history
         cache_key:str = getattr(self, "throttle_cache_key")
         history = cache.get(cache_key)
         del history[0]
@@ -171,7 +170,7 @@ class LoginView(BaseAPIView):
         return Response(data=outgoing.data, status=status.HTTP_200_OK)
 
 class LogoutView(BaseAPIView):
-    """Delete current user session from the cache"""
+    """Flush current user session and unset cookie """
 
     permission_classes = [IsAuthenticated]
 
