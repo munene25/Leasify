@@ -164,7 +164,7 @@ class LoginView(BaseAPIView):
         cache_key:str = getattr(self, "throttle_cache_key")
         history = cache.get(cache_key)
         del history[0]
-        cache.set(cache_key, history)
+        cache.set(cache_key, history, timeout=None)
 
         # Serialize data and respond
         outgoing = sc.UserDetailSerializer(instance=user)

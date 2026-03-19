@@ -488,11 +488,11 @@ class TestUserLoginView:
 
         # First attempt should be successful
         response1 = client.post(self.path, credentials)
-        data1 = parse_message(response1)
+        parse_message(response1)
         
         # A second time should qualify as a successfull login 
         response2 = client.post(self.path, credentials)
-        data2 = parse_message(response2)
+        parse_message(response2)
 
         # First wrong attempt should raise 401 for bad request
         response3 = client.post(self.path, bad_credentials)
