@@ -15,34 +15,39 @@ class ThrottleProtocol(Protocol):
     def scope(self) -> str: ...
     def allow_request(self, request, view) -> bool: ...
     def get_rate(self) -> str: ...
+    def get_cache_key(self, request, view) -> str: ...
 
 
-class ThrottleLogsMixin:
+class ThrottleMixin:
+    """Adds logs and stashes the key in the request object"""
     def allow_request(self: ThrottleProtocol, request: Request, view: View):
         allowed = super().allow_request(request, view)
+        setattr(request, "throttle_cache_key", self.get_cache_key(request, view))
         if not allowed:
             scope = self.scope or getattr(view, "throttle_scope", "undefined")
             logger.warning(f"Throttled. [scope: {scope}] [rate: {self.get_rate()}]")
         return allowed
 
 
-class EmailScopedThrottle(ThrottleLogsMixin, ScopedRateThrottle):
+class EmailScopedThrottle(ThrottleMixin, ScopedRateThrottle):
     @override
     def get_cache_key(self, request, view):
         # Realized this throttles even on successful attempts
         # like login or requesting email verifications
-        email = request.data.get("email")
-        if not email:
+        email_from_data = request.data.get("email", None)
+        user_email = request.user.email if request.user and request.user.is_authenticated else None
+        ident = email_from_data or user_email
+        if ident is None:
             return None
-        ident = hashlib.sha256(email.lower().encode()).hexdigest()
         cache_key = self.cache_format % {"scope": self.scope, "ident": ident}
-        setattr(view, "throttle_cache_key", cache_key)
         return cache_key
 
 
-class UserSustained(ThrottleLogsMixin, UserRateThrottle):
+class UserSustained(ThrottleMixin, UserRateThrottle):
     scope = "user_sustained"
 
 
-class AnonSustained(ThrottleLogsMixin, AnonRateThrottle):
+class AnonSustained(ThrottleMixin, AnonRateThrottle):
     scope = "anon_sustained"
+
+

@@ -47,3 +47,16 @@ class BaseAPIView(APIView):
         if not validated:
             raise ValidationError("Empty values not allowed")
         return validated
+
+    def pop_latest_cache_entry(self, request):
+        from django.core.cache import cache
+
+        try:
+            cache_key: str = getattr(request, "throttle_cache_key")
+            history = cache.get(cache_key)
+            history.pop()
+            cache.set(cache_key, history, timeout=None)
+
+        except Exception as exc:
+            raise Exception from exc
+            
