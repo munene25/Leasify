@@ -5,7 +5,6 @@ from rest_framework import serializers
 from rest_framework.exceptions import NotFound
 from rest_framework.permissions import AllowAny, IsAuthenticated, IsAdminUser
 from rest_framework import status
-from django.core.cache import cache
 from common.views import BaseAPIView
 from common.permissions import check_perms
 from django.contrib.auth import login, logout, update_session_auth_hash
@@ -40,14 +39,14 @@ from users import serializer as sc
 logger = getLogger("users.views")
 
 
-
 class UserListCreateView(BaseAPIView):
     """
     Provides a way to view the list (depending on the level of access) of registered users
     Also a create user via post
 
-    The get method is a priviledged route hence permissions are checked and _for selectors are used 
+    The get method is a priviledged route hence permissions are checked and _for selectors are used
     """
+
     class FilterSerializer(serializers.Serializer):
         search = serializers.CharField()
         is_active = serializers.BooleanField(allow_null=True)
@@ -55,12 +54,10 @@ class UserListCreateView(BaseAPIView):
     serializer_class = sc.UserCreateSerializer
     throttle_classes = [AnonSustained]
     filter_class = FilterSerializer
-    
+
     def get_permissions(self):
-        if self.request.method == "GET":
-            return [IsAuthenticated()]
-        else: return [AllowAny()]
-        
+        return [IsAuthenticated()] if self.request.method == "GET" else [AllowAny()]
+
     def get(self, request: Request):
         check_perms(request.user, "users.view_user")
         filters = self.validate_filter(data=request.query_params)
@@ -79,21 +76,22 @@ class AdminUserDetailUpdateDestroyView(BaseAPIView):
     All methods require priviledged access
     Selectors with _for should be used
     """
+
     serializer_class = sc.AdminUserUpdateSerializer
     permission_classes = [IsAuthenticated]
 
     def get(self, request, user_id):
         check_perms(request.user, "users.view_user")
-        user = user_get_for(user= request.user ,user_id=user_id)
+        user = user_get_for(user=request.user, user_id=user_id)
         serialzer_class = sc.AdminUserDetailSerializer(instance=user)
         return Response(status=status.HTTP_200_OK, data=serialzer_class.data)
 
     def patch(self, request, user_id):
         check_perms(request.user, "users.change_user")
         incoming = self.validate_serializer(data=request.data, partial=True)
-        user = user_get_for(user= request.user ,user_id=user_id)
+        user = user_get_for(user=request.user, user_id=user_id)
         mod = user_update(user, **incoming)
-        
+
         outgoing = sc.AdminUserDetailSerializer(instance=mod)
         logger.info(f"Admin modified user data.", target_id=user_id)
 
@@ -114,6 +112,7 @@ class MeView(BaseAPIView):
     """
     This is the self management view for users to modify their own data
     """
+
     serializer_class = sc.UserUpdateSerializer
     permission_classes = [IsAuthenticated]
 
@@ -125,14 +124,14 @@ class MeView(BaseAPIView):
     def patch(self, request):
         incoming = self.validate_serializer(data=request.data, partial=True)
         user = user_update(user=request.user, **incoming)
-        
+
         outgoing = sc.UserDetailSerializer(instance=user)
         logger.info(f"User modified self.")
         return Response(data=outgoing.data, status=status.HTTP_200_OK)
 
     def delete(self, request):
         user_deactivate(user=request.user)
-        
+
         logger.info(f"User deactivated self.")
         # flush the session
         # Fixed bug: Logout requires the request object not request.user
@@ -143,10 +142,11 @@ class MeView(BaseAPIView):
 class LoginView(BaseAPIView):
     """
     Grant the user a session if authentication passes, otherwise raise 401
-    Throttles based on failed attempts, Successful request do not count as attempts. 
+    Throttles based on failed attempts, Successful request do not count as attempts.
     """
+
     from config.auth import ForceCSRFAuthentication
-    
+
     authentication_classes = [ForceCSRFAuthentication]
     permission_classes = [AllowAny]
     serializer_class = sc.LoginSerializer
@@ -160,14 +160,12 @@ class LoginView(BaseAPIView):
         login(request, user=user)
 
         # On login success, remove the attempt from history
-        cache_key:str = getattr(self, "throttle_cache_key")
-        history = cache.get(cache_key)
-        del history[0]
-        cache.set(cache_key, history, timeout=None)
+        self.pop_latest_cache_entry(request)
 
         # Serialize data and respond
         outgoing = sc.UserDetailSerializer(instance=user)
         return Response(data=outgoing.data, status=status.HTTP_200_OK)
+
 
 class LogoutView(BaseAPIView):
     """Flush current user session and delete session_id cookie"""
@@ -181,17 +179,18 @@ class LogoutView(BaseAPIView):
         logger.info(f"User [user_id: {user_id} logged out]")
         return Response(data={"message": "You have been logged out"}, status=status.HTTP_200_OK)
 
+
 class RefreshSessionView(BaseAPIView):
     """
     A means to extend the expiry time for authenticated users.
     Frontend ideally, should periodically hit this endpoint.
     """
-    
+
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-       request.session.set_expiry(None)
-       return Response({"message": "Session extended"})
+        request.session.set_expiry(None)
+        return Response({"message": "Session extended"})
 
 
 class EmailUpdateView(BaseAPIView):
@@ -199,6 +198,7 @@ class EmailUpdateView(BaseAPIView):
     Moved throttling is based on the last_email_change field on the model.
     This centralizes the logic in one place
     """
+
     permission_classes = [IsAuthenticated]
     serializer_class = sc.UserEmailUpdateSerializer
 
@@ -219,9 +219,13 @@ class PasswordChangeView(BaseAPIView):
 
     def post(self, request):
         incoming = self.validate_serializer(data=request.data)
-        user_change_password(user=request.user, **incoming)
-        update_session_auth_hash(request, request.user)
-        return Response(status=status.HTTP_200_OK)
+        user = user_change_password(user=request.user, **incoming)
+        update_session_auth_hash(request, user)
+
+        # Allow rightful user to update password as many times as they want
+        self.pop_latest_cache_entry(request)
+
+        return Response(data={"message": "Password has been successfully updated"}, status=status.HTTP_200_OK)
 
 
 class RequestEmailVerificationView(BaseAPIView):

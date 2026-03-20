@@ -602,7 +602,7 @@ class TestEmailUpdateView:
         error = parse_error(res2, status.HTTP_400_BAD_REQUEST, "validation_error")
         assert "password" == error[0]["attr"]
 
-        # -- When cooldown is still active --
+        # -- When cooldown is still active fails with 400 --
         with freeze_time(self.before) as frozen:
             res3 = user_client.post(self.path, self.payload)
             parse_message(res3)
@@ -612,3 +612,84 @@ class TestEmailUpdateView:
             parse_error(res4, status.HTTP_422_UNPROCESSABLE_ENTITY)
             user.refresh_from_db
             assert user.last_email_change == self.before
+
+class TestPasswordChangeView:
+    path = "/users/password-change"
+    payload = {"password": "Pa55word!", "new_password": "Pa22word!", "confirm_password": "Pa22word!"}
+    
+
+    def test_password_change_successfull(self, super_user: User, super_user_client: IsClient, mailoutbox, django_capture_on_commit_callbacks, override_throttles, cache_clear):
+        """
+        Password should be changed and message in response
+        user should be able to login
+        session_id should be cycled
+        """
+        
+        session_id1 = super_user_client.post("/users/login", {"email": super_user.email, "password":"Pa55word!"}).cookies["sessionid"].value
+        old_password = super_user.password
+        
+        # -- with correct credentials should evaluate --
+        with django_capture_on_commit_callbacks(execute=True):
+            res1 = super_user_client.post(self.path, self.payload)
+        session_id2 = res1.cookies["sessionid"].value
+        data1 = parse_message(res1)
+        assert "successfully updated" in data1["message"]
+        super_user.refresh_from_db(using=None)
+        assert old_password != super_user.password
+        assert not super_user.check_password(self.payload["password"])
+        assert super_user.check_password(self.payload["new_password"])
+
+        # -- sessionid should be cycled --
+        store = SessionStore()
+        assert store.exists(session_key=session_id1) == False
+        assert store.exists(session_key=session_id2) == True
+
+        # -- mail containing password reset link should be sent --
+        assert len(mailoutbox) == 1
+        mail = mailoutbox[0]
+        assert mail.to == [super_user.email]
+        assert "password-reset" in mail.body
+
+        # -- subsequent password changes should go through --
+        password = self.payload["new_password"]
+        res2 = super_user_client.post(self.path, {**self.payload, "password": password})
+        parse_message(res2)
+    
+    @pytest.mark.parametrize("wrong_pass", ["wrongpassword", ""])
+    def test_wrong_passwords_fail(self, user: User, wrong_pass: str, user_client: IsClient, cache_clear):
+        """
+        Wrong or empty("") passwords should fail
+        """
+        payload = {**self.payload, "password": wrong_pass}
+        old_password = user.password
+        # -- should raise 400 for invalid passwords --
+        res1 = user_client.post(self.path, payload)
+        error1 = parse_error(res1, status.HTTP_400_BAD_REQUEST, err_type="validation_error")[0]
+        assert error1["attr"] == "password"
+        user.refresh_from_db(None)
+        assert old_password == user.password
+
+    def test_password_change_throttles(self, user_client: IsClient, override_throttles, cache_clear):
+        """
+        nI'll test for non matching passwords here as well with the serializer
+        Throttles should work after time elapses
+        """
+        before = timezone.now()
+        fetch = lambda: user_client.post(self.path, {**self.payload, "new_password": "not password"})
+        after = before + timedelta(hours=1)
+        with freeze_time(before, tz_offset=0) as freeze:
+            errors1 = parse_error(fetch(), status.HTTP_400_BAD_REQUEST, "validation_error")
+            assert errors1[0]["attr"] == "confirm_password"
+            errors2 = parse_error(fetch(), status.HTTP_429_TOO_MANY_REQUESTS,)
+            assert errors2[0]["code"] == "throttled"
+            
+            freeze.move_to(after)
+            errors3 = parse_error(fetch(), status.HTTP_400_BAD_REQUEST, "validation_error")
+            assert errors3[0]["attr"] == "confirm_password"
+
+    def test_password_change_fails_for_unauthenticated(self, client: IsClient):
+        """Raises 400 for unauthenticated"""
+
+        res1 = client.post(self.path, {**self.payload, "new_password": "not password"})
+        errors = parse_error(res1, status.HTTP_401_UNAUTHORIZED)
+        assert errors[0]["code"] == "not_authenticated"
