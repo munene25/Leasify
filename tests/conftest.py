@@ -32,17 +32,9 @@ def override_pagination():
 def override_throttles():
     from rest_framework.throttling import SimpleRateThrottle
 
+    update = lambda d: {k: "1/min" for k, v in d.items()}
     original_rates = SimpleRateThrottle.THROTTLE_RATES
-
-    SimpleRateThrottle.THROTTLE_RATES = {
-        "anon_sustained": "1/min",
-        "user_sustained": "1/min",
-        "login_limit": "1/min",
-        "password_changes": "1/min",
-        "email_verification": "1/min",
-        "email_change": "1/min",
-    }
-
+    SimpleRateThrottle.THROTTLE_RATES = update(original_rates)
     yield
 
     SimpleRateThrottle.THROTTLE_RATES = original_rates
