@@ -170,7 +170,7 @@ class LoginView(BaseAPIView):
         return Response(data=outgoing.data, status=status.HTTP_200_OK)
 
 class LogoutView(BaseAPIView):
-    """Flush current user session and unset cookie """
+    """Flush current user session and delete session_id cookie"""
 
     permission_classes = [IsAuthenticated]
 
@@ -181,8 +181,11 @@ class LogoutView(BaseAPIView):
         logger.info(f"User [user_id: {user_id} logged out]")
         return Response(data={"message": "You have been logged out"}, status=status.HTTP_200_OK)
 
-class RefreshSession(BaseAPIView):
-    """frontend should on page mount or on interval hit 'refresh' to extend the session lifespan currently set to 2 weeks"""
+class RefreshSessionView(BaseAPIView):
+    """
+    A means to extend the expiry time for authenticated users.
+    Frontend ideally, should periodically hit this endpoint.
+    """
     
     permission_classes = [IsAuthenticated]
 

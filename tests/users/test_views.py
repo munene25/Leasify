@@ -534,4 +534,29 @@ class TestLogoutView:
         error = parse_error(res1, status.HTTP_401_UNAUTHORIZED)[0]
         assert error["code"] == "not_authenticated"
 
+
+class TestRefreshSessionView:
+    path = "/users/refresh"
+    
+    def test_user_can_refresh_their_session(self, user: User, user_client: IsClient, password: str):
+        """
+        There should exist a new expiry on the cookie expiring later than the first
+        """
+        # -- Login and check if token is issued --
+        res1 = user_client.post("/users/login", {"email": user.email, "password": password})
+        parse_message(res1)
+        session_id = res1.cookies["sessionid"].value
+        assert SessionStore().exists(session_id) == True
+        expiry1 = SessionStore(session_id).get_expiry_date()
+
+        # -- Refresh the token and then compare expiry dates
+        res2 = user_client.post(self.path, {})
+        parse_message(res2)
+        expiry2 = SessionStore(session_id).get_expiry_date()
         
+        assert expiry1 < expiry2
+
+    def test_unauthenticated_requests_fails(self, client: IsClient):
+        res1 = client.post(self.path, {})
+        parse_error(res1, status.HTTP_401_UNAUTHORIZED)
+
