@@ -3,6 +3,7 @@ from typing_extensions import Unpack
 from structlog import getLogger
 from users.models import User
 from django.db import transaction
+from rest_framework.exceptions import ValidationError
 from phonenumber_field.phonenumber import PhoneNumber
 from users.tasks import notify_password_change
 
@@ -73,7 +74,7 @@ def user_update(user: User,  **kwargs: Unpack[UserUpdateData]):
 
 
 @transaction.atomic
-def user_change_password(*, user: User, new_password: str, current_password: str | None = None) -> User:
+def user_change_password(*, user: User, new_password: str, password: str | None = None, is_ressetting: bool =False) -> User:
     """
     This service is used in both password recovery and password changes
     Therefore in password recovery flows, the current password is unknown
@@ -91,11 +92,20 @@ def user_change_password(*, user: User, new_password: str, current_password: str
     :rtype: User 
     """
     # ! Password changes automatically invalidate issued cookies
-    if current_password:
-        user.check_password(current_password)
+    # ! CRITICAL BUG Found
+    # Calling check_password does not raise an error
+    # To mitigate this an explicit flag guarantees the password is checked.
+    # Also necessary to call **validate_password** not 'check_password'
+
+    if not is_ressetting:
+        if not password:
+            raise ValidationError({"password": "Please provide a password"})
+        else:
+            user.validate_password(password)
+
     user.set_password(new_password)
     user.full_clean()
-    user.save()
+    user.save(update_fields=["password"])
     logger.info(f"user [user_id: {user.pk}] password changed")
     transaction.on_commit(lambda: notify_password_change.delay(user.pk))
     return user

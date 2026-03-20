@@ -316,12 +316,14 @@ class TestEmailUpdate:
         """
         The cooldown should fail if user tries to change password WITHIN the cooldown window
         """
+        from common.exceptions import EmailUpdateError
+        
         new_email = "test@example.com"
         before_cooldown = EMAIL_COOLDOWN - timedelta(days=1)
         user.last_email_change = timezone.now() - before_cooldown
         user.save(update_fields=["last_email_change"])
 
-        with pytest.raises(ValidationError) as exc:
+        with pytest.raises(EmailUpdateError) as exc:
             user_email_update(user=user, email=new_email, password="Pa55word!")
 
         assert "email" in exc.value.detail
@@ -504,7 +506,7 @@ class TestUserChangePassword:
         current_password = "Pa55word!"
         new_password = "TimT@tman!"
         user.validate_password(current_password)
-        modified = user_change_password(user=user, new_password=new_password, current_password=current_password)
+        modified = user_change_password(user=user, new_password=new_password, password=current_password)
         assert user == modified == User.objects.get(pk=user.pk)
         # Password should be hashed
         assert modified.password != new_password
@@ -531,7 +533,7 @@ class TestUserChangePassword:
         new_password = "TimT@tman!"
         user.validate_password(current_password)
         with django_capture_on_commit_callbacks(execute=True) as callbacks:
-            user_change_password(user=user, new_password=new_password, current_password=current_password)
+            user_change_password(user=user, new_password=new_password, password=current_password)
         assert len(callbacks) == 1
         assert len(mailoutbox) == 1
         mail = mailoutbox[0]
@@ -542,6 +544,6 @@ class TestUserChangePassword:
 
     def test_password_changed_without_password(self, user: User):
         new_password = "Everl@sting!"
-        mod_user = user_change_password(user=user, new_password=new_password)
+        mod_user = user_change_password(user=user, new_password=new_password, is_ressetting=True)
         assert mod_user == user
         mod_user.validate_password(new_password)
