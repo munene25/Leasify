@@ -1,15 +1,15 @@
 import pytest
 from copy import deepcopy
 from datetime import timedelta
+from freezegun import freeze_time
 from unittest.mock import patch, MagicMock
 from django.utils import timezone
 from django.contrib.sessions.backends.cache import SessionStore
 from django.core.cache import cache
 from rest_framework import status
-from users.models import User, Account
+from users.models import User, Account, EMAIL_COOLDOWN
 from tests.types import IsClient, UserCreatePayload
 from tests.helpers import parse_error, parse_message
-
 
 class TestUserListCreateView:
     path = "/users/"
@@ -560,3 +560,55 @@ class TestRefreshSessionView:
         res1 = client.post(self.path, {})
         parse_error(res1, status.HTTP_401_UNAUTHORIZED)
 
+
+class TestEmailUpdateView:
+    path = "/users/email-change"
+    payload = {"email": "test@gmail.com", "password": "Pa55word!"}
+
+    before = timezone.now()
+    after = before + EMAIL_COOLDOWN
+
+
+    def test_email_updates_successfully(self, user: User, user_client: IsClient):
+        """
+        Email should be upddated correctly
+        Next change should be denied
+        Response should include New email
+        """
+
+        with freeze_time(self.before) as frozen:
+            fetch = lambda: user_client.post(self.path, self.payload)
+            data1 = parse_message(fetch())
+            user.refresh_from_db()
+            assert data1["email"] == self.payload["email"] == user.email
+            assert user.next_email_change == self.after
+
+            frozen.move_to(self.after)
+            parse_message(fetch())
+            user.refresh_from_db
+            assert user.next_email_change == self.after + EMAIL_COOLDOWN
+    
+    def test_email_update_fails(self, user, client: IsClient, user_client: IsClient):
+        """
+        Fails for unauthenticated reqs
+        Fails for Wrong password
+        """
+        # -- with unauthenticated requests raises 401 --
+        res1 = client.post(self.path, {})
+        parse_error(res1, status.HTTP_401_UNAUTHORIZED)
+
+        # -- with wrong passwords fails with validation error --
+        res2 = user_client.post(self.path, {**self.payload, "password": "pass"})
+        error = parse_error(res2, status.HTTP_400_BAD_REQUEST, "validation_error")
+        assert "password" == error[0]["attr"]
+
+        # -- When cooldown is still active --
+        with freeze_time(self.before) as frozen:
+            res3 = user_client.post(self.path, self.payload)
+            parse_message(res3)
+
+            frozen.move_to(timezone.now() + 0.5*EMAIL_COOLDOWN)
+            res4 = user_client.post(self.path, self.payload)
+            parse_error(res4, status.HTTP_422_UNPROCESSABLE_ENTITY)
+            user.refresh_from_db
+            assert user.last_email_change == self.before
