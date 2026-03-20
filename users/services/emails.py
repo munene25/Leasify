@@ -1,9 +1,9 @@
 from structlog import getLogger
-from users.models import User
+from users.models import User, EMAIL_COOLDOWN
 from django.db import transaction
 from rest_framework.exceptions import ValidationError
 from django.utils import timezone
-
+from common.exceptions import EmailUpdateError
 logger = getLogger("users.services.emails")
 
 
@@ -44,8 +44,7 @@ def user_email_update(user: User, email: str, password: str) -> User:
 
     # Ensure change is available
     if user.next_email_change is not None:
-        err = f"Next available email change is '{user.next_email_change}'"
-        raise ValidationError({"email": [err]})
+        raise EmailUpdateError({"email": f"Email updates are allowed once every {EMAIL_COOLDOWN.days} days"})
 
     # Normalize email first
     user.email = User.objects.normalize_email(email)

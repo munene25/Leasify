@@ -7,6 +7,7 @@ from django.core.mail import EmailMessage
 from rest_framework.exceptions import ValidationError, AuthenticationFailed
 from phonenumber_field.phonenumber import PhoneNumber
 from users.models import User, EMAIL_COOLDOWN
+from freezegun import freeze_time
 from users.services import (
     user_account_create,
     user_add_roles,
@@ -326,19 +327,35 @@ class TestEmailUpdate:
         assert "email" in exc.value.detail
         assert User.objects.get(pk=user.pk).email == user.email
 
-    def test_email_update_after_cooldown_succeeds(self, user: User):
+    def test_email_update_after_cooldown_succeeds(self, user: User, password):
         """
         The cooldown should succeed if user changes password AFTER the cooldown window
         """
-        new_email = "test@example.com"
-        after_cooldown = EMAIL_COOLDOWN + timedelta(days=1)
-        user.last_email_change = timezone.now() - after_cooldown
-        user.save(update_fields=["last_email_change"])
-        mod_user = user_email_update(user=user, email=new_email, password="Pa55word!")
+        from common.exceptions import EmailUpdateError
 
-        fetched = User.objects.get(pk=user.pk)
-        assert fetched == mod_user
-        assert mod_user.email == new_email
+        new_email = "test@example.com"
+        before = timezone.now()
+        after = before + EMAIL_COOLDOWN
+
+
+        with freeze_time(before, tz_offset=0) as frozen_time:
+            user.last_email_change = timezone.now()
+            user.save()
+            updater = lambda: user_email_update(user=user, email=new_email, password=password)
+    
+            with pytest.raises(EmailUpdateError) as exc:
+                updater()
+            assert "email" in exc.value.detail
+            assert str(EMAIL_COOLDOWN.days) in str(exc.value.detail)
+
+            frozen_time.move_to(after)
+            assert timezone.now() == after
+            assert user.next_email_change is None
+
+            mod_user = updater()
+            assert mod_user == user
+            assert mod_user.last_email_change == timezone.now()
+            assert mod_user.email == new_email
 
 
 class TestUserEmailVerifyConfirmation:

@@ -76,11 +76,15 @@ class User(BaseModel, AbstractUser):
 
     @property
     def next_email_change(self) -> None | datetime:
+        """
+        Initially localtime was being returned
+        Safer to deal with utc timezone throughout
+        """
         if self.last_email_change is None: return None
         
         next_change_time = self.last_email_change + EMAIL_COOLDOWN
         if next_change_time > timezone.now():
-            return timezone.localtime(next_change_time)
+            return next_change_time
 
     @property
     def full_name(self) -> str:
