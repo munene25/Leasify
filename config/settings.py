@@ -120,10 +120,9 @@ REST_FRAMEWORK = {
     "DEFAULT_THROTTLE_RATES": {
         "anon_sustained": "50/day",
         "user_sustained": "100/day",
-        "login_limit": "5/hour",
+        "failed_login_attempts": "5/hour",
         "password_changes": "3/day",
-        "email_verification": "3/day",
-        "email_change": "1/day",
+        "email_verifications": "3/day",
     },
 }
 

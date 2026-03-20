@@ -151,7 +151,7 @@ class LoginView(BaseAPIView):
     permission_classes = [AllowAny]
     serializer_class = sc.LoginSerializer
     throttle_classes = [EmailScopedThrottle]
-    throttle_scope = "login_limit"
+    throttle_scope = "failed_login_attempts"
 
     def post(self, request):
         incoming = self.validate_serializer(data=request.data)
@@ -191,19 +191,24 @@ class RefreshSessionView(BaseAPIView):
 
     def post(self, request):
        request.session.set_expiry(None)
-       return Response({"message": "Session refreshed"})
+       return Response({"message": "Session extended"})
 
 
 class EmailUpdateView(BaseAPIView):
+    """
+    Moved throttling is based on the last_email_change field on the model.
+    This centralizes the logic in one place
+    """
     permission_classes = [IsAuthenticated]
     serializer_class = sc.UserEmailUpdateSerializer
-    throttle_classes = [EmailScopedThrottle]
-    throttle_scope = "email_change"
 
-    def post(self, request, view):
+    def post(self, request):
         incoming = self.validate_serializer(data=request.data, partial=False)
-        user_email_update(user=request.user, **incoming)
-        return Response(status=status.HTTP_200_OK)
+        user = user_email_update(user=request.user, **incoming)
+
+        # In this case its better to respond with the email instead of the whole payload
+        # Helps in front end rendering.
+        return Response(data={"email": user.email}, status=status.HTTP_200_OK)
 
 
 class PasswordChangeView(BaseAPIView):
@@ -222,7 +227,7 @@ class PasswordChangeView(BaseAPIView):
 class RequestEmailVerificationView(BaseAPIView):
     permission_classes = [IsAuthenticated]
     throttle_classes = [EmailScopedThrottle]
-    throttle_scope = "email_verification"
+    throttle_scope = "email_verifications"
 
     def post(self, request):
         user = request.user
@@ -297,7 +302,7 @@ class UserUnsubscribeView(BaseAPIView):
         return Response(status=status.HTTP_200_OK)
 
 
-class UserRoleDetailView(BaseAPIView):
+class AdminUserRoleDetailView(BaseAPIView):
     permission_classes = [IsAdminUser]
     serializer_class = sc.UserRoleCreateSerializer
 
@@ -319,7 +324,7 @@ class UserRoleDetailView(BaseAPIView):
         return Response(status=status.HTTP_200_OK)
 
 
-class UserRoleListView(BaseAPIView):
+class AdminUserRoleListView(BaseAPIView):
     permission_classes = [IsAdminUser]
 
     def get(self, request):
