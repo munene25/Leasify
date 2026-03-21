@@ -31,6 +31,9 @@ class IsResponse(Protocol):
     @property
     def cookies(self) -> dict[str, Any]: ...
 
+    @property
+    def headers(self) -> dict[str, Any]: ...
+
 
 class IsClient(Protocol):
     def post(self, path: str, data: Mapping[str, Any], **extra) -> IsResponse: ...

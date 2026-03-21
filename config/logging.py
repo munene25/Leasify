@@ -17,7 +17,7 @@ DICT_LOG = {
         },
         "dev": {
             "()": structlog.stdlib.ProcessorFormatter,
-            "processor": structlog.dev.ConsoleRenderer(sort_keys=True,),
+            "processor": structlog.dev.ConsoleRenderer(sort_keys=True),
             "foreign_pre_chain": [
                 structlog.contextvars.merge_contextvars,
                 structlog.processors.TimeStamper(fmt="%Y-%m-%d %H:%M:%S"),
@@ -36,6 +36,10 @@ DICT_LOG = {
         "console": {
             "class": "logging.StreamHandler", 
             "formatter": "dev", "stream": "ext://sys.stdout"
+        },
+        "null": {
+            "class": "logging.NullHandler",
+            "level": "CRITICAL",
         },
     },
     "root": {
