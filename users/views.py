@@ -212,6 +212,10 @@ class EmailUpdateView(BaseAPIView):
 
 
 class PasswordChangeView(BaseAPIView):
+    """
+    Mail sent to notify the user as well
+    Throttles based on user.email
+    """
     permission_classes = [IsAuthenticated]
     serializer_class = sc.PasswordChangeSerializer
     throttle_classes = [EmailScopedThrottle]

@@ -9,6 +9,7 @@ from django.core.cache import cache
 from rest_framework import status
 from users.models import User, Account, EMAIL_COOLDOWN
 from tests.types import IsClient, UserCreatePayload
+from django.core.mail import EmailMessage
 from tests.helpers import parse_error, parse_message
 
 class TestUserListCreateView:
@@ -17,7 +18,7 @@ class TestUserListCreateView:
     def test_user_creation_successful(
         self,
         client: IsClient,
-        mailoutbox: list,
+        mailoutbox: list[EmailMessage],
         user_create_payload: UserCreatePayload,
         django_capture_on_commit_callbacks,
     ):
@@ -618,7 +619,7 @@ class TestPasswordChangeView:
     payload = {"password": "Pa55word!", "new_password": "Pa22word!", "confirm_password": "Pa22word!"}
     
 
-    def test_password_change_successfull(self, super_user: User, super_user_client: IsClient, mailoutbox, django_capture_on_commit_callbacks, override_throttles, cache_clear):
+    def test_password_change_successfull(self, super_user: User, super_user_client: IsClient, mailoutbox: list[EmailMessage], django_capture_on_commit_callbacks, override_throttles, cache_clear):
         """
         Password should be changed and message in response
         user should be able to login
@@ -671,7 +672,7 @@ class TestPasswordChangeView:
 
     def test_password_change_throttles(self, user_client: IsClient, override_throttles, cache_clear):
         """
-        nI'll test for non matching passwords here as well with the serializer
+        I'll test for non matching passwords here as well with the serializer
         Throttles should work after time elapses
         """
         before = timezone.now()
@@ -689,7 +690,26 @@ class TestPasswordChangeView:
 
     def test_password_change_fails_for_unauthenticated(self, client: IsClient):
         """Raises 400 for unauthenticated"""
-
         res1 = client.post(self.path, {**self.payload, "new_password": "not password"})
         errors = parse_error(res1, status.HTTP_401_UNAUTHORIZED)
         assert errors[0]["code"] == "not_authenticated"
+
+
+class TestRequestEmailVerificationView:
+    path = "/users/request/email-verification"
+
+    def test_request_email_verification_successfull(self, user: User, user_client: IsClient, django_capture_on_commit_callbacks, mailoutbox: list[EmailMessage]):
+        # mail should have a link to verify
+        # mail should be sent to the correct person
+        from config.emails import email_context
+
+        with django_capture_on_commit_callbacks(execute=True):
+            res1 = user_client.post(self.path, {})
+            parse_message(res1, status.HTTP_202_ACCEPTED)
+        assert len(mailoutbox) == 1
+
+        mail = mailoutbox[0]
+        assert mail.to == [user.email]
+        assert f"{email_context.frontend_url}/email-verify/" in mail.body
+        print(mail.body)
+        assert False
