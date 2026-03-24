@@ -13,7 +13,7 @@ from common.throttling import (
     AnonSustained,
     EmailScopedThrottle,
 )
-from users.tokens import token_validate, unsubscribe_token_validate
+from users.tokens import build_user_url, token_validate, get_user_from_uidb64
 from users.tasks import send_token_email
 from users.services import (
     user_account_create,
@@ -257,9 +257,10 @@ class ConfirmEmailVerificationView(BaseAPIView):
 
     permission_classes = [AllowAny]
 
-    def post(self, request, uuid, token):
-        user = token_validate(uuid=uuid, token=token)
-        if not user.verified:
+    def post(self, request, uidb64, token):
+        user = get_user_from_uidb64(uidb64)
+        if user.verified:
+            token_validate(user=user, token=token)
             user_email_verify(user)
         return Response(status=status.HTTP_200_OK)
 
@@ -293,8 +294,9 @@ class ConfirmPasswordResetView(BaseAPIView):
     permission_classes = [AllowAny]
     serializer_class = sc.ConfirmPasswordResetSerializer
 
-    def post(self, request, uuid, token):
-        user = token_validate(uuid=uuid, token=token)
+    def post(self, request, uidb64, token):
+        user = get_user_from_uidb64(uidb64)
+        token_validate(user=user, token=token)
         incoming = self.validate_serializer(data=request.data)
         user_change_password(user=user, **incoming)
         return Response(status=status.HTTP_200_OK)
@@ -303,8 +305,8 @@ class ConfirmPasswordResetView(BaseAPIView):
 class UserUnsubscribeView(BaseAPIView):
     permission_classes = [AllowAny]
 
-    def get(self, request, uuid):
-        user = unsubscribe_token_validate(uuid)
+    def get(self, request, uidb64):
+        user = get_user_from_uidb64(uidb64)
         if not user.account.can_receive_emails:
             account_unsubscribe(user.account)
         return Response(status=status.HTTP_200_OK)

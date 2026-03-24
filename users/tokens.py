@@ -1,38 +1,42 @@
+from django.conf import settings
+from django.utils.encoding import force_bytes, force_str
 from django.contrib.auth.tokens import default_token_generator
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
-from django.utils.encoding import force_bytes, force_str
-from rest_framework_simplejwt.exceptions import InvalidToken
+from common.exceptions import UserLinkMalformed
 from users.models import User
-from .selectors import user_get
-from django.conf import settings
+from users.selectors import user_get
 
-BASE_URL: str | None = getattr(settings, "FRONTEND_URL")
+BASE_URL: str = getattr(settings, "FRONTEND_URL")
 
-def token_url_generate(user: User, path: str) -> str:
-    uuid = urlsafe_base64_encode(force_bytes(user.pk))
-    token = default_token_generator.make_token(user)
-    return f"{BASE_URL}/{path}/{uuid}/{token}"
+def build_user_url(*, user: User, path: str, with_token: bool = True) -> str:
+    """
+    Constructs a URL pointing to the frontend for user-specific actions.
+    Token can be ommited for non sensitive tasks.
+    """
+    segments = [BASE_URL, path, uidb64_generate(user)]
+    if with_token:
+        segments.append(token_generate(user))
+
+    return  "/".join(seg for seg in segments)
 
 
-def token_validate(*, uuid: str, token: str) -> User:
+def token_generate(user: User)-> str:
+    """create a one time user token for a user"""
+    return default_token_generator.make_token(user)
+
+def token_validate(*, user: User, token: str) -> None:
+    """Check provided token for expiry and validity"""
+    if not default_token_generator.check_token(user, token):
+        raise UserLinkMalformed() 
+
+def uidb64_generate(user: User) -> str:
+    """Returns the user_id as a base 64 encoded string"""
+    return urlsafe_base64_encode(force_bytes(user.pk))
+
+def get_user_from_uidb64(uidb64: str) -> User:
+    """Decode base 64 encoded string and get the associated user"""
     try:
-        user_id = force_str(urlsafe_base64_decode(uuid))
-        user = user_get(int(user_id))
-        if default_token_generator.check_token(user, token):
-            return user
-        raise Exception
-    except Exception:
-        raise InvalidToken()
-
-
-def unsubscribe_url_for(user: User):
-    uuid = urlsafe_base64_encode(force_bytes(user.pk))
-    return f"{BASE_URL}/unsubscribe/{uuid}"
-
-def unsubscribe_token_validate(uuid) -> User:
-    try:
-        user_id = force_str(urlsafe_base64_decode(uuid))
-        user = user_get(int(user_id))
-        return user
-    except Exception:
-        raise InvalidToken()
+        user_id = force_str(urlsafe_base64_decode(uidb64))
+        return user_get(int(user_id))
+    except ValueError:
+        raise UserLinkMalformed()

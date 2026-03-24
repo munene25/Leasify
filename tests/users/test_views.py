@@ -699,9 +699,12 @@ class TestRequestEmailVerificationView:
     path = "/users/request/email-verification"
 
     def test_request_email_verification_successfull(self, user: User, user_client: IsClient, django_capture_on_commit_callbacks, mailoutbox: list[EmailMessage]):
-        # mail should have a link to verify
-        # mail should be sent to the correct person
-        from config.emails import email_context
+        """ 
+        mail should have a link to verify
+        mail should be sent to the correct person
+        """
+
+        from users.tokens import get_user_from_uidb64, token_validate
 
         with django_capture_on_commit_callbacks(execute=True):
             res1 = user_client.post(self.path, {})
@@ -710,6 +713,11 @@ class TestRequestEmailVerificationView:
 
         mail = mailoutbox[0]
         assert mail.to == [user.email]
-        assert f"{email_context.frontend_url}/email-verify/" in mail.body
-        print(mail.body)
-        assert False
+        urls = [word for word in mail.body.split() if "email-verify" in word]
+        assert len(urls) != 0
+        url = urls[0].split("/")
+        uidb64, token = url[-2], url[-1]
+        fetched = get_user_from_uidb64(uidb64)
+        assert user.pk == fetched.pk
+        token_validate(user=fetched, token=token)
+        
