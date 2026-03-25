@@ -1,10 +1,14 @@
-# Django specific
+# Environment
 .env
+.venv/
+
+# Dev database
 db.sqlite3
+
+# Python cache
 __pycache__
 out.txt
 
-.venv/ 
 testdata.md
 *logs
 local_settings.py
