@@ -5,17 +5,21 @@
 # Dev database
 db.sqlite3
 
-# Python cache
+# Python
 __pycache__
-out.txt
-
-testdata.md
-*logs
-local_settings.py
 media/
 staticfiles/
 x.py
 
+# Outputs
+out.txt
+testdata.md
+
+# Logs
+logs/
+
+# Vscode
+.vscode
+
 # Celery specific
 celerybeat-schedule
-.vscode
