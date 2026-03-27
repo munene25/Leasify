@@ -5,6 +5,10 @@ from tenancy.models import Tenancy
 from tenancy import selectors as tenancy_selectors
 from semesters import selectors as semester_selectors
 from semesters.models import Semester
+from common.helpers import not_found
+
+
+raise_not_found = not_found("apartment_id", "Apartment does not exist")
 
 
 def apartment_overview(semester_id: int):
@@ -26,14 +30,14 @@ def apartment_overview(semester_id: int):
 def apartment_list():
     return Apartment.objects.all()
 
-
+@raise_not_found
 def apartment_for_update(apartment_id: int):
     try:
         return Apartment.objects.select_for_update().prefetch_related("tenancy_set").get(pk=apartment_id)
     except Apartment.DoesNotExist:
         raise NotFound({"apartment_id": f"Apartment {apartment_id} not found"})
 
-
+@raise_not_found
 def apartment_get_by_id(apartment_id: int):
     # most of the time, apartment's tenancy_set is accessed therefore makes sense to include.
     try:
