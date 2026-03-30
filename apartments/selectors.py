@@ -8,6 +8,7 @@ from semesters.models import Semester
 from common.helpers import not_found
 
 
+# wrapper to raise not found for each id
 raise_not_found = not_found("apartment_id", "Apartment does not exist")
 
 
