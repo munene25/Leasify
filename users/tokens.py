@@ -21,7 +21,7 @@ def build_user_url(*, user: User, path: str, with_token: bool = True) -> str:
 
 
 def token_generate(user: User)-> str:
-    """create a one time user token for a user"""
+    """create a one time use token for a user"""
     return default_token_generator.make_token(user)
 
 def token_validate(*, user: User, token: str) -> None:
