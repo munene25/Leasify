@@ -32,7 +32,7 @@ COMPANY_ADDRESS = "Embu, Kenya"
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get("SECURITY_KEY")
+SECRET_KEY = os.environ.get("SECURITY_KEY", "secret-key")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -204,13 +204,13 @@ DRF_STANDARDIZED_ERRORS = {"ENABLE_IN_DEBUG_FOR_UNHANDLED_EXCEPTIONS": True}
 
 ## EMAILS
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-EMAIL_HOST = os.getenv("EMAIL_HOST")
+EMAIL_HOST = os.getenv("EMAIL_HOST", "localhost")
 EMAIL_PORT = 2525
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "host-user")
 DEFAULT_FROM_EMAIL = f"no-reply@{FRONTEND_DOMAIN}"
 SUPPORT_EMAIL = f"support@{FRONTEND_DOMAIN}"
-EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "password")
 ADMINS = ["edmune25@gmail.com"]  # Logging email alerts in prod
 
 
