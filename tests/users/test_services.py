@@ -366,6 +366,7 @@ class TestUserEmailVerifyConfirmation:
         Verified status should reflect
         """
         mod_user = user_email_verify(user)
+        mod_user.refresh_from_db()
         assert mod_user == user
         assert mod_user.verified == True
 
