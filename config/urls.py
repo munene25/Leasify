@@ -22,12 +22,12 @@ from django.views.decorators.csrf import ensure_csrf_cookie
 
 # view to obtain csrf cookie
 @ensure_csrf_cookie
-def get_csrf:
-    return JsonResponse({"message": "csrf ok"})
+def get_csrf(request):
+    return JsonResponse({"message": "csrf set"})
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('csrf-token', ping, name="get_csrf"),
+    path('csrf-token', get_csrf, name="get_csrf"),
     path('users/', include("users.urls"), name='users'),
     path('apartments/', include("apartments.urls"), name='apartments'),
     path('semesters/', include("semesters.urls"), name='semesters'),
