@@ -10,7 +10,7 @@ from rest_framework import status
 from users.models import User, Account, EMAIL_COOLDOWN
 from tests.types import IsClient, UserCreatePayload
 from django.core.mail import EmailMessage
-from tests.helpers import parse_error, parse_message
+from tests.helpers import parse_error, parse_message, check_links_in_mail
 
 class TestUserListCreateView:
     path = "/users/"
@@ -541,7 +541,7 @@ class TestRefreshSessionView:
     
     def test_user_can_refresh_their_session(self, user: User, user_client: IsClient, password: str):
         """
-        There should exist a new expiry on the cookie expiring later than the first
+            There should exist a new expiry on the cookie expiring later than the first
         """
         # -- Login and check if token is issued --
         res1 = user_client.post("/users/login", {"email": user.email, "password": password})
@@ -572,9 +572,9 @@ class TestEmailUpdateView:
 
     def test_email_updates_successfully(self, user: User, user_client: IsClient):
         """
-        Email should be upddated correctly
-        Next change should be denied
-        Response should include New email
+            Email should be upddated correctly
+            Next change should be denied
+            Response should include New email
         """
 
         with freeze_time(self.before) as frozen:
@@ -591,8 +591,8 @@ class TestEmailUpdateView:
     
     def test_email_update_fails(self, user, client: IsClient, user_client: IsClient):
         """
-        Fails for unauthenticated reqs
-        Fails for Wrong password
+            Fails for unauthenticated reqs
+            Fails for Wrong password
         """
         # -- with unauthenticated requests raises 401 --
         res1 = client.post(self.path, {})
@@ -621,9 +621,9 @@ class TestPasswordChangeView:
 
     def test_password_change_successfull(self, super_user: User, super_user_client: IsClient, mailoutbox: list[EmailMessage], django_capture_on_commit_callbacks, override_throttles, cache_clear):
         """
-        Password should be changed and message in response
-        user should be able to login
-        session_id should be cycled
+            Password should be changed and message in response
+            user should be able to login
+            session_id should be cycled
         """
         
         session_id1 = super_user_client.post("/users/login", {"email": super_user.email, "password":"Pa55word!"}).cookies["sessionid"].value
@@ -659,7 +659,7 @@ class TestPasswordChangeView:
     @pytest.mark.parametrize("wrong_pass", ["wrongpassword", ""])
     def test_wrong_passwords_fail(self, user: User, wrong_pass: str, user_client: IsClient, cache_clear):
         """
-        Wrong or empty("") passwords should fail
+            Wrong or empty("") passwords should fail
         """
         payload = {**self.payload, "password": wrong_pass}
         old_password = user.password
@@ -672,8 +672,8 @@ class TestPasswordChangeView:
 
     def test_password_change_throttles(self, user_client: IsClient, override_throttles, cache_clear):
         """
-        I'll test for non matching passwords here as well with the serializer
-        Throttles should work after time elapses
+            I'll test for non matching passwords here as well with the serializer
+            Throttles should work after time elapses
         """
         before = timezone.now()
         fetch = lambda: user_client.post(self.path, {**self.payload, "new_password": "not password"})
@@ -689,7 +689,9 @@ class TestPasswordChangeView:
             assert errors3[0]["attr"] == "confirm_password"
 
     def test_password_change_fails_for_unauthenticated(self, client: IsClient):
-        """Raises 400 for unauthenticated"""
+        """
+            Raises 400 for unauthenticated
+        """
         res1 = client.post(self.path, {**self.payload, "new_password": "not password"})
         errors = parse_error(res1, status.HTTP_401_UNAUTHORIZED)
         assert errors[0]["code"] == "not_authenticated"
@@ -700,11 +702,9 @@ class TestRequestEmailVerificationView:
 
     def test_request_email_verification_successfull(self, user: User, user_client: IsClient, django_capture_on_commit_callbacks, mailoutbox: list[EmailMessage]):
         """ 
-        mail should have a link to verify
-        mail should be sent to the correct person
+            mail should have a link to verify
+            mail should be sent to the correct person
         """
-
-        from users.tokens import get_user_from_uidb64, token_validate
 
         with django_capture_on_commit_callbacks(execute=True):
             res1 = user_client.post(self.path, {})
@@ -713,11 +713,38 @@ class TestRequestEmailVerificationView:
 
         mail = mailoutbox[0]
         assert mail.to == [user.email]
-        urls = [word for word in mail.body.split() if "email-verify" in word]
-        assert len(urls) != 0
-        url = urls[0].split("/")
-        uidb64, token = url[-2], url[-1]
-        fetched = get_user_from_uidb64(uidb64)
-        assert user.pk == fetched.pk
-        token_validate(user=fetched, token=token)
+        check_links_in_mail(user=user, mail=mail, path="email-verify")
+
+    def test_reqest_does_not_send_email_for_verified_user(self, user: User, user_client: IsClient, django_capture_on_commit_callbacks, mailoutbox: list[EmailMessage]):
+        """ 
+            message response will always be 202 but email will not be sent
+        """
+        user.verified = True
+        user.save(update_fields=["verified"])
+
+        with django_capture_on_commit_callbacks(execute=True):
+            res1 = user_client.post(self.path, {})
+            parse_message(res1, status.HTTP_202_ACCEPTED)
+        assert len(mailoutbox) == 0
+
+    def test_authentication(self, client: IsClient):
+        res1 = client.post(self.path, {})
+        parse_error(res1, status.HTTP_401_UNAUTHORIZED)
+    
+class TestConfirmEmailVerificationView:
+
+    def test_authentication_passes(self, user: User, client: IsClient):
         
+        """
+            the link in the email can be parsed and sent to the backend.
+            email already has been checked for correct tokens and uidb64.
+            So in this view i just test the view.
+        """
+
+        from users.tokens import uidb64_generate, token_generate
+
+        path = f"/users/confirm/email-verification/{uidb64_generate(user)}/{token_generate(user)}"
+        res = client.post(path, {})
+        parse_message(res)
+        user.refresh_from_db()
+        assert user.verified == True
