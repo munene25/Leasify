@@ -450,7 +450,7 @@ class TestUserLoginView:
         last login should be updated.
         A session should be created.
         """
-        csrftoken = csrf_client.get("/").cookies["csrftoken"].value
+        csrftoken = csrf_client.get("/csrf-token").cookies["csrftoken"].value
         header = {"HTTP_X_CSRFTOKEN" : csrftoken}
         credentials = {"email": user.email, "password": password}
 
@@ -734,7 +734,6 @@ class TestRequestEmailVerificationView:
 class TestConfirmEmailVerificationView:
 
     def test_authentication_passes(self, user: User, client: IsClient):
-        
         """
             the link in the email can be parsed and sent to the backend.
             email already has been checked for correct tokens and uidb64.
