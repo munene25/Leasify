@@ -273,7 +273,7 @@ class ConfirmEmailVerificationView(BaseAPIView):
 
     def post(self, request, uidb64, token):
         user = get_user_from_uidb64(uidb64)
-        if user.verified:
+        if not user.verified:
             token_validate(user=user, token=token)
             user_email_verify(user)
         return Response(status=status.HTTP_200_OK)
