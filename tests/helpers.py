@@ -1,8 +1,10 @@
-from rest_framework import status
-from typing import Any
-from tests.types import IsResponse
 import json
-
+from typing import Any
+from django.conf import settings
+from django.core.mail import EmailMessage
+from rest_framework import status
+from tests.types import IsResponse
+from users.models import User
 
 def parse_error(
     response: IsResponse, status_code: int, err_type: str = "client_error", err_len: int = 1
@@ -35,3 +37,25 @@ def parse_response(response: IsResponse):
         }
     }
     return json.dumps(data, indent=4)
+
+def check_links_in_mail(user: User, mail: EmailMessage, path: str)-> None:
+    """Checks whether the links are valid in the mail message"""
+
+    from users.tokens import token_validate, get_user_from_uidb64
+    
+    # get links and check if they match 
+    links = [word for word in mail.body.split() if path in word]
+    assert len(set(links)) == 1, json.dumps({"links": links})
+
+    # get uidb64 and token if it exists
+    base_url = settings.FRONTEND_URL + "/" + path + "/"
+    params = links[0].replace(base_url, "").split("/")
+    assert len(params) >= 1, json.dumps({"params": params})
+    uidb64 = params[0]
+    u = get_user_from_uidb64(uidb64)
+    assert u == user
+    try:
+        token_validate(user=u, token=params[1])
+    except KeyError:
+        pass
+
