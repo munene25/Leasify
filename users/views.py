@@ -41,10 +41,10 @@ logger = getLogger("users.views")
 
 class UserListCreateView(BaseAPIView):
     """
-    Provides a way to view the list (depending on the level of access) of registered users
-    Also a create user via post
+        Serves as an admin's user-list view via get and new user registration via post
+        Permission class is determined via method
+        Filtering is allowed via 'search' and 'is_active'
 
-    The get method is a priviledged route hence permissions are checked and _for selectors are used
     """
 
     class FilterSerializer(serializers.Serializer):
@@ -72,9 +72,9 @@ class UserListCreateView(BaseAPIView):
 
 class AdminUserDetailUpdateDestroyView(BaseAPIView):
     """
-    Allows Admins or Authroized groups to modify users details
-    All methods require priviledged access
-    Selectors with _for should be used
+        Allows Admins or Authroized groups to modify users details
+        All methods require priviledged access
+        Selectors with _for should be used
     """
 
     serializer_class = sc.AdminUserUpdateSerializer
@@ -110,7 +110,7 @@ class AdminUserDetailUpdateDestroyView(BaseAPIView):
 
 class MeView(BaseAPIView):
     """
-    This is the self management view for users to modify their own data
+        Provides endpoints for users to manage their own account
     """
 
     serializer_class = sc.UserUpdateSerializer
@@ -141,8 +141,8 @@ class MeView(BaseAPIView):
 
 class LoginView(BaseAPIView):
     """
-    Grant the user a session if authentication passes, otherwise raise 401
-    Throttles based on failed attempts, Successful request do not count as attempts.
+        Grant the user a session if authentication passes, otherwise raise 401
+        Throttles based on failed attempts, Successful request do not count as attempts.
     """
 
     from config.auth import ForceCSRFAuthentication
@@ -168,7 +168,9 @@ class LoginView(BaseAPIView):
 
 
 class LogoutView(BaseAPIView):
-    """Flush current user session and delete session_id cookie"""
+    """     
+        Flush current user session and delete session_id cookie
+    """
 
     permission_classes = [IsAuthenticated]
 
@@ -182,8 +184,8 @@ class LogoutView(BaseAPIView):
 
 class RefreshSessionView(BaseAPIView):
     """
-    A means to extend the expiry time for authenticated users.
-    Frontend ideally, should periodically hit this endpoint.
+        A means to extend the expiry time for authenticated users.
+        Frontend ideally, should periodically hit this endpoint.
     """
 
     permission_classes = [IsAuthenticated]
@@ -195,8 +197,9 @@ class RefreshSessionView(BaseAPIView):
 
 class EmailUpdateView(BaseAPIView):
     """
-    Moved throttling is based on the last_email_change field on the model.
-    This centralizes the logic in one place
+        View allows users to change emails. Limited to once a weeka
+        Moved throttling is based on the last_email_change field on the model.
+        This centralizes the logic in one place
     """
 
     permission_classes = [IsAuthenticated]
@@ -213,9 +216,11 @@ class EmailUpdateView(BaseAPIView):
 
 class PasswordChangeView(BaseAPIView):
     """
-    Mail sent to notify the user as well
-    Throttles based on user.email
+        View orchestrates password change for logged in user.
+        Requires two passwords to match and the current password to be correct
+        Throttles based on user.email 
     """
+
     permission_classes = [IsAuthenticated]
     serializer_class = sc.PasswordChangeSerializer
     throttle_classes = [EmailScopedThrottle]
@@ -233,6 +238,12 @@ class PasswordChangeView(BaseAPIView):
 
 
 class RequestEmailVerificationView(BaseAPIView):
+    """
+        View sends an email to the requesting user to verify email.
+        The link points to the fronted with then posts to this view.
+        Done via post as it's an unsafe operation.
+    """
+    
     permission_classes = [IsAuthenticated]
     throttle_classes = [EmailScopedThrottle]
     throttle_scope = "email_verifications"
@@ -250,11 +261,14 @@ class RequestEmailVerificationView(BaseAPIView):
                 "User email verification request",
                 extra={"actor": f"user: {request.user}"},
             )
-        return Response(status=status.HTTP_202_ACCEPTED)
+        return Response(data={"message": "email verification sent if user exists"}, status=status.HTTP_202_ACCEPTED)
 
 
 class ConfirmEmailVerificationView(BaseAPIView):
-
+    """
+        Allows users to verify their emails
+        Skips verification if user is already verified.
+    """
     permission_classes = [AllowAny]
 
     def post(self, request, uidb64, token):
