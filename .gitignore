@@ -1,17 +1,25 @@
-# Django specific
+# Environment
 .env
-db.sqlite3
-__pycache__
-out.txt
+.venv/
 
-.venv/ 
-testdata.md
-*logs
-local_settings.py
+# Dev database
+db.sqlite3
+
+# Python
+__pycache__
 media/
 staticfiles/
 x.py
 
+# Outputs
+out.txt
+testdata.md
+
+# Logs
+logs/
+
+# Vscode
+.vscode
+
 # Celery specific
 celerybeat-schedule
-.vscode

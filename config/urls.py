@@ -20,13 +20,14 @@ from rest_framework.decorators import api_view
 from django.http.response import JsonResponse
 from django.views.decorators.csrf import ensure_csrf_cookie
 
+# view to obtain csrf cookie
 @ensure_csrf_cookie
-def ping(request):
-    return JsonResponse({"message": "pong"})
+def get_csrf:
+    return JsonResponse({"message": "csrf ok"})
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('', ping, name="ping"),
+    path('csrf-token', ping, name="get_csrf"),
     path('users/', include("users.urls"), name='users'),
     path('apartments/', include("apartments.urls"), name='apartments'),
     path('semesters/', include("semesters.urls"), name='semesters'),

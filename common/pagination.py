@@ -2,6 +2,7 @@ from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
 
 def get_paginated_response(*, s_cls, qs, req, view):
+    """Return paginated response for list views"""
     paginator = PageNumberPagination()
     page = paginator.paginate_queryset(qs, req, view=view)
 
