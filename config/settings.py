@@ -122,6 +122,7 @@ REST_FRAMEWORK = {
         "user_sustained": "100/day",
         "failed_login_attempts": "5/hour",
         "password_changes": "3/day",
+        "password_resets": "3/day",
         "email_verifications": "3/day",
     },
 }
