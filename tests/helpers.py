@@ -10,7 +10,7 @@ def parse_error(
     response: IsResponse, status_code: int, err_type: str = "client_error", err_len: int = 1
 ) -> list[dict[str, str]]:
     """
-    Helper func parsing errors
+        Helper func for parsing drf error response objects
     """
     msg = parse_response(response)
     assert response.status_code == status_code, msg
@@ -21,13 +21,18 @@ def parse_error(
 
 
 def parse_message(response: IsResponse, status_code: int = status.HTTP_200_OK) -> dict[str, Any]:
-    """helper function"""
+    """
+        Helper func for parsing drf success response objects
+    """
     msg = parse_response(response)
     assert response.status_code == status_code, msg
     return response.data
 
 
-def parse_response(response: IsResponse):
+def parse_response(response: IsResponse) -> str:
+    """
+        This parses the error responses to allow inspection of response body on test failures
+    """
     data = {
         "RESPONSE": {
             "STATUS_CODE": response.status_code,
@@ -39,7 +44,7 @@ def parse_response(response: IsResponse):
     return json.dumps(data, indent=4)
 
 def check_links_in_mail(user: User, mail: EmailMessage, path: str)-> None:
-    """Checks whether the links are valid in the mail message"""
+    """Checks whether the links present and valid in the mail message"""
 
     from users.tokens import token_validate, get_user_from_uidb64
     
