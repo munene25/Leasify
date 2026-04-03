@@ -277,11 +277,18 @@ class ConfirmEmailVerificationView(BaseAPIView):
 
 
 class RequestPasswordResetView(BaseAPIView):
+    """
+        Forgot password route.
+        Payload includes the registered email address.
+        Returns a consistent response for both registered and unregistered users
+        Throttles based on email.
+        Logs reflect which email is requesting the password reset
+    """
 
     permission_classes = [AllowAny]
     serializer_class = sc.RequestPasswordResetSerializer
     throttle_classes = [EmailScopedThrottle]
-    throttle_scope = "email_verification"
+    throttle_scope = "password_resets"
 
     def post(self, request):
         incoming = self.validate_serializer(data=request.data)
@@ -296,7 +303,7 @@ class RequestPasswordResetView(BaseAPIView):
                 subject="Reset your password",
                 action_cta="Reset password",
             )
-            logger.info("User request password reset")
+            logger.info(f"password reset request from [user_email: {user.email}]", user_id=user.pk)
         return Response(status=status.HTTP_202_ACCEPTED)
 
 
