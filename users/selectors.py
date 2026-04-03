@@ -1,11 +1,12 @@
 from typing import Any
 import django_filters
-from django.http import QueryDict
 from django.db.models import Q
+from django.http import QueryDict
+from django.contrib.auth.models import UserManager
+from django.db.models.query import QuerySet
 from django.contrib.auth.models import Group
 from rest_framework.exceptions import NotFound
 from users.models import User
-from django.db.models.query import QuerySet
 from common.helpers import not_found
 
 
@@ -77,9 +78,10 @@ def user_get(user_id: int) -> User:
 
 def user_get_for(*, user: User, user_id: int) -> User:
     """
-    This is primarily for admin routes to exclude certain users from the queryset
-    User will *only* be able to view users visible to them.
+        This is primarily for admin routes to exclude certain users from the queryset
+        User will *only* be able to view users visible to them.
     """
+
     exclusions = PerRoleExclusion.for_user(user)
     matched_user = BASE_QS.filter(pk=user_id).exclude(exclusions).first()
     if matched_user is None:
@@ -89,21 +91,29 @@ def user_get_for(*, user: User, user_id: int) -> User:
 
 @not_found("email", "User with given email not found")
 def user_get_by_email(user_email) -> User:
-    return User.objects.get(email=user_email)
+    """
+        Used in views where the email is the only identifying attribute eg. password-reset
+        Should first normalize the email then try to get the user
+    """
+    
+    email = UserManager.normalize_email(user_email)
+    return BASE_QS.get(email=email)
 
 
 
 @raise_not_found
 def user_get_locked(user_id: int) -> User:
     """
-    Necessary for locking row access while updating
+        Necessary for locking row access while updating
     """
+
     return BASE_QS.select_for_update().get(pk=user_id)
 
 
 
 def groups_list():
     """
-    Just decided to have this here because it is highly coupled with the user model
+        Just decided to have this here because it is highly coupled with the user model
     """
+
     return Group.objects.all()
