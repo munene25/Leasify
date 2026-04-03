@@ -257,10 +257,7 @@ class RequestEmailVerificationView(BaseAPIView):
                 subject="Verify your email address.",
                 action_cta="Verify Email",
             )
-            logger.info(
-                "User email verification request",
-                extra={"actor": f"user: {request.user}"},
-            )
+            logger.info(f"email verification request from [user_email: {user.email}]")
         return Response(data={"message": "email verification sent if user exists"}, status=status.HTTP_202_ACCEPTED)
 
 
