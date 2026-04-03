@@ -733,9 +733,9 @@ class TestRequestEmailVerificationView:
     
 class TestConfirmEmailVerificationView:
 
-    def test_authentication_passes(self, user: User, client: IsClient):
+    def test_confirm_email_verification_successful(self, user: User, client: IsClient):
         """
-            the link in the email can be parsed and sent to the backend.
+            link in the email can be parsed once it hits the backend.
             email already has been checked for correct tokens and uidb64.
             So in this view i just test the view.
         """
@@ -747,3 +747,65 @@ class TestConfirmEmailVerificationView:
         parse_message(res)
         user.refresh_from_db()
         assert user.verified == True
+
+class TestRequestPasswordResetView:
+    path = "/users/request/password-reset"
+
+    def test_password_reset_successful(self, user: User, client: IsClient, mailoutbox: list[EmailMessage], cache_clear):
+        """
+            Check the mail is sent and contains the associated links.
+            Should work with unauthenticated users as they try to recover their accounts
+        """
+
+        res1 = client.post(self.path, {"email": user.email})
+        parse_message(res1, status.HTTP_202_ACCEPTED)
+        assert len(mailoutbox) == 1
+        mail = mailoutbox[0]
+        assert mail.to == [user.email]
+        check_links_in_mail(user, mail, "password-reset")
+
+    def test_email_normalization(self, user: User, client: IsClient, mailoutbox: list[EmailMessage], cache_clear):
+        """
+            Check the mail is sent and contains the associated links.
+            Should work with unauthenticated users as they try to recover their accounts
+        """
+
+        parts = user.email.split("@")
+        email = "@".join(parts)
+        res1 = client.post(self.path, {"email": email})
+        parse_message(res1, status.HTTP_202_ACCEPTED)
+
+        assert len(mailoutbox) == 1
+        assert mailoutbox[0].to == [user.email]
+
+    
+    def test_throttles_based_on_email(self, user: User, client: IsClient, override_throttles, cache_clear):
+        """
+            Should throttle based on the email address provided in the request body.
+        """
+        
+        res1 = client.post(self.path, {"email": user.email})
+        parse_message(res1, status.HTTP_202_ACCEPTED)
+
+        res2 = client.post(self.path, {"email": user.email})
+        errs2 = parse_error(res2, status.HTTP_429_TOO_MANY_REQUESTS)
+        assert errs2[0]["code"] == "throttled"
+
+    def test_wrong_email_formats_fail(self, client: IsClient, mailoutbox: list[EmailMessage]):
+        """
+            Wrong email formats should raise an error
+            Should fail on not found emails but return uniform response
+        """
+
+        res1 = client.post(self.path, {"email": "email.com"})
+        err1 = parse_error(res1, status.HTTP_400_BAD_REQUEST, "validation_error")
+        assert err1[0]["attr"] == "email"
+
+    
+    def test_uniform_status_codes_even_for_unknown_emails(self, client: IsClient, mailoutbox: list[EmailMessage]):
+        """
+            Should fail on unregistered email but return uniform response
+        """
+        res1 = client.post(self.path, {"email": "test@email.com"})
+        parse_message(res1, status.HTTP_202_ACCEPTED)
+        assert len(mailoutbox) == 0
