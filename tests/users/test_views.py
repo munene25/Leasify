@@ -698,7 +698,7 @@ class TestPasswordChangeView:
 
 
 class TestRequestEmailVerificationView:
-    path = "/users/request/email-verification"
+    path = "/users/email-verification/request"
 
     def test_request_email_verification_successfull(self, user: User, user_client: IsClient, django_capture_on_commit_callbacks, mailoutbox: list[EmailMessage]):
         """ 
@@ -742,14 +742,14 @@ class TestConfirmEmailVerificationView:
 
         from users.tokens import uidb64_generate, token_generate
 
-        path = f"/users/confirm/email-verification/{uidb64_generate(user)}/{token_generate(user)}"
+        path = f"/users/email-verification/confirm/{uidb64_generate(user)}/{token_generate(user)}"
         res = client.post(path, {})
         parse_message(res)
         user.refresh_from_db()
         assert user.verified == True
 
 class TestRequestPasswordResetView:
-    path = "/users/request/password-reset"
+    path = "/users/password-reset/request"
 
     def test_password_reset_successful(self, user: User, client: IsClient, mailoutbox: list[EmailMessage], cache_clear):
         """
