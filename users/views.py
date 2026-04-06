@@ -308,7 +308,9 @@ class RequestPasswordResetView(BaseAPIView):
 
 
 class ConfirmPasswordResetView(BaseAPIView):
-
+    """
+        Allows password reset after user follows link sent via the recovery method.
+    """
     permission_classes = [AllowAny]
     serializer_class = sc.ConfirmPasswordResetSerializer
 
@@ -316,8 +318,8 @@ class ConfirmPasswordResetView(BaseAPIView):
         user = get_user_from_uidb64(uidb64)
         token_validate(user=user, token=token)
         incoming = self.validate_serializer(data=request.data)
-        user_change_password(user=user, **incoming)
-        return Response(status=status.HTTP_200_OK)
+        user_change_password(user=user, is_ressetting=True, **incoming)
+        return Response(data={"message": "password has been reset successfully, other active sessions you had have now been logged out"}, status=status.HTTP_200_OK)
 
 
 class UserUnsubscribeView(BaseAPIView):
