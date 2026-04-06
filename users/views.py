@@ -258,7 +258,7 @@ class RequestEmailVerificationView(BaseAPIView):
                 action_cta="Verify Email",
             )
             logger.info(f"email verification request from [user_email: {user.email}]")
-        return Response(data={"message": "email verification sent if user exists"}, status=status.HTTP_202_ACCEPTED)
+        return Response(data={"message": "email verification link sent if user exists"}, status=status.HTTP_202_ACCEPTED)
 
 
 class ConfirmEmailVerificationView(BaseAPIView):
@@ -273,7 +273,7 @@ class ConfirmEmailVerificationView(BaseAPIView):
         if not user.verified:
             token_validate(user=user, token=token)
             user_email_verify(user)
-        return Response(status=status.HTTP_200_OK)
+        return Response(data={"message": "email has been verified successfully"}, status=status.HTTP_200_OK)
 
 
 class RequestPasswordResetView(BaseAPIView):
@@ -304,7 +304,7 @@ class RequestPasswordResetView(BaseAPIView):
                 action_cta="Reset password",
             )
             logger.info(f"password reset request from [user_email: {user.email}]", user_id=user.pk)
-        return Response(status=status.HTTP_202_ACCEPTED)
+        return Response(data={"message": "password reset link sent if user exists"}, status=status.HTTP_202_ACCEPTED)
 
 
 class ConfirmPasswordResetView(BaseAPIView):
