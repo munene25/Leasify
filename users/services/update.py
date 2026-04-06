@@ -85,8 +85,8 @@ def user_change_password(*, user: User, new_password: str, password: str | None 
     :type user: User
     :param new_password: The password to be set if operation is successful
     :type new_password: str
-    :param current_password: The current raw password of the user. Can be none in password recovery flows
-    :type current_password: str | None
+    :param password: The current raw password of the user. Can be none in password recovery flows
+    :type password: str | None
 
     :return: Modified User object
     :rtype: User 
