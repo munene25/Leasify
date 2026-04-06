@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.utils.encoding import force_bytes, force_str
 from django.contrib.auth.tokens import default_token_generator
+from rest_framework.exceptions import NotFound
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from common.exceptions import UserLinkMalformed
 from users.models import User
@@ -38,5 +39,5 @@ def get_user_from_uidb64(uidb64: str) -> User:
     try:
         user_id = force_str(urlsafe_base64_decode(uidb64))
         return user_get(int(user_id))
-    except ValueError:
+    except (ValueError, NotFound):
         raise UserLinkMalformed()
