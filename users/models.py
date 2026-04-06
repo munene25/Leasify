@@ -1,19 +1,16 @@
 from __future__ import annotations
-from datetime import timedelta
-from django.utils import timezone
+from datetime import timedelta, datetime
 from django.db import models
-from django.core.validators import MinLengthValidator, RegexValidator
+from django.utils import timezone
 from django.contrib.auth.models import AbstractUser
-from common.models import BaseModel
+from django.core.validators import MinLengthValidator, RegexValidator
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework.exceptions import ValidationError
 from phonenumber_field.modelfields import PhoneNumberField
 from phonenumbers import parse
-from typing import TYPE_CHECKING
+from common.models import BaseModel
 
-if TYPE_CHECKING:
-    from datetime import datetime
 
 EMAIL_COOLDOWN: timedelta = timedelta(days=14)
 
@@ -91,12 +88,19 @@ class User(BaseModel, AbstractUser):
         return self.get_full_name()
 
     @property
-    def roles(self) -> list[str]:
+    def role(self) -> str:
         """
-        Returns a flattened list of strings representing the user's roles
-        Important because value_list returns tuples: [("manager",), ("caretaker",)]
+            Returns the inherent role of the user on the domain.
+            Ranges from superuser, or the group they belong to.
+            caching the property causes unexpected behavior when changing user roles mid session.
+            Defaults to general.
         """
-        return list(self.groups.values_list("name", flat=True))
+        group = self.groups.first()
+        if self.is_superuser:
+            return "superuser"
+        elif group:
+            return group.name
+        else: return "general"
 
 
 # Account Model
