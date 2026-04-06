@@ -43,7 +43,18 @@ def user_deactivate(user: User) -> User:
 
 
 @transaction.atomic
-def user_remove_roles(*, user: User, roles: list[Group]) -> User:
-    user.groups.remove(*roles)
-    logger.info(f"Roles [roles: {roles}] removed from [user_id: {user.pk}]")
+def user_remove_role(user: User) -> User:
+    """
+    Responsible for removing a user from all groups.
+    Since only one role can be assigned to a user at a time, only one group will be removed.
+
+    :param user: The user from whom the role will be removed.
+    :type user: User
+    :return: The user with the role removed.
+    :rtype: User
+    """
+
+    role = user.groups.first()
+    user.groups.remove(role)
+    logger.info(f"Roles [role: {role}] removed from [user_id: {user.pk}]")
     return user

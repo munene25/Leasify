@@ -2,6 +2,7 @@ from structlog import getLogger
 from django.contrib.auth.models import Group
 from django.db import transaction
 from phonenumber_field.phonenumber import PhoneNumber
+from common.exceptions import RoleAssignmentError
 from users.models import User, Account
 from users.tasks import send_welcome_email
 
@@ -53,7 +54,20 @@ def account_create(*, user: User, phone_number: PhoneNumber, bio: str | None = N
     return account
 
 @transaction.atomic
-def user_add_roles(*, user: User, roles: list[Group])-> User:
-    user.groups.add(*roles)
-    logger.info(f"Roles [roles: {roles}] added for [user_id: {user.pk}]")
+def user_add_role(*, user: User, role: Group)-> User:
+    """
+        Responsible for adding a user to a group.
+        Ensures that only one role can be assigned to a user at a time.
+        
+        :param user: The user to whom the role will be added.
+        :type user: User
+        :param role: The role (Group) to be added to the user.
+        :type role: Group
+        :return: The user with the newly added role.
+        :rtype: User    
+    """
+    if user.groups.exists():
+        raise RoleAssignmentError()
+    user.groups.add(role)
+    logger.info(f"Roles [role: {role}] added for [user_id: {user.pk}]")
     return user
