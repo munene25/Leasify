@@ -10,7 +10,7 @@ from semesters import selectors as sem_selectors
 from apartments.selectors import apartment_for_update
 from users import selectors as user_selectors
 from payments.services import PaymentCreateService
-
+from users.services import user_add_role
 
 class TenancyService:
     def __init__(self, tenancy_id: int | None = None):
@@ -69,9 +69,9 @@ class TenancyService:
         tenancy.save()
 
         # Add user to Tenant group
-        user = user_selectors.user_get_by_id(user_id)
+        user = user_selectors.user_get(user_id)
         tenancy_group, _ = Group.objects.get_or_create(name="tenant")
-        user.groups.add(tenancy_group)
+        user_add_role(user=user, role=tenancy_group)
         return tenancy
 
     @transaction.atomic
