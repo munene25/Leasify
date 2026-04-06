@@ -13,9 +13,9 @@ urlpatterns = [
     path("refresh", views.RefreshSessionView.as_view(), name="refresh"),
     path("password-change", views.PasswordChangeView.as_view(), name="password_change" ),
     path("email-change", views.EmailUpdateView.as_view(), name="email_change" ),
-    path("request/password-reset", views.RequestPasswordResetView.as_view(), name="send_password_reset"),
-    path("confirm/password-reset/<str:uidb64>/<str:token>", views.ConfirmPasswordResetView.as_view(), name="confirm_password_reset" ),
-    path("request/email-verification", views.RequestEmailVerificationView.as_view(), name="send_email_verification" ),
-    path("confirm/email-verification/<str:uidb64>/<str:token>", views.ConfirmEmailVerificationView.as_view(), name="confirm_email_verification" ),
+    path("password-reset/request", views.RequestPasswordResetView.as_view(), name="send_password_reset"),
+    path("password-reset/confirm/<str:uidb64>/<str:token>", views.ConfirmPasswordResetView.as_view(), name="confirm_password_reset" ),
+    path("email-verification/request", views.RequestEmailVerificationView.as_view(), name="send_email_verification" ),
+    path("email-verification/confirm/<str:uidb64>/<str:token>", views.ConfirmEmailVerificationView.as_view(), name="confirm_email_verification" ),
     path("unsubscribe/<str:uidb64>", views.UserUnsubscribeView.as_view(), name="unsubscribe")
 ]
