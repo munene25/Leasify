@@ -36,7 +36,7 @@ def parse_response(response: IsResponse) -> str:
     data = {
         "RESPONSE": {
             "STATUS_CODE": response.status_code,
-            "DATA": response.data,
+            "DATA": getattr(response, "data", {}),
             "HEADERS": dict(response.headers),
             "COOKIES": dict(response.cookies)
         }
