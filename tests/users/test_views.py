@@ -809,3 +809,39 @@ class TestRequestPasswordResetView:
         res1 = client.post(self.path, {"email": "test@email.com"})
         parse_message(res1, status.HTTP_202_ACCEPTED)
         assert len(mailoutbox) == 0
+    
+
+class TestConfirmPasswordResetView:
+    path = "/users/password-reset/confirm"
+
+    def test_confirm_password_reset_successfully_allows_password_to_be_reset(self, client: IsClient, user: User, password):
+        """
+            Other logged in instances will be rendered unauthenticated.
+            Will use a client to ensure unauthenticated requests are allowed.
+        """
+        
+        from users.tokens import token_generate, uidb64_generate
+        from rest_framework.test import APIClient
+
+        # First create a logged in instance of a client
+        logged_in = APIClient()
+        res1 = logged_in.post("/users/login", {"email": user.email, "password": password})
+        parse_message(res1) # type: ignore
+
+        #! stale user instance leads to generation of invalid tokens off the bat
+        user.refresh_from_db()
+
+        # reset the password
+        token = token_generate(user)
+        path = "/".join([self.path, uidb64_generate(user), token])
+        new_password = "NewPa55word!!"
+  
+        res2 = client.post(path, {"new_password": new_password, "confirm_password": new_password})
+        parse_message(res2)
+
+        user.refresh_from_db()
+        user.validate_password(new_password)
+
+        # Try to access auth routes with previous session
+        res3 = logged_in.post("/users/me", {})
+        parse_error(res3, status.HTTP_401_UNAUTHORIZED) # type: ignore
