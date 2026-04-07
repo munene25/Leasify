@@ -5,7 +5,7 @@ from django.contrib.auth.models import Group
 
 class UserCreateSerializer(serializers.Serializer):
     """
-        Need to set the boolean field's default value otherwise defaults to false
+    Need to set the boolean field's default value otherwise defaults to false
     """
 
     first_name = serializers.CharField()
@@ -18,7 +18,7 @@ class UserCreateSerializer(serializers.Serializer):
 
 class UserListSerializer(serializers.Serializer):
     """
-        A List serializer indicating general user attributes.
+    A List serializer indicating general user attributes.
     """
 
     user_id = serializers.IntegerField(source="pk")
@@ -31,8 +31,8 @@ class UserListSerializer(serializers.Serializer):
 
 class UserUpdateSerializer(serializers.Serializer):
     """
-        Detail serializer for users updating their own accounts.
-        Instantiated with 'partial' flag.
+    Detail serializer for users updating their own accounts.
+    Instantiated with 'partial' flag.
     """
 
     first_name = serializers.CharField()
@@ -45,8 +45,8 @@ class UserUpdateSerializer(serializers.Serializer):
 
 class UserDetailSerializer(serializers.Serializer):
     """
-        Detail serializer for the requesting user.
-        Adds a role(s) field inteded for frontend role based access
+    Detail serializer for the requesting user.
+    Adds a role(s) field inteded for frontend role based access
     """
 
     email = serializers.EmailField()
@@ -60,10 +60,11 @@ class UserDetailSerializer(serializers.Serializer):
     bio = serializers.CharField(source="account.bio")
     role = serializers.CharField()
 
+
 class AdminUserUpdateSerializer(serializers.Serializer):
     """
-        Fields an admin can modify for other user.
-        Allows only a subset of fields
+    Fields an admin can modify for other user.
+    Allows only a subset of fields
     """
 
     first_name = serializers.CharField()
@@ -71,10 +72,11 @@ class AdminUserUpdateSerializer(serializers.Serializer):
     # Account fields
     phone_number = PhoneNumberField()
 
+
 class AdminUserDetailSerializer(UserDetailSerializer):
     """
-        Extends the user detail serializer
-        Intended for admins to have access to the user_id of the specified user.
+    Extends the user detail serializer
+    Intended for admins to have access to the user_id of the specified user.
     """
 
     user_id = serializers.IntegerField(source="pk")
@@ -82,17 +84,17 @@ class AdminUserDetailSerializer(UserDetailSerializer):
 
 class LoginSerializer(serializers.Serializer):
     """
-        Email and password serializer.
-        Password checking remains on the service.
+    Email and password serializer.
+    Password checking remains on the service.
     """
-    
+
     email = serializers.EmailField()
     password = serializers.CharField()
 
 
 class RequestPasswordResetSerializer(serializers.Serializer):
     """
-        Email required to send the mail to
+    Email required to send the mail to
     """
 
     email = serializers.EmailField()
@@ -100,8 +102,8 @@ class RequestPasswordResetSerializer(serializers.Serializer):
 
 class BasePasswordSerializer(serializers.Serializer):
     """
-        Base serializer
-        Validates that the new_password and confirm password match
+    Base serializer
+    Validates that the new_password and confirm password match
     """
 
     new_password = serializers.CharField()
@@ -116,24 +118,25 @@ class BasePasswordSerializer(serializers.Serializer):
 
 class ConfirmPasswordResetSerializer(BasePasswordSerializer):
     """
-        Inherits from BasePasswordSerializer
+    Inherits from BasePasswordSerializer
     """
+
     pass
 
 
 class PasswordChangeSerializer(BasePasswordSerializer):
     """
-        Inherits from BasePasswordSerializer
-        Adds a current password field unlike password resets.
+    Inherits from BasePasswordSerializer
+    Adds a current password field unlike password resets.
     """
-    
+
     password = serializers.CharField()
 
 
 class UserEmailUpdateSerializer(serializers.Serializer):
     """
-        Update serializer for users to update their own emails.
-        Requires email to change to and current user password.
+    Update serializer for users to update their own emails.
+    Requires email to change to and current user password.
     """
 
     password = serializers.CharField()
@@ -142,26 +145,27 @@ class UserEmailUpdateSerializer(serializers.Serializer):
 
 class UserRoleDetailSerializer(serializers.Serializer):
     """
-        Requires the user object to passed as the instance to the serializer
-        Roles is a lazy user attribute
+    Requires the user object to passed as the instance to the serializer
+    Roles is a lazy user attribute
     """
 
+    user_id = serializers.IntegerField(source="pk")
     role = serializers.CharField()
 
 
 class UserRoleCreateSerializer(serializers.Serializer):
     """
-        A means to add roles to a user.
-        User id is passed via the url.
+    A means to add roles to a user.
+    User id is passed via the url.
     """
-    
+
     role = serializers.SlugRelatedField(slug_field="name", queryset=Group.objects.all())
 
 
 class UserRoleListSerializer(serializers.Serializer):
     """
-        Instantiated with a groups qs.
-        A list serializer for every name of group.
+    Instantiated with a groups qs.
+    A list serializer for every name of group.
     """
-    
+
     roles = serializers.CharField(source="name")
