@@ -5,14 +5,16 @@ from django.core.management import call_command
 from django.contrib.auth.models import Group
 from phonenumber_field.phonenumber import PhoneNumber
 from users.models import User
-from users.services import user_account_create, user_add_role
+from users.services import user_account_create, user_set_role
 from rest_framework.test import APIClient
 from django.core.cache import cache
+
 
 @pytest.fixture(scope="session")
 def django_db_setup(django_db_setup, django_db_blocker):
     with django_db_blocker.unblock():
         call_command("loaddata", "fixtures/roles.json")
+
 
 @pytest.fixture
 def override_pagination():
@@ -45,6 +47,7 @@ def override_throttles():
 def enable_db_access(db):
     """Automatically enable db access for all tests."""
     pass
+
 
 @pytest.fixture(scope="function")
 def cache_clear():
@@ -98,9 +101,11 @@ def user_factory(fake, phone_no) -> typing.Callable[[int, dict[str, typing.Any]]
 
     return create
 
+
 @pytest.fixture
 def user(user_factory) -> User:
     return user_factory()[0]
+
 
 @pytest.fixture
 def roles_list() -> list[Group]:
@@ -118,6 +123,7 @@ def get_role() -> typing.Callable[[str], Group]:
     """
     return lambda name: Group.objects.get(name=name)
 
+
 @pytest.fixture
 def super_user(user_factory):
     u: User = user_factory()[0]
@@ -129,21 +135,21 @@ def super_user(user_factory):
 @pytest.fixture
 def manager_user(user_factory, get_role) -> User:
     u = user_factory()[0]
-    user_add_role(user=u, role=get_role("manager"))
+    user_set_role(user=u, role=get_role("manager"))
     return u
 
 
 @pytest.fixture
 def caretaker_user(user_factory, get_role) -> User:
     u = user_factory()[0]
-    user_add_role(user=u, role=get_role("caretaker"))
+    user_set_role(user=u, role=get_role("caretaker"))
     return u
 
 
 @pytest.fixture
 def tenant_user(user_factory, get_role) -> User:
     u = user_factory()[0]
-    user_add_role(user=u, role=get_role("tenant"))
+    user_set_role(user=u, role=get_role("tenant"))
     return u
 
 
@@ -164,6 +170,7 @@ def phone_no(fake) -> typing.Callable[[str | None], PhoneNumber]:
 @pytest.fixture
 def client() -> APIClient:
     return APIClient()
+
 
 @pytest.fixture
 def csrf_client() -> APIClient:
@@ -196,7 +203,6 @@ def caretaker_client(caretaker_user) -> APIClient:
     client = APIClient()
     client.force_authenticate(user=caretaker_user)
     return client
-
 
 
 @pytest.fixture
