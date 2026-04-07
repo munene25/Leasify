@@ -39,7 +39,7 @@ class TestUserDetailSerializer:
         assert s["bio"] == bio == u.account.bio
         # Assert null fields are present and serialized
         assert s["next_email_change"] == None
-        assert s["roles"] == u.roles
+        assert s["role"] == u.role
 
     def test_datetime_fields_resolve_with_defined_timezone(self, manager_user, settings):
         """
@@ -101,25 +101,21 @@ class TestPasswordChangeSerializer:
         assert {"password", "new_password"} == set(s.keys())
 
 
-class TestUserRoleDetialiSerializer:
-    def test_roles_are_serialized_correctly(self, manager_user, get_role):
+class TestUserRoleDetialSerializer:
+    def test_role_is_serialized_correctly(self, manager_user):
+        """Moving from multiple roles to singular role per user"""
         instance = serializer.UserRoleDetailSerializer(instance=manager_user)
         s = dict(instance.data)
-        assert s["roles"] == manager_user.roles
-        assert len(s["roles"]) == 1
-        manager_user.groups.add(get_role("tenant"))
+        assert s["role"] == manager_user.role
 
-        instance = serializer.UserRoleDetailSerializer(instance=manager_user)
-        s = dict(instance.data)
-        assert s["roles"] == manager_user.roles
-        assert len(s["roles"]) == 2
 
 class TestUserRoleCreateSerializer:
     def test_role_is_retrieved_correctly(self, get_role):
-        roles = {get_role("manager"), get_role("tenant")}
-        instance = serializer.UserRoleCreateSerializer(data={"roles": ["manager", "tenant"]})
+        """Serializer data should be converted to a role instance"""
+        role = get_role("tenant")
+        instance = serializer.UserRoleCreateSerializer(data={"role": "tenant"})
         assert instance.is_valid()
         s = instance.validated_data
         assert isinstance(s, dict)
-        assert set(s["roles"]) == roles
+        assert s["role"] == role
 
