@@ -942,3 +942,47 @@ class TestAdminUserRoleDetailView:
         response2 = caretaker_client.get(path)
         error2 = parse_error(response2, status_code)[0]
         assert error2["code"] == "permission_denied"
+    
+    def test_modifying_priviledged_users_fails(self, manager_client: IsClient, super_user: User):
+        """
+        Priviledged users can't have their roles modified or retrieved
+        """
+        status_code = status.HTTP_404_NOT_FOUND
+        path = self.path + str(super_user.pk)
+
+        response1 = manager_client.get(path)
+        error1 = parse_error(response1, status_code)[0]
+        assert error1["code"] == "not_found"
+
+        response2 = manager_client.patch(path, {"role": "manager"})
+        error2 = parse_error(response2, status_code)[0]
+        assert error2["code"] == "not_found"
+
+        response3 = manager_client.delete(path)
+        error3 = parse_error(response3, status_code)[0]
+        assert error3["code"] == "not_found"
+    
+    def test_patching_roles_replaces_the_assigned_role(self, manager_client: IsClient, user_factory):
+        """
+        When patching a role, the existing role should be replaced with the new one. 
+        This prevents users from accumulating multiple roles unintentionally.
+        """
+        users: list[User] = user_factory(2)
+        user = users[0]
+        path = self.path + str(user.pk)
+
+        # Assign manager role to the user
+        response1 = manager_client.patch(path, {"role": "manager"})
+        data1 = parse_message(response1)
+        assert data1["role"] == "manager"
+        user.refresh_from_db()
+        assert user.groups.filter(name="manager").exists() == True
+
+        # Now assign caretaker role to the same user, which should replace the manager role
+        response2 = manager_client.patch(path, {"role": "caretaker"})
+        data2 = parse_message(response2)
+        assert data2["role"] == "caretaker"
+        user.refresh_from_db()
+        assert user.groups.count() == 1
+        assert user.groups.filter(name="caretaker").exists() == True
+        assert user.groups.filter(name="manager").exists() == False
