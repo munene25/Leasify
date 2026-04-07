@@ -58,7 +58,7 @@ class UserDetailSerializer(serializers.Serializer):
     phone_number = PhoneNumberField(source="account.phone_number")
     backup_email = serializers.EmailField(source="account.backup_email", allow_null=True)
     bio = serializers.CharField(source="account.bio")
-    roles = serializers.ListField()
+    role = serializers.CharField()
 
 class AdminUserUpdateSerializer(serializers.Serializer):
     """
@@ -146,7 +146,7 @@ class UserRoleDetailSerializer(serializers.Serializer):
         Roles is a lazy user attribute
     """
 
-    roles = serializers.ListField()
+    role = serializers.CharField()
 
 
 class UserRoleCreateSerializer(serializers.Serializer):
@@ -155,7 +155,7 @@ class UserRoleCreateSerializer(serializers.Serializer):
         User id is passed via the url.
     """
     
-    roles = serializers.SlugRelatedField(slug_field="name", many=True, queryset=Group.objects.all())
+    role = serializers.SlugRelatedField(slug_field="name", queryset=Group.objects.all())
 
 
 class UserRoleListSerializer(serializers.Serializer):
@@ -164,4 +164,4 @@ class UserRoleListSerializer(serializers.Serializer):
         A list serializer for every name of group.
     """
     
-    name = serializers.CharField()
+    roles = serializers.CharField(source="name")
