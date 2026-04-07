@@ -3,7 +3,7 @@ from django.db import transaction
 from django.contrib.auth.models import Group
 from users.models import User, Account
 
-logger = getLogger("users.services.unsub")
+logger = getLogger("users.services.deactiavate")
 
 
 @transaction.atomic
@@ -12,15 +12,14 @@ def account_unsubscribe(account: Account) -> Account:
     Unsubscribes a user from the mailing list.
 
     :param account: account obj
-    :type accoutn: Account
+    :type account: Account
 
     :return: unsubed account instance
     :rtype: Account
     """
-    if account.can_receive_emails:
-        account.can_receive_emails = False
-        account.save(update_fields=["can_receive_emails"])
-        logger.info(f"user [user_id: {account.user_id}] unsubscribed from mailling list")  # type: ignore
+    account.can_receive_emails = False
+    account.save(update_fields=["can_receive_emails"])
+    logger.info(f"user [user_id: {account.user_id}] unsubscribed from mailling list")  # type: ignore
     return account
 
 
