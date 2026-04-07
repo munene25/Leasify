@@ -6,7 +6,7 @@ from rest_framework.exceptions import NotFound
 from rest_framework.permissions import AllowAny, IsAuthenticated, IsAdminUser
 from rest_framework import status
 from common.views import BaseAPIView
-from common.permissions import check_perms
+from common.permissions import IsManager, check_perms
 from django.contrib.auth import login, logout, update_session_auth_hash
 from common.pagination import get_paginated_response
 from common.throttling import (
@@ -17,7 +17,7 @@ from users.tokens import build_user_url, token_validate, get_user_from_uidb64
 from users.tasks import send_token_email
 from users.services import (
     user_account_create,
-    user_add_role,
+    user_set_role,
     user_authenticate,
     user_update,
     user_email_update,
@@ -358,7 +358,7 @@ class AdminUserRoleListView(BaseAPIView):
 
 
 class AdminUserRoleDetailView(BaseAPIView):
-    permission_classes = [IsAdminUser]
+    permission_classes = [IsManager]
     serializer_class = sc.UserRoleCreateSerializer
 
     def get(self, request, user_id):
@@ -366,22 +366,16 @@ class AdminUserRoleDetailView(BaseAPIView):
         serializer = sc.UserRoleDetailSerializer(instance=user)
         return Response(status=status.HTTP_200_OK, data=serializer.data)
 
-    def post(self, request, user_id):
+    def patch(self, request, user_id):
         user = user_get_for(user=request.user, user_id=user_id)
         incoming = self.validate_serializer(data=request.data)
-        user_add_role(user=user, role=incoming["role"])
-        return Response(status=status.HTTP_200_OK)
+        # Explicitly acknowledge that an existing role will be replaced if it exists by setting replace to true. This prevents accidental role replacement.
+        u = user_set_role(user=user, role=incoming["role"], replace=True)
+        serializer = sc.UserRoleDetailSerializer(instance=u)
+        return Response(status=status.HTTP_200_OK, data=serializer.data)
 
     def delete(self, request, user_id):
         user = user_get_for(user=request.user, user_id=user_id)
-        user_remove_role(user=user)
-        return Response(status=status.HTTP_200_OK)
-
-
-class AdminUserRoleListView(BaseAPIView):
-    permission_classes = [IsAdminUser]
-
-    def get(self, request):
-        groups = groups_list()
-        serializer = sc.UserRoleListSerializer(many=True, instance=groups)
+        u = user_remove_role(user=user)
+        serializer = sc.UserRoleDetailSerializer(instance=u)
         return Response(status=status.HTTP_200_OK, data=serializer.data)
