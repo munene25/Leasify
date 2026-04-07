@@ -898,3 +898,47 @@ class TestUserUnsubscribeView:
         user.refresh_from_db()
         assert user.account.can_receive_emails == True
     
+class TestAdminUserRoleDetailView:
+    path = "/users/roles/"
+
+    def test_user_role_get_put_delete_successfully(self, manager_client: IsClient, user: User):
+        """
+        Manager should be able to view a user's roles, edit them and delete them.
+        """
+        # -- Test get data is accurate --
+        path = self.path + str(user.pk)
+        response1 = manager_client.get(path)
+        data1 = parse_message(response1)
+        assert data1["user_id"] == user.pk
+        assert data1["role"] == "general"
+
+        # -- Test patching data succeeds --
+        response2 = manager_client.patch(path, {"role": "manager"})
+        data2 = parse_message(response2)
+        user.refresh_from_db()
+        assert data2["user_id"] == user.pk
+        assert data2["role"] == "manager"
+        assert user.groups.filter(name="manager").exists() == True
+
+        # -- Test deleting role succeeds --
+        response3 = manager_client.delete(path)
+        data3 = parse_message(response3)
+        user.refresh_from_db()
+        assert data3["user_id"] == user.pk
+        assert data3["role"] == "general"
+        assert user.groups.filter(name="manager").exists() == False
+    
+    def test_user_role_view_authentication_and_authorization(self, user_client: IsClient, caretaker_client: IsClient):
+        """
+        Pemission denied for regular users and caretakers
+        """
+        status_code = status.HTTP_403_FORBIDDEN
+        path = self.path + "1"
+
+        response1 = user_client.get(path)
+        error1 = parse_error(response1, status_code)[0]
+        assert error1["code"] == "permission_denied"
+
+        response2 = caretaker_client.get(path)
+        error2 = parse_error(response2, status_code)[0]
+        assert error2["code"] == "permission_denied"
