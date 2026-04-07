@@ -10,10 +10,10 @@ from users.models import User, EMAIL_COOLDOWN
 from freezegun import freeze_time
 from users.services import (
     user_account_create,
-    user_add_roles,
+    user_add_role,
     user_deactivate,
     account_unsubscribe,
-    user_remove_roles,
+    user_remove_role,
     user_email_update,
     user_email_verify,
     user_authenticate,
@@ -218,23 +218,29 @@ class TestRoleAssignment:
         """
         assert user.groups.count() == 0
         role = get_role("manager")
-        mod_user = user_add_roles(user=user, roles=[role])
+        user_add_role(user=user, role=role)
 
-        assert mod_user == user
+        user.refresh_from_db()
 
-        groups = mod_user.groups
+        groups = user.groups
 
         assert groups.count() == 1
         assert role in groups.all()
-        assert user.roles == [role.name]
+        assert user.role == role.name
 
-    def test_multiple_role_assignment_succeeds(self, user: User, roles_list):
+    def test_multiple_role_assignment_fails(self, user: User, roles_list):
+
+        """
+        Multiple role assignments should fail raising a Rolessignmenterror.
+        """
+        from common.exceptions import RoleAssignmentError
         assert user.groups.count() == 0
-        mod_user = user_add_roles(user=user, roles=roles_list)
-
-        assert mod_user.groups.count() == len(roles_list)
-        assert list(mod_user.groups.all()) == roles_list
-        assert user.roles == [r.name for r in roles_list]
+        mod_user = user_add_role(user=user, role=roles_list[0])
+        
+        with pytest.raises(RoleAssignmentError) as exc:
+            user_add_role(user=mod_user, role=roles_list[1])
+        assert "Only one role is allowed per user." in exc.value.detail
+        assert mod_user.groups.count() == 1
 
 
 class TestUserDeactivation:
@@ -264,31 +270,17 @@ class TestAccountUnsubscribe:
 class TestRoleRemoval:
     def test_role_removal_successfull(self, manager_user: User):
         """
-        Test removing a role is persistent
-        Test the model role list is reflects
+        Test removing a role from a user and the resulting state of the user.
         """
-        first_role = manager_user.groups.first()
+        first_role = manager_user.role
 
         assert first_role is not None
-        assert manager_user.roles == [first_role.name]
-        mod_user = user_remove_roles(user=manager_user, roles=[first_role])
+        user_remove_role(user=manager_user)
 
-        assert mod_user == manager_user
+        manager_user.refresh_from_db()
 
-        assert mod_user.roles == []
-        assert mod_user.groups.count() == 0
-
-    def test_multiple_role_removal_successfull(self, user: User, roles_list):
-        """
-        Test multiple roles can be unassigned from a user in one go
-        """
-        user.groups.add(*roles_list)
-        assert list(user.groups.all()) == roles_list
-
-        user_remove_roles(user=user, roles=roles_list)
-
-        assert user.roles == []
-        assert user.groups.count() == 0
+        assert manager_user.role == "general"
+        assert not manager_user.groups.exists()
 
 
 class TestEmailUpdate:
