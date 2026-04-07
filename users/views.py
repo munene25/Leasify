@@ -17,14 +17,14 @@ from users.tokens import build_user_url, token_validate, get_user_from_uidb64
 from users.tasks import send_token_email
 from users.services import (
     user_account_create,
-    user_add_roles,
+    user_add_role,
     user_authenticate,
     user_update,
     user_email_update,
     user_email_verify,
     user_change_password,
     user_deactivate,
-    user_remove_roles,
+    user_remove_role,
     account_unsubscribe,
 )
 from users.selectors import (
@@ -41,9 +41,9 @@ logger = getLogger("users.views")
 
 class UserListCreateView(BaseAPIView):
     """
-        Serves as an admin's user-list view via get and new user registration via post
-        Permission class is determined via method
-        Filtering is allowed via 'search' and 'is_active'
+    Serves as an admin's user-list view via get and new user registration via post
+    Permission class is determined via method
+    Filtering is allowed via 'search' and 'is_active'
 
     """
 
@@ -72,9 +72,9 @@ class UserListCreateView(BaseAPIView):
 
 class AdminUserDetailUpdateDestroyView(BaseAPIView):
     """
-        Allows Admins or Authroized groups to modify users details
-        All methods require priviledged access
-        Selectors with _for should be used
+    Allows Admins or Authroized groups to modify users details
+    All methods require priviledged access
+    Selectors with _for should be used
     """
 
     serializer_class = sc.AdminUserUpdateSerializer
@@ -110,7 +110,7 @@ class AdminUserDetailUpdateDestroyView(BaseAPIView):
 
 class MeView(BaseAPIView):
     """
-        Provides endpoints for users to manage their own account
+    Provides endpoints for users to manage their own account
     """
 
     serializer_class = sc.UserUpdateSerializer
@@ -141,8 +141,8 @@ class MeView(BaseAPIView):
 
 class LoginView(BaseAPIView):
     """
-        Grant the user a session if authentication passes, otherwise raise 401
-        Throttles based on failed attempts, Successful request do not count as attempts.
+    Grant the user a session if authentication passes, otherwise raise 401
+    Throttles based on failed attempts, Successful request do not count as attempts.
     """
 
     from config.auth import ForceCSRFAuthentication
@@ -168,8 +168,8 @@ class LoginView(BaseAPIView):
 
 
 class LogoutView(BaseAPIView):
-    """     
-        Flush current user session and delete session_id cookie
+    """
+    Flush current user session and delete session_id cookie
     """
 
     permission_classes = [IsAuthenticated]
@@ -184,8 +184,8 @@ class LogoutView(BaseAPIView):
 
 class RefreshSessionView(BaseAPIView):
     """
-        A means to extend the expiry time for authenticated users.
-        Frontend ideally, should periodically hit this endpoint.
+    A means to extend the expiry time for authenticated users.
+    Frontend ideally, should periodically hit this endpoint.
     """
 
     permission_classes = [IsAuthenticated]
@@ -197,9 +197,9 @@ class RefreshSessionView(BaseAPIView):
 
 class EmailUpdateView(BaseAPIView):
     """
-        View allows users to change emails. Limited to once a weeka
-        Moved throttling is based on the last_email_change field on the model.
-        This centralizes the logic in one place
+    View allows users to change emails. Limited to once a weeka
+    Moved throttling is based on the last_email_change field on the model.
+    This centralizes the logic in one place
     """
 
     permission_classes = [IsAuthenticated]
@@ -216,9 +216,9 @@ class EmailUpdateView(BaseAPIView):
 
 class PasswordChangeView(BaseAPIView):
     """
-        View orchestrates password change for logged in user.
-        Requires two passwords to match and the current password to be correct
-        Throttles based on user.email 
+    View orchestrates password change for logged in user.
+    Requires two passwords to match and the current password to be correct
+    Throttles based on user.email
     """
 
     permission_classes = [IsAuthenticated]
@@ -239,11 +239,11 @@ class PasswordChangeView(BaseAPIView):
 
 class RequestEmailVerificationView(BaseAPIView):
     """
-        View sends an email to the requesting user to verify email.
-        The link points to the fronted with then posts to this view.
-        Done via post as it's an unsafe operation.
+    View sends an email to the requesting user to verify email.
+    The link points to the fronted with then posts to this view.
+    Done via post as it's an unsafe operation.
     """
-    
+
     permission_classes = [IsAuthenticated]
     throttle_classes = [EmailScopedThrottle]
     throttle_scope = "email_verifications"
@@ -258,14 +258,17 @@ class RequestEmailVerificationView(BaseAPIView):
                 action_cta="Verify Email",
             )
             logger.info(f"email verification request from [user_email: {user.email}]")
-        return Response(data={"message": "email verification link sent if user exists"}, status=status.HTTP_202_ACCEPTED)
+        return Response(
+            data={"message": "email verification link sent if user exists"}, status=status.HTTP_202_ACCEPTED
+        )
 
 
 class ConfirmEmailVerificationView(BaseAPIView):
     """
-        Allows users to verify their emails
-        Skips verification if user is already verified.
+    Allows users to verify their emails
+    Skips verification if user is already verified.
     """
+
     permission_classes = [AllowAny]
 
     def post(self, request, uidb64, token):
@@ -278,11 +281,11 @@ class ConfirmEmailVerificationView(BaseAPIView):
 
 class RequestPasswordResetView(BaseAPIView):
     """
-        Forgot password route.
-        Payload includes the registered email address.
-        Returns a consistent response for both registered and unregistered users
-        Throttles based on email.
-        Logs reflect which email is requesting the password reset
+    Forgot password route.
+    Payload includes the registered email address.
+    Returns a consistent response for both registered and unregistered users
+    Throttles based on email.
+    Logs reflect which email is requesting the password reset
     """
 
     permission_classes = [AllowAny]
@@ -309,8 +312,9 @@ class RequestPasswordResetView(BaseAPIView):
 
 class ConfirmPasswordResetView(BaseAPIView):
     """
-        Allows password reset after user follows link sent via the recovery method.
+    Allows password reset after user follows link sent via the recovery method.
     """
+
     permission_classes = [AllowAny]
     serializer_class = sc.ConfirmPasswordResetSerializer
 
@@ -319,10 +323,19 @@ class ConfirmPasswordResetView(BaseAPIView):
         token_validate(user=user, token=token)
         incoming = self.validate_serializer(data=request.data)
         user_change_password(user=user, is_ressetting=True, **incoming)
-        return Response(data={"message": "password has been reset successfully, other active sessions you had have now been logged out"}, status=status.HTTP_200_OK)
+        return Response(
+            data={
+                "message": "password has been reset successfully, other active sessions you had have now been logged out"
+            },
+            status=status.HTTP_200_OK,
+        )
 
 
 class UserUnsubscribeView(BaseAPIView):
+    """
+    Route to unregister users from mailing list and misc notifications
+    """
+
     permission_classes = [AllowAny]
 
     def get(self, request, uidb64):
@@ -344,13 +357,12 @@ class AdminUserRoleDetailView(BaseAPIView):
     def post(self, request, user_id):
         user = user_get_for(user=request.user, user_id=user_id)
         incoming = self.validate_serializer(data=request.data)
-        user_add_roles(user=user, roles=incoming["roles"])
+        user_add_role(user=user, role=incoming["role"])
         return Response(status=status.HTTP_200_OK)
 
     def delete(self, request, user_id):
         user = user_get_for(user=request.user, user_id=user_id)
-        incoming = self.validate_serializer(data=request.data)
-        user_remove_roles(user=user, roles=incoming["roles"])
+        user_remove_role(user=user)
         return Response(status=status.HTTP_200_OK)
 
 
