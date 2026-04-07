@@ -409,9 +409,9 @@ class TestMeView:
         assert data1["backup_email"] == user.account.backup_email
         assert data1["phone_number"] == str(user.account.phone_number)
         assert data1["next_email_change"] == None
-        assert data1["roles"] == []
+        assert data1["role"] == "general"
 
-        updates = {"first_name": "Zane", "email": "testemail1@gmail.com", "phone_number": "+254 710 111 110", "bio": "A regular bio", "roles": ["manager"]}
+        updates = {"first_name": "Zane", "email": "testemail1@gmail.com", "phone_number": "+254 710 111 110", "bio": "A regular bio", "role": "manager"}
         response2 = client.patch(self.path, updates)
         data2 = parse_message(response2)
         user.refresh_from_db()
@@ -420,7 +420,7 @@ class TestMeView:
         assert data2["phone_number"] == updates["phone_number"].replace(" ", "") == user.account.phone_number
         assert data2["bio"] == updates["bio"] == user.account.bio
         assert data2["email"] != updates["email"] and data2["email"] == user.email
-        assert data2["roles"]  != updates["roles"] and data2["roles"] == []
+        assert data2["role"] != updates["role"] and data2["role"] == "general"
         
 
         # Unauthorized will be raised
