@@ -5,7 +5,7 @@ from django.core.management import call_command
 from django.contrib.auth.models import Group
 from phonenumber_field.phonenumber import PhoneNumber
 from users.models import User
-from users.services import user_account_create
+from users.services import user_account_create, user_add_role
 from rest_framework.test import APIClient
 from django.core.cache import cache
 
@@ -129,21 +129,21 @@ def super_user(user_factory):
 @pytest.fixture
 def manager_user(user_factory, get_role) -> User:
     u = user_factory()[0]
-    u.groups.add(get_role("manager"))
+    user_add_role(user=u, role=get_role("manager"))
     return u
 
 
 @pytest.fixture
 def caretaker_user(user_factory, get_role) -> User:
     u = user_factory()[0]
-    u.groups.add(get_role("caretaker"))
+    user_add_role(user=u, role=get_role("caretaker"))
     return u
 
 
 @pytest.fixture
 def tenant_user(user_factory, get_role) -> User:
     u = user_factory()[0]
-    u.groups.add(get_role("tenant"))
+    user_add_role(user=u, role=get_role("tenant"))
     return u
 
 
