@@ -338,11 +338,23 @@ class UserUnsubscribeView(BaseAPIView):
 
     permission_classes = [AllowAny]
 
-    def get(self, request, uidb64):
+    def post(self, request, uidb64):
         user = get_user_from_uidb64(uidb64)
-        if not user.account.can_receive_emails:
+        if user.account.can_receive_emails:
             account_unsubscribe(user.account)
-        return Response(status=status.HTTP_200_OK)
+        return Response(
+            data={"message": "You have been unsubscribed from all non-essential emails"},
+            status=status.HTTP_200_OK,
+        )
+
+
+class AdminUserRoleListView(BaseAPIView):
+    permission_classes = [IsManager]
+
+    def get(self, request):
+        groups = groups_list()
+        serializer = sc.UserRoleListSerializer(many=True, instance=groups)
+        return Response(status=status.HTTP_200_OK, data=serializer.data)
 
 
 class AdminUserRoleDetailView(BaseAPIView):
