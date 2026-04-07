@@ -358,6 +358,13 @@ class AdminUserRoleListView(BaseAPIView):
 
 
 class AdminUserRoleDetailView(BaseAPIView):
+    """
+    Allows Admins or Authorized groups to manage a users role.
+    Only a single role can be assigned to a user at a time.
+    Patching a role will replace the existing role. 
+    Deleting a role will remove the assigned role from the user.
+    """
+    
     permission_classes = [IsManager]
     serializer_class = sc.UserRoleCreateSerializer
 
