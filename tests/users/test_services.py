@@ -10,7 +10,7 @@ from users.models import User, EMAIL_COOLDOWN
 from freezegun import freeze_time
 from users.services import (
     user_account_create,
-    user_add_role,
+    user_set_role,
     user_deactivate,
     account_unsubscribe,
     user_remove_role,
@@ -21,6 +21,7 @@ from users.services import (
     user_update,
 )
 from tests.types import UserCreatePayload
+
 
 class TestAccountCreation:
     def test_account_creation_successful(self, user_create_payload: UserCreatePayload):
@@ -61,7 +62,7 @@ class TestAccountCreation:
         django_capture_on_commit_callbacks,
     ):
         """
-        Test normal mail sending with notify flag set to True. 
+        Test normal mail sending with notify flag set to True.
         Requires always eager for delay calls
         """
         from config.emails import EmailConfig
@@ -69,7 +70,7 @@ class TestAccountCreation:
         config = EmailConfig.load()
 
         user_create_payload["notify"] = True
-        
+
         with django_capture_on_commit_callbacks() as callback:
             user_account_create(**user_create_payload)
         assert User.objects.count() == 1
@@ -133,7 +134,9 @@ class TestAccountCreation:
             ("email", "benedicturs@gmail.com", "benedictorial"),
         ],
     )
-    def test_password_validators_fail_for_user_similarity(self, user_create_payload: UserCreatePayload, field, value, password):
+    def test_password_validators_fail_for_user_similarity(
+        self, user_create_payload: UserCreatePayload, field, value, password
+    ):
         """
         Different variations of passwords that should fail based on user similarity
         """
@@ -172,18 +175,18 @@ class TestAccountCreation:
         data1: UserCreatePayload = {
             "first_name": "testname",
             "last_name": "lastname",
-            "email" : "testemail1@gmail.com",
+            "email": "testemail1@gmail.com",
             "password": "Pa55word!",
             "phone_number": phone_no(),
-            "notify": False
+            "notify": False,
         }
         data2: UserCreatePayload = {
             "first_name": "testname",
             "last_name": "lastname",
-            "email" : "testemail2@gmail.com",
+            "email": "testemail2@gmail.com",
             "password": "Pa55word!",
             "phone_number": phone_no(),
-            "notify": False
+            "notify": False,
         }
         data1[field] = value
         data2[field] = duplicate
@@ -218,7 +221,7 @@ class TestRoleAssignment:
         """
         assert user.groups.count() == 0
         role = get_role("manager")
-        user_add_role(user=user, role=role)
+        user_set_role(user=user, role=role)
 
         user.refresh_from_db()
 
@@ -229,16 +232,16 @@ class TestRoleAssignment:
         assert user.role == role.name
 
     def test_multiple_role_assignment_fails(self, user: User, roles_list):
-
         """
         Multiple role assignments should fail raising a Rolessignmenterror.
         """
         from common.exceptions import RoleAssignmentError
+
         assert user.groups.count() == 0
-        mod_user = user_add_role(user=user, role=roles_list[0])
-        
+        mod_user = user_set_role(user=user, role=roles_list[0])
+
         with pytest.raises(RoleAssignmentError) as exc:
-            user_add_role(user=mod_user, role=roles_list[1])
+            user_set_role(user=mod_user, role=roles_list[1])
         assert "Only one role is allowed per user." in exc.value.detail
         assert mod_user.groups.count() == 1
 
@@ -248,7 +251,7 @@ class TestUserDeactivation:
         """
         Check whether the returned user is deactivated
         """
-       
+
         mod_user = user_deactivate(user)
         fetched = User.objects.get(pk=user.pk)
         assert fetched == mod_user == user
@@ -260,7 +263,7 @@ class TestAccountUnsubscribe:
         """
         Account should be marked as cannot receive emails
         """
-        
+
         mod_acc = account_unsubscribe(user.account)
         fetched = User.objects.get(pk=user.pk)
         assert fetched.account == mod_acc == user.account
@@ -309,7 +312,7 @@ class TestEmailUpdate:
         The cooldown should fail if user tries to change password WITHIN the cooldown window
         """
         from common.exceptions import EmailUpdateError
-        
+
         new_email = "test@example.com"
         before_cooldown = EMAIL_COOLDOWN - timedelta(days=1)
         user.last_email_change = timezone.now() - before_cooldown
@@ -331,12 +334,11 @@ class TestEmailUpdate:
         before = timezone.now()
         after = before + EMAIL_COOLDOWN
 
-
         with freeze_time(before, tz_offset=0) as frozen_time:
             user.last_email_change = timezone.now()
             user.save()
             updater = lambda: user_email_update(user=user, email=new_email, password=password)
-    
+
             with pytest.raises(EmailUpdateError) as exc:
                 updater()
             assert "email" in exc.value.detail
@@ -372,7 +374,6 @@ class TestLoginService:
         """
         authenticated_user = user_authenticate(email=user.email, password=password)
         assert authenticated_user == user
-
 
     def test_login_service_fails_with_inactive_users(self, user: User):
         user.is_active = False
