@@ -828,7 +828,7 @@ class TestConfirmPasswordResetView:
         res1 = logged_in.post("/users/login", {"email": user.email, "password": password})
         parse_message(res1) # type: ignore
 
-        #! stale user instance leads to generation of invalid tokens off the bat
+        # stale user instance leads to generation of invalid tokens
         user.refresh_from_db()
 
         # reset the password
