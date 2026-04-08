@@ -897,8 +897,40 @@ class TestUserUnsubscribeView:
         parse_error(response, status.HTTP_400_BAD_REQUEST)
         user.refresh_from_db()
         assert user.account.can_receive_emails == True
+
+
+class TestAdminRoleListView:
+    path = "/users/roles"
+
+    def test_correct_response_with_available_group(self, manager_client: IsClient, roles_list):
+        response1 = manager_client.get(self.path, {})
+        data1 = parse_message(response1)
+        roles = [role.name for role in roles_list]
+        assert data1["roles"] == roles
     
-class TestAdminUserRoleDetailView:
+    def test_response_with_no_available_groups(self, manager_client: IsClient, monkeypatch):
+        monkeypatch.setattr("users.views.groups_list", lambda: [])
+        response1 = manager_client.get(self.path, {})
+        data1 = parse_message(response1)
+        assert len(data1["roles"]) == 0
+
+    def test_user_role_list_view_authentication_and_authorization(self, user_client: IsClient, caretaker_client: IsClient):
+        """
+        Pemission denied for regular users and caretakers
+        """
+        status_code = status.HTTP_403_FORBIDDEN
+
+        response1 = user_client.get(self.path)
+        error1 = parse_error(response1, status_code)[0]
+        assert error1["code"] == "permission_denied"
+
+        response2 = caretaker_client.get(self.path)
+        error2 = parse_error(response2, status_code)[0]
+        assert error2["code"] == "permission_denied"
+        
+
+
+class TestAdminRoleDetailView:
     path = "/users/roles/"
 
     def test_user_role_get_put_delete_successfully(self, manager_client: IsClient, user: User):
