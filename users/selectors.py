@@ -117,7 +117,7 @@ def user_get_locked(user_id: int) -> User:
 
 def groups_list():
     """
-    Just decided to have this here because it is highly coupled with the user model
+    Exists as a User selector as it's highly coupled with the user model
     """
-
     return Group.objects.all()
+ 
