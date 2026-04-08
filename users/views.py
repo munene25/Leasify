@@ -70,7 +70,7 @@ class UserListCreateView(BaseAPIView):
         return Response(data={"message": "account has been created"}, status=status.HTTP_201_CREATED)
 
 
-class AdminUserDetailUpdateDestroyView(BaseAPIView):
+class AdminDetailUpdateDestroyView(BaseAPIView):
     """
     Allows Admins or Authroized groups to modify users details
     All methods require priviledged access
@@ -348,16 +348,20 @@ class UserUnsubscribeView(BaseAPIView):
         )
 
 
-class AdminUserRoleListView(BaseAPIView):
+class AdminRoleListView(BaseAPIView):
+    """
+    Allows Admins or Authorized groups to view all the roles available in the system.
+    """
+
     permission_classes = [IsManager]
 
     def get(self, request):
         groups = groups_list()
-        serializer = sc.UserRoleListSerializer(many=True, instance=groups)
+        serializer = sc.AdminRoleListSerializer(instance=groups)
         return Response(status=status.HTTP_200_OK, data=serializer.data)
 
 
-class AdminUserRoleDetailView(BaseAPIView):
+class AdminRoleDetailView(BaseAPIView):
     """
     Allows Admins or Authorized groups to manage a users role.
     Only a single role can be assigned to a user at a time.
@@ -366,11 +370,11 @@ class AdminUserRoleDetailView(BaseAPIView):
     """
     
     permission_classes = [IsManager]
-    serializer_class = sc.UserRoleCreateSerializer
+    serializer_class = sc.AdminRoleUpdateSerializer
 
     def get(self, request, user_id):
         user = user_get_for(user=request.user, user_id=user_id)
-        serializer = sc.UserRoleDetailSerializer(instance=user)
+        serializer = sc.AdminRoleDetailSerializer(instance=user)
         return Response(status=status.HTTP_200_OK, data=serializer.data)
 
     def patch(self, request, user_id):
@@ -378,11 +382,11 @@ class AdminUserRoleDetailView(BaseAPIView):
         incoming = self.validate_serializer(data=request.data)
         # Explicitly acknowledge that an existing role will be replaced if it exists by setting replace to true. This prevents accidental role replacement.
         u = user_set_role(user=user, role=incoming["role"], replace=True)
-        serializer = sc.UserRoleDetailSerializer(instance=u)
+        serializer = sc.AdminRoleDetailSerializer(instance=u)
         return Response(status=status.HTTP_200_OK, data=serializer.data)
 
     def delete(self, request, user_id):
         user = user_get_for(user=request.user, user_id=user_id)
         u = user_remove_role(user=user)
-        serializer = sc.UserRoleDetailSerializer(instance=u)
+        serializer = sc.AdminRoleDetailSerializer(instance=u)
         return Response(status=status.HTTP_200_OK, data=serializer.data)
