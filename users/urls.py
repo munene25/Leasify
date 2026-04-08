@@ -5,9 +5,9 @@ from . import views
 urlpatterns = [
     path("me", views.MeView.as_view(), name="me"),
     path("", views.UserListCreateView.as_view(), name="user_list_create"),
-    path("<int:user_id>", views.AdminUserDetailUpdateDestroyView.as_view(), name="admin_detail"),
-    path("roles/<int:user_id>", views.AdminUserRoleDetailView.as_view(), name="admin_role_detail"),
-    path("roles", views.AdminUserRoleListView.as_view(), name="admin_roles_list"),
+    path("<int:user_id>", views.AdminDetailUpdateDestroyView.as_view(), name="admin_detail"),
+    path("roles/<int:user_id>", views.AdminRoleDetailView.as_view(), name="admin_role_detail"),
+    path("roles", views.AdminRoleListView.as_view(), name="admin_roles_list"),
     path("login", views.LoginView.as_view(), name="login"),
     path("logout", views.LogoutView.as_view(), name="logout"),
     path("refresh", views.RefreshSessionView.as_view(), name="refresh"),
