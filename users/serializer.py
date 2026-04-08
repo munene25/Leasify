@@ -143,17 +143,17 @@ class UserEmailUpdateSerializer(serializers.Serializer):
     email = serializers.EmailField()
 
 
-class UserRoleDetailSerializer(serializers.Serializer):
+class AdminRoleDetailSerializer(serializers.Serializer):
     """
     Requires the user object to passed as the instance to the serializer
-    Roles is a lazy user attribute
+    Role is a lazy user attribute.
     """
 
     user_id = serializers.IntegerField(source="pk")
     role = serializers.CharField()
 
 
-class UserRoleCreateSerializer(serializers.Serializer):
+class AdminRoleUpdateSerializer(serializers.Serializer):
     """
     A means to add roles to a user.
     User id is passed via the url.
@@ -162,10 +162,12 @@ class UserRoleCreateSerializer(serializers.Serializer):
     role = serializers.SlugRelatedField(slug_field="name", queryset=Group.objects.all())
 
 
-class UserRoleListSerializer(serializers.Serializer):
+class AdminRoleListSerializer(serializers.Serializer):
     """
     Instantiated with a groups qs.
-    A list serializer for every name of group.
+    The qs needs to be passed directly as the instance to the serializer through source="*"
+    Otherwise it will try to find a "roles" attribute on the qs.
+    read_only is needed to allow empyty groups list to be serialized.
     """
 
-    roles = serializers.CharField(source="name")
+    roles = serializers.SlugRelatedField(source="*", slug_field="name", many=True, read_only=True)
