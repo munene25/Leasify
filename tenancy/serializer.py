@@ -1,7 +1,7 @@
 from rest_framework import serializers
 
 from semesters.serializer import SemesterListSerializer
-from phonenumber_field.serializerfields import PhoneNumberField
+from common.fields import PhoneNumberSerializerField
 from users.models import User
 from apartments.selectors import apartment_list
 from semesters.selectors import semester_list
@@ -23,7 +23,7 @@ class TenancyCreateSerializer(serializers.Serializer):
 class TenancyDetailSerializer(serializers.Serializer):
     tenant_id = serializers.IntegerField(source="pk")
     tenant_name = serializers.CharField()
-    phone_number = PhoneNumberField()
+    phone_number = PhoneNumberSerializerField()
     apartment_name = serializers.CharField()
     payment_status = serializers.CharField()
     balance = serializers.DecimalField(max_digits=10, decimal_places=2)
