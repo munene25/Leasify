@@ -1,7 +1,6 @@
 from structlog import getLogger
 from django.contrib.auth.models import Group
 from django.db import transaction
-from phonenumber_field.phonenumber import PhoneNumber
 from common.exceptions import RoleAssignmentError
 from users.models import User, Account
 from users.tasks import send_welcome_email
@@ -10,9 +9,29 @@ logger = getLogger("users.services.create")
 
 
 @transaction.atomic
-def user_account_create(
-    *, password: str, email: str, phone_number: PhoneNumber, first_name: str, last_name: str, notify: bool
-) -> User:
+def user_account_create(*, password: str, email: str, first_name: str, last_name: str, notify: bool, phone_number: str | None = None) -> User:
+    """
+    Creates a user and account instance in one transaction.
+    Phone number is only required for payment processing and can be omitted during account creation. It can be added later through account update.
+    Phone is technically required during regular user signup, enforced via serializer.
+
+    :param password: The user's password
+    :type password: str
+    :param email: The user's email
+    :type email: str
+    :param first_name: The user's first name
+    :type first_name: str
+    :param last_name: The user's last name
+    :type last_name: str
+    :param notify: Whether to send a welcome email to the user
+    :type notify: bool
+    :param phone_number: The user's phone number (region KE)
+    :type phone_number: str
+    
+    :return: The created user instance
+    :rtype: User
+    """
+
     email = User.objects.normalize_email(email)
     user = User(
         email=email,
@@ -33,16 +52,15 @@ def user_account_create(
 
 
 @transaction.atomic
-def account_create(
-    *, user: User, phone_number: PhoneNumber, bio: str | None = None, backup_email: str | None = None
-) -> Account:
+def account_create(*, user: User, phone_number: str|None = None, bio: str | None = None, backup_email: str | None = None) -> Account:
     """
     Creates an account instance linked to a user one-one-field
+    Phone number can be added later on and is not required.
 
     :param user: User to be used as the related field
     :type user: User
     :param phone_number: Phone number (region KE) for payment processing
-    :type phone_number: PhoneNumber
+    :type phone_number: str
     :param bio: About the user
     :type bio: str | None
     :param backup_email: Optional Backup email for account recovery
@@ -51,8 +69,9 @@ def account_create(
     :rtype: Account
     """
 
-    backup_email = User.objects.normalize_email(backup_email)
-    account = Account(user=user, phone_number=phone_number, bio=bio, backup_email=backup_email)
+    if backup_email:
+        backup_email = User.objects.normalize_email(backup_email)
+    account = Account(user=user, bio=bio, backup_email=backup_email, phone_number=phone_number)
     account.full_clean()
     account.save()
     return account
@@ -75,8 +94,8 @@ def user_set_role(*, user: User, role: Group, replace: bool = False) -> User:
     :return: The user with the newly added role.
     :rtype: User
     """
-    if user.groups.exists() and replace == False:
+    if replace == False and user.groups.exists():
         raise RoleAssignmentError()
     user.groups.set([role])
-    logger.info(f"Roles [role: {role}] added for [user_id: {user.pk}]")
+    logger.info(f"Roles [role: {role}] set for [user_id: {user.pk}]")
     return user
