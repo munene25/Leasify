@@ -5,7 +5,6 @@ from payments.models import Payment
 from users.models import User
 from datetime import date
 import random
-from phonenumber_field.phonenumber import PhoneNumber
 from tenancy.services import TenancyService
 from semesters.services import SemesterService
 from apartments.services import ApartmentService
@@ -36,7 +35,7 @@ def run():
             user_account_create(
                 password="Pa55word!",
                 email=f.email(),
-                phone_number=PhoneNumber.from_string(f.numerify("+254-7##-###-###")),
+                phone_number=f.numerify("+254-7##-###-###"),
                 first_name=f.first_name(),
                 last_name=f.last_name(),
                 notify = False
@@ -47,7 +46,7 @@ def run():
             first_name = "Ed",
             last_name = "Mune",
             email = "edmune25@gmail.com",
-            phone_number=PhoneNumber.from_string("+254791573104"),
+            phone_number="+254791573104",
             password = "Pa55word!",
             notify=False
         )
