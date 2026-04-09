@@ -10,8 +10,7 @@ from payments.services import PaymentCreateService
 from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
 from datetime import timedelta
-from users.services import user_account_create, user_login
-from phonenumber_field.phonenumber import PhoneNumber, phonenumbers
+from users.services import user_account_create, user_authenticate
 from django.contrib.auth.models import Permission
 
 def run():
