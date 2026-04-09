@@ -2,6 +2,9 @@ from django.contrib.auth.base_user import BaseUserManager
 
 
 class UserManager(BaseUserManager):
+    """"
+    Hooks the service layer into the user creation process.
+    """
     def create_user(self, email: str, password: str | None = None, **extra_fields):
         """
         Creates and saves a User with the given email and password.
@@ -13,8 +16,6 @@ class UserManager(BaseUserManager):
         
         extra_fields.setdefault('is_staff', False)
         extra_fields.setdefault('is_superuser', False)
-        extra_fields.setdefault('first_name', "anon")
-        extra_fields.setdefault('last_name', "anon")
 
         user = user_account_create(
             email=email,
