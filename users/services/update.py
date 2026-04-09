@@ -4,47 +4,47 @@ from structlog import getLogger
 from users.models import User
 from django.db import transaction
 from rest_framework.exceptions import ValidationError
-from phonenumber_field.phonenumber import PhoneNumber
 from users.tasks import notify_password_change
 
 logger = getLogger("users.services,update")
 
+
 class UserUpdateData(TypedDict, total=False):
     """Represents the payload expected for the user_update function"""
+
     first_name: str
     last_name: str
-    phone_number: PhoneNumber
+    phone_number: str
     bio: str
     backup_email: str
 
 
-
 @transaction.atomic
-def user_update(user: User,  **kwargs: Unpack[UserUpdateData]):
+def user_update(user: User, **kwargs: Unpack[UserUpdateData]):
     """
     User and Account model updates under a singular interface.
-    
+
     :param user: User to be used as the related field
     :type user: User
     :param kwargs:
-        first_name: str, 
-        last_name: str, 
-        phone_number: PhoneNumber, 
-        bio: str, 
+        first_name: str,
+        last_name: str,
+        phone_number: str,
+        bio: str,
         backup_email: str
     :type kwargs: dict
 
     :return: Modified User object
     :rtype: User
-    """      
+    """
     USER_FIELDS = {"first_name", "last_name"}
     ACCOUNT_FIELDS = {"phone_number", "bio", "backup_email"}
 
     user_updates = []
     account_updates = []
-    
-    account = user.account 
-    
+
+    account = user.account
+
     # Normalize email
     backup_email = kwargs.get("backup_email", None)
     if backup_email:
@@ -55,16 +55,16 @@ def user_update(user: User,  **kwargs: Unpack[UserUpdateData]):
         if field in USER_FIELDS and getattr(user, field, value) != value:
             setattr(user, field, value)
             user_updates.append(field)
-        
+
         elif field in ACCOUNT_FIELDS and getattr(account, field, value) != value:
             setattr(account, field, value)
             account_updates.append(field)
-    
+
     if user_updates:
         user.full_clean()
         user.save(update_fields=user_updates)
         logger.info(f"user [user_id: {user.pk}] data modified. fields: {user_updates}")
-    
+
     if account_updates:
         account.full_clean()
         account.save(update_fields=account_updates)
@@ -74,7 +74,9 @@ def user_update(user: User,  **kwargs: Unpack[UserUpdateData]):
 
 
 @transaction.atomic
-def user_change_password(*, user: User, new_password: str, password: str | None = None, is_ressetting: bool =False) -> User:
+def user_change_password(
+    *, user: User, new_password: str, password: str | None = None, is_ressetting: bool = False
+) -> User:
     """
     This service is used in both password recovery and password changes
     Therefore in password recovery flows, the current password is unknown
@@ -89,7 +91,7 @@ def user_change_password(*, user: User, new_password: str, password: str | None 
     :type password: str | None
 
     :return: Modified User object
-    :rtype: User 
+    :rtype: User
     """
     # ! Password changes automatically invalidate issued cookies
     # ! CRITICAL BUG Found
@@ -109,7 +111,3 @@ def user_change_password(*, user: User, new_password: str, password: str | None 
     logger.info(f"user [user_id: {user.pk}] password changed")
     transaction.on_commit(lambda: notify_password_change.delay(user.pk))
     return user
-
-
-
-
