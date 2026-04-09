@@ -104,7 +104,7 @@ class TestPasswordChangeSerializer:
 class TestUserRoleDetialSerializer:
     def test_role_is_serialized_correctly(self, manager_user):
         """Moving from multiple roles to singular role per user"""
-        instance = serializer.UserRoleDetailSerializer(instance=manager_user)
+        instance = serializer.AdminRoleDetailSerializer(instance=manager_user)
         s = dict(instance.data)
         assert s["role"] == manager_user.role
 
@@ -113,7 +113,7 @@ class TestUserRoleCreateSerializer:
     def test_role_is_retrieved_correctly(self, get_role):
         """Serializer data should be converted to a role instance"""
         role = get_role("tenant")
-        instance = serializer.UserRoleCreateSerializer(data={"role": "tenant"})
+        instance = serializer.AdminRoleUpdateSerializer(data={"role": "tenant"})
         assert instance.is_valid()
         s = instance.validated_data
         assert isinstance(s, dict)
