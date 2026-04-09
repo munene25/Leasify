@@ -42,18 +42,13 @@ def run():
             ) for _ in ITERATIONS
         ]
         # create super_user
-        user = user_account_create(
-            first_name = "Ed",
-            last_name = "Mune",
-            email = "edmune25@gmail.com",
-            phone_number="+254791573104",
-            password = "Pa55word!",
-            notify=False
-        )
-        user.is_superuser = True
-        user.is_staff = True
-        user.verified = True
-        user.save()
+        User.objects.create_superuser(
+            email="edmune25@gmail.com",
+            password="Pa55word!",
+            first_name="Edwin",
+            last_name="Munene",
+            phone_number="+254-791-573-104",
+        ) # type: ignore
 
     try:
         call_command("loaddata", "fixtures/test_semesters.json")
@@ -79,7 +74,7 @@ def run():
                     )
             return semesters
 
-        semesters = [SemesterService().create(**s) for s in generate_semesters(2025, 2030)]
+        [SemesterService().create(**s) for s in generate_semesters(2025, 2030)]
 
     try:
         call_command("loaddata", "fixtures/test_apartments.json")
