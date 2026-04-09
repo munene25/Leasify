@@ -3,7 +3,6 @@ from rest_framework.exceptions import ValidationError
 from decimal import Decimal
 from .models import Payment
 from tenancy.selectors import tenancy_get_by_id
-from phonenumber_field.phonenumber import PhoneNumber
 from django.db import transaction
 
 
@@ -15,7 +14,7 @@ class PaymentCreateService:
         amount: Decimal | int,
         initiator: str,
         transaction_type: str,
-        phone_number: str | PhoneNumber | None = None,
+        phone_number: str | None = None,
         payee: str | None = None,
         tag: str | None = None,
     ) -> None:
@@ -68,15 +67,6 @@ class PaymentCreateService:
             self.phone_number = self._phone_number_from_string()
         else:
             err = f"Invalid phone number"
-            raise ValidationError({"phone_number": [err]})
-
-    def _phone_number_from_string(self):
-        string = self.phone_number
-        phone_number = PhoneNumber.from_string(phone_number=string, region="KE")
-        if phone_number.is_valid():
-            return phone_number
-        else:
-            err = f"Invalid phone number format"
             raise ValidationError({"phone_number": [err]})
 
     def generate_ref_no(self):
