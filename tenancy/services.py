@@ -71,7 +71,8 @@ class TenancyService:
         # Add user to Tenant group
         user = user_selectors.user_get(user_id)
         tenancy_group, _ = Group.objects.get_or_create(name="tenant")
-        user_set_role(user=user, role=tenancy_group)
+        if not user.groups.filter(name="tenant").exists():
+            user_set_role(user=user, role=tenancy_group)
         return tenancy
 
     @transaction.atomic
