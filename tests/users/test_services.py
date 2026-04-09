@@ -5,7 +5,6 @@ from unittest.mock import patch
 from django.utils import timezone
 from django.core.mail import EmailMessage
 from rest_framework.exceptions import ValidationError, AuthenticationFailed
-from phonenumber_field.phonenumber import PhoneNumber
 from users.models import User, EMAIL_COOLDOWN
 from freezegun import freeze_time
 from users.services import (
@@ -155,11 +154,7 @@ class TestAccountCreation:
         [
             ("email", "test@test.com", "test@test.com"),
             ("email", "phil@TEST.com", "phil@test.com"),
-            (
-                "phone_number",
-                PhoneNumber.from_string("0710-100-100"),
-                PhoneNumber.from_string("+254 710 100 100"),
-            ),
+            ("phone_number", "0710-100-100", "+254 710 100 100",),
         ],
     )
     def test_account_creation_fails_with_db_contraints(
@@ -201,7 +196,7 @@ class TestAccountCreation:
     def test_phone_number_validator_fail_for_wrong_format(
         self,
         user_create_payload: UserCreatePayload,
-        wrong_phone_number: PhoneNumber,
+        wrong_phone_number: str,
     ):
         """
         Assert wrong phone number formats and phone number regions are rejected
