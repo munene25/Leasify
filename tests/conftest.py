@@ -3,7 +3,6 @@ import typing
 from faker import Faker
 from django.core.management import call_command
 from django.contrib.auth.models import Group
-from phonenumber_field.phonenumber import PhoneNumber
 from users.models import User
 from users.services import user_account_create, user_set_role
 from rest_framework.test import APIClient
@@ -155,16 +154,18 @@ def tenant_user(user_factory, get_role) -> User:
 
 @pytest.fixture
 def password() -> str:
+    """Default password for test users"""
+    
     return "Pa55word!"
 
 
 @pytest.fixture
-def phone_no(fake) -> typing.Callable[[str | None], PhoneNumber]:
+def phone_no(fake) -> typing.Callable[[str | None], str]:
     """
     A callable to generate a phone number object
     """
 
-    return lambda num=None: PhoneNumber.from_string(num or fake.numerify("+254-7##-###-###"))
+    return lambda num=None: num or fake.numerify("+2547########")
 
 
 @pytest.fixture
