@@ -3,61 +3,33 @@ from datetime import timedelta, datetime
 from django.db import models
 from django.utils import timezone
 from django.contrib.auth.models import AbstractUser
-from django.core.validators import MinLengthValidator, RegexValidator
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework.exceptions import ValidationError
-from phonenumber_field.modelfields import PhoneNumberField
-from phonenumbers import parse
 from common.models import BaseModel
+from users.manager import UserManager
+from common.fields import NameModelField, PhoneNumberModelField
 
 
 EMAIL_COOLDOWN: timedelta = timedelta(days=14)
 
-
-def phone_number_validator(phone_nubmer):
-    if parse(phone_nubmer).country_code != 254:
-        raise ValidationError(
-            {"phone_number": f"Invalid country code! [{phone_nubmer =}]"}
-        )
-
-
 class User(BaseModel, AbstractUser):
     username = None
-    first_name = models.CharField(
-        "first name",
-        max_length=30,
-        blank=False,
-        validators=[
-            RegexValidator(
-                regex=r"^[A-Za-zÀ-ÖØ-öø-ÿ' -]+$",
-                message="Enter a valid name. Letters, spaces, hyphens, and apostrophes only.",
-            ),
-            MinLengthValidator(2),
-        ],
-    )
-    last_name = models.CharField(
-        "last name",
-        max_length=30,
-        blank=False,
-        validators=[
-            RegexValidator(
-                regex=r"^[A-Za-zÀ-ÖØ-öø-ÿ' -]+$",
-                message="Enter a valid name. Letters, spaces, hyphens, and apostrophes only.",
-            ),
-            MinLengthValidator(2),
-        ],
-    )
+    first_name = NameModelField(verbose_name="first name")
+    last_name = NameModelField(verbose_name="last name")
     email = models.EmailField(unique=True, blank=False, db_index=True)
     verified = models.BooleanField(default=False)
     last_email_change = models.DateTimeField(null=True, blank=True)
+    
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []
+
     account: Account
+    objects = UserManager() # type: ignore
 
     def clean(self):
         """Properly attatch password requirement messages to the error message"""
-        super().clean()
+
         password = getattr(self, "_password", None)
         if password is not None:
             try:
@@ -67,7 +39,7 @@ class User(BaseModel, AbstractUser):
 
     def validate_password(self, password: str) -> None:
         """Wrapper for check_password. Raises exc if passwords do not match"""
-        if not super().check_password(password):
+        if not self.check_password(password):
             err = "Password is incorrect"
             raise ValidationError({"password": [err]})
 
@@ -108,15 +80,7 @@ class Account(BaseModel):
     """Extra information on the user: Requires phone number field"""
 
     user = models.OneToOneField(User, on_delete=models.CASCADE)
-    phone_number = PhoneNumberField(
-        unique=True,
-        null=True,
-        blank=True,
-        validators=[phone_number_validator],
-        error_messages={
-            "unique": ("A user with that phone_number already exists."),
-        },
-    )
+    phone_number = PhoneNumberModelField(unique=True, null=True, blank=True)
     bio = models.TextField(null=True, blank=True, max_length=300)
     backup_email = models.EmailField(null=True, blank=True)
     can_receive_emails = models.BooleanField(default=True)
