@@ -22,7 +22,7 @@ class User(BaseModel, AbstractUser):
     last_email_change = models.DateTimeField(null=True, blank=True)
     
     USERNAME_FIELD = "email"
-    REQUIRED_FIELDS = []
+    REQUIRED_FIELDS = ["first_name", "last_name"]
 
     account: Account
     objects = UserManager() # type: ignore
