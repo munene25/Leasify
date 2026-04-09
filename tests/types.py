@@ -1,6 +1,5 @@
 from typing import Protocol, Any, TypedDict, Mapping
 from typing_extensions import Unpack
-from phonenumber_field.phonenumber import PhoneNumber
 
 
 
@@ -9,7 +8,7 @@ class UserCreatePayload(TypedDict):
     last_name: str
     email: str
     password: str
-    phone_number: PhoneNumber
+    phone_number: str
     notify: bool
 
 
@@ -18,7 +17,7 @@ class UserUpdatePayload(TypedDict, total=False):
     last_name: str
     bio: str
     backup_email: str
-    phone_number: PhoneNumber
+    phone_number: str
 
 
 class IsResponse(Protocol):
