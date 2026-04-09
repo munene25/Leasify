@@ -50,7 +50,6 @@ INSTALLED_APPS = [
     "rest_framework",
     "corsheaders",
     "django_extensions",
-    "phonenumber_field",
     "drf_standardized_errors",
     "django_structlog",
     "users",
@@ -181,8 +180,6 @@ TIME_ZONE = "Africa/Nairobi"
 USE_I18N = True
 
 USE_TZ = True
-
-PHONENUMBER_DEFAULT_REGION = "KE"
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
