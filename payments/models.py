@@ -1,8 +1,8 @@
 from django.db import models
 from tenancy.models import Tenancy
-from phonenumber_field.modelfields import PhoneNumberField
 from decimal import Decimal
 from common.models import BaseModel
+from common.fields import PhoneNumberModelField
 
 
 class Payment(BaseModel):
@@ -18,7 +18,7 @@ class Payment(BaseModel):
         null=False, max_length=10, choices=TransactionChoices.choices
     )
     tenancy = models.ForeignKey(Tenancy, null=True, on_delete=models.SET_NULL)
-    phone_number = PhoneNumberField(unique=True, blank=False)
+    phone_number = PhoneNumberModelField(null=False, blank=False)
     payee = models.CharField(max_length=30, blank=True)
 
     def __str__(self):
