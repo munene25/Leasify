@@ -52,7 +52,7 @@ def user_account_create(*, password: str, email: str, first_name: str, last_name
 
 
 @transaction.atomic
-def account_create(*, user: User, phone_number: str|None = None, bio: str | None = None, backup_email: str | None = None) -> Account:
+def account_create(*, user: User, phone_number: str | None = None, bio: str | None = None, backup_email: str | None = None) -> Account:
     """
     Creates an account instance linked to a user one-one-field
     Phone number can be added later on and is not required.
