@@ -23,7 +23,7 @@ from users.services import (
     user_email_update,
     user_email_verify,
     user_change_password,
-    user_deactivate,
+    user_change_active_status,
     user_remove_role,
     account_unsubscribe,
 )
@@ -100,7 +100,7 @@ class AdminDetailUpdateDestroyView(BaseAPIView):
     def delete(self, request, user_id):
         check_perms(request.user, "users.delete_user")
         user = user_get_for(user=request.user, user_id=user_id)
-        user_deactivate(user=user)
+        user_change_active_status(user=user, status=False)
         logger.info(f"Admin deactivated user.", target_id=user_id)
         return Response(
             status=status.HTTP_200_OK,
@@ -130,7 +130,7 @@ class MeView(BaseAPIView):
         return Response(data=outgoing.data, status=status.HTTP_200_OK)
 
     def delete(self, request):
-        user_deactivate(user=request.user)
+        user_change_active_status(user=request.user, status=False)
 
         logger.info(f"User deactivated self.")
         # flush the session
@@ -365,10 +365,10 @@ class AdminRoleDetailView(BaseAPIView):
     """
     Allows Admins or Authorized groups to manage a users role.
     Only a single role can be assigned to a user at a time.
-    Patching a role will replace the existing role. 
+    Patching a role will replace the existing role.
     Deleting a role will remove the assigned role from the user.
     """
-    
+
     permission_classes = [IsManager]
     serializer_class = sc.AdminRoleUpdateSerializer
 
