@@ -10,7 +10,7 @@ from freezegun import freeze_time
 from users.services import (
     user_account_create,
     user_set_role,
-    user_deactivate,
+    user_change_active_status,
     account_unsubscribe,
     user_remove_role,
     user_email_update,
@@ -154,7 +154,11 @@ class TestAccountCreation:
         [
             ("email", "test@test.com", "test@test.com"),
             ("email", "phil@TEST.com", "phil@test.com"),
-            ("phone_number", "0710-100-100", "+254 710 100 100",),
+            (
+                "phone_number",
+                "0710-100-100",
+                "+254 710 100 100",
+            ),
         ],
     )
     def test_account_creation_fails_with_db_contraints(
@@ -247,10 +251,20 @@ class TestUserDeactivation:
         Check whether the returned user is deactivated
         """
 
-        mod_user = user_deactivate(user)
+        mod_user = user_change_active_status(user, False)
         fetched = User.objects.get(pk=user.pk)
         assert fetched == mod_user == user
         assert mod_user.is_active == False
+
+    def test_activation_succeeds(self, user: User):
+        """
+        Check whether the returned user is deactivated
+        """
+
+        mod_user = user_change_active_status(user, True)
+        fetched = User.objects.get(pk=user.pk)
+        assert fetched == mod_user == user
+        assert mod_user.is_active == True
 
 
 class TestAccountUnsubscribe:
