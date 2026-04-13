@@ -24,9 +24,9 @@ def account_unsubscribe(account: Account) -> Account:
 
 
 @transaction.atomic
-def user_deactivate(user: User) -> User:
+def user_change_active_status(user: User, status: bool) -> User:
     """
-    Simplified the delete/deactivate dance: No deletions apart from the admin.
+    Simplified the delete/deactivate dance: No deletions apart from through the admin.
     This service serves both the user and admin deactiavations
 
     :param user: The user obj
@@ -35,9 +35,10 @@ def user_deactivate(user: User) -> User:
     :return: deactivated user
     :rtype: User
     """
-    user.is_active = False
+    user.is_active = status
+    status_change = {True: "activated", False: "deactivated"}[status]
     user.save(update_fields=["is_active"])
-    logger.info(f"user [user_id: {user.pk}] deactivated.")
+    logger.info(f"user [user_id: {user.pk}] has been {status_change}.")
     return user
 
 
