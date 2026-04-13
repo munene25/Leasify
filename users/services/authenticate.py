@@ -23,7 +23,7 @@ def user_authenticate(*, email: str, password: str) -> AbstractUser:
     user = authenticate(email=normalized_email, password=password)
     if user is None:
         err = "Incorrect email or password"
-        logger.warning(f"Failed login attempt for [user_emai: {email}]")
+        logger.warning(f"Failed authentication attempt for [user_emai: {email}]")
         raise AuthenticationFailed({"email": [err], "password": [err]})
 
     # user_login from django.contrib.auth.user_login will update last_login
