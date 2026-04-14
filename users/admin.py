@@ -6,13 +6,37 @@ from .models import User
 from .models import Account
 from django import forms
 from structlog import get_logger
+from django.contrib.auth.models import BaseUserManager
+
 
 logger = get_logger("users.admin")
 
+class AccountAdminForm(forms.ModelForm):
+    class Meta:
+        model = Account
+        fields = "__all__"
 
+    def clean_backup_email(self):
+        value = self.cleaned_data.get("backup_email")
+        if value:
+            return BaseUserManager.normalize_email(value)
+        return value
+
+class UserAdminForm(forms.ModelForm):
+    class Meta:
+        model = User
+        fields = "__all__"
+
+    def clean_email(self):
+        value = self.cleaned_data.get("email")
+        if value:
+            return BaseUserManager.normalize_email(value)
+        return value
+    
 # Account inline model
 class AccountInline(admin.StackedInline):
     model = Account
+    form = AccountAdminForm
     can_delete = False
     max_num = 1
     extra = 1
@@ -28,9 +52,11 @@ class AccountInline(admin.StackedInline):
 class UserAdmin(admin.ModelAdmin):
     list_display = ("email", "full_name", "is_staff", "is_superuser", "is_active", "phone_number")
     list_select_related = ("account",)
+    form = UserAdminForm
     exclude = ("last_login", "created_at", "last_email_change")
     search_fields = ("username", "email", "first_name", "last_name")
     list_filter = ("is_active",)
+    can_delete = False
     list_select_related = True
     inlines = (AccountInline,)
 
@@ -39,48 +65,25 @@ class UserAdmin(admin.ModelAdmin):
         return obj.account.phone_number or "N/A"
 
     def save_model(self, request: HttpRequest, obj: User, form: Any, change: bool) -> None:
-        if change:
-            from django.contrib.auth.models import BaseUserManager
-
-            if "email" in form.cleaned_data:
-                form.cleaned_data["email"] = BaseUserManager.normalize_email(form.cleaned_data["email"])
-
-            if "password" in form.cleaned_data:
-                password = form.cleaned_data.pop("password")
-                obj.set_password(password)
-                obj.save(update_fields="password")
-                logger.info(f"admin changed [user_id: {obj.pk}] password")
-
-            super().save_model(request, obj, form, change)
-            logger.info(f"admin updated [user_id: {obj.pk}] data. changes[{list(form.cleaned_data.keys())}]")
-
-        else:
-            from users.services import user_account_create
-
-            user_account_create(
-                email=obj.email, password=obj.password, first_name=obj.first_name, last_name=obj.last_name, notify=True
-            )
+        """
+        Hook for intercepting the save action for the user model.
+        Used to hash the password when creating a user via the admin panel and to log the action.
+        """
+        password = form.cleaned_data.get("password", None)
+        if password:
+            obj.set_password(form.cleaned_data["password"])
+        state = {True: "updated", False: "created"}[change]
+        logger.info(f"admin {state} user {obj.get_full_name()} [user_id: {obj.pk}]. data[{list(form.cleaned_data.keys())}]")
+        super().save_model(request, obj, form, change)
 
     def save_related(self, request, form, formsets, change):
-        # Since you have exactly one inline
-        account_formset = formsets[0]
-        
-        # Check if the formset has valid data and is not marked for deletion
-        if account_formset.has_changed() and account_formset.is_valid():
-            # Get the cleaned data from the first form in the set
-            # (Using .get(0) style or index 0 for 1:1)
-            form_data = account_formset.forms[0].cleaned_data
-            
-            # Remove the internal 'id' or 'user' key if it exists to avoid 
-            # passing redundant objects to your service
-            form_data.pop('id', None)
-            form_data.pop('user', None)
-
-            from users.services import account_create, user_update
-            
-            if not change:
-                # CREATE flow
-                account_create(user=form.instance, **form_data)
-            else:
-                # UPDATE flow
-                user_update(user=form.instance, **form_data)
+        """
+        Hook for intercepting the save action for the related user models.
+        Includes account formset. Used to log the action.
+        """
+        account_formset = [fs for fs in formsets if fs.model == Account][0]
+        account_form = account_formset.forms[0] if account_formset.forms else None
+        if account_form and account_form.has_changed():
+            state = {True: "updated", False: "created"}[change]
+            logger.info(f"admin {state} account for user [user_id: {form.instance.pk}]. data[{account_form.changed_data}]")
+        super().save_related(request, form, formsets, change)
