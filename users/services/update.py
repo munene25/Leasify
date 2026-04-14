@@ -40,9 +40,7 @@ def user_update(user: User, **kwargs: Unpack[UserUpdateData]):
     USER_FIELDS = {"first_name", "last_name"}
     ACCOUNT_FIELDS = {"phone_number", "bio", "backup_email"}
 
-    user_updates = []
-    account_updates = []
-
+    user_updates, account_updates = [], []
     account = user.account
 
     # Normalize email
