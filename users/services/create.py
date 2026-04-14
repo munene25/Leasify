@@ -9,29 +9,49 @@ logger = getLogger("users.services.create")
 
 
 @transaction.atomic
-def user_account_create(*, password: str, email: str, first_name: str, last_name: str, notify: bool, phone_number: str | None = None) -> User:
+def user_account_create(notify: bool=True, **kwargs) -> User:
     """
     Creates a user and account instance in one transaction.
-    Phone number is only required for payment processing and can be omitted during account creation. It can be added later through account update.
-    Phone is technically required during regular user signup, enforced via serializer.
 
-    :param password: The user's password
-    :type password: str
+    :param notify: If True, sends a welcome email to the user after account creation.
+    :type notify: bool
+
+    :param kwargs:
+        email: str,
+        first_name: str,
+        last_name: str,
+        password: str,
+        phone_number: str (optional)
+
+    :return: The created user instance
+    :rtype: User
+    """
+
+    user = user_create(email=kwargs["email"], password=kwargs["password"], first_name=kwargs["first_name"], last_name=kwargs["last_name"])
+    account_create(user=user, phone_number=kwargs.get("phone_number"))
+
+    if notify == True:
+        transaction.on_commit(lambda: send_welcome_email.delay(user.pk))
+    return user
+
+
+def user_create(*, email: str, first_name: str, last_name: str, password: str) -> User:
+    """
+    Creates a user instance without an account. This is used for admin user creation via the django admin panel.
+    The account will be created via the AccountInline model.
+
     :param email: The user's email
     :type email: str
     :param first_name: The user's first name
     :type first_name: str
     :param last_name: The user's last name
     :type last_name: str
-    :param notify: Whether to send a welcome email to the user
-    :type notify: bool
-    :param phone_number: The user's phone number (region KE)
-    :type phone_number: str
-    
+    :param password: The user's password
+    :type password: str
+
     :return: The created user instance
     :rtype: User
     """
-
     email = User.objects.normalize_email(email)
     user = User(
         email=email,
@@ -42,12 +62,7 @@ def user_account_create(*, password: str, email: str, first_name: str, last_name
     user.set_password(password)
     user.full_clean()
     user.save()
-    account_create(user=user, phone_number=phone_number)
-
-    if notify == True:
-        transaction.on_commit(lambda: send_welcome_email.delay(user.pk))
-
-    logger.info(f"user {user.get_full_name()} [user_id: {user.pk}] created an account")
+    logger.info(f"user {user.get_full_name()} [user_id: {user.pk}] created an account.")
     return user
 
 
@@ -86,11 +101,15 @@ def user_set_role(*, user: User, role: Group, replace: bool = False) -> User:
 
     :param user: The user to whom the role will be added.
     :type user: User
+
     :param role: The role (Group) to be added to the user.
     :type role: Group
+
     :param replace: If True, allows replacing an existing role.
     :type replace: bool
+
     :raises RoleAssignmentError: If the user already has a role and replace is False.
+    
     :return: The user with the newly added role.
     :rtype: User
     """
