@@ -42,7 +42,6 @@ class AccountInline(admin.StackedInline):
     extra = 1
     verbose_name_plural = "Account Info"
     exclude = (
-        "user",
         "created_at",
     )
     fk_name = "user"
