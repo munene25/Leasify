@@ -79,9 +79,8 @@ class UserAdmin(admin.ModelAdmin):
         Hook for intercepting the save action for the related user models.
         Includes account formset. Used to log the action.
         """
-        account_formset = [fs for fs in formsets if fs.model == Account][0]
-        account_form = account_formset.forms[0] if account_formset.forms else None
-        if account_form and account_form.has_changed():
+        for formset in formsets:
             state = {True: "updated", False: "created"}[change]
-            logger.info(f"admin {state} account for user [user_id: {form.instance.pk}]. data[{account_form.changed_data}]")
+            if formset.model == Account and formset.forms and formset.forms[0].has_changed():
+                logger.info(f"admin {state} account for user [user_id: {form.instance.pk}]. data[{formset.forms[0].changed_data}]")
         super().save_related(request, form, formsets, change)
