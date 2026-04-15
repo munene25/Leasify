@@ -68,11 +68,10 @@ class UserAdmin(admin.ModelAdmin):
         Hook for intercepting the save action for the user model.
         Used to hash the password when creating a user via the admin panel and to log the action.
         """
-        password = form.cleaned_data.get("password", None)
-        if password:
+        if "password" in form.changed_data:
             obj.set_password(form.cleaned_data["password"])
         state = {True: "updated", False: "created"}[change]
-        logger.info(f"admin {state} user {obj.get_full_name()} [user_id: {obj.pk}]. data[{list(form.cleaned_data.keys())}]")
+        logger.info(f"admin {state} user {obj.get_full_name()} [user_id: {obj.pk}]. data[{form.changed_data}]")
         super().save_model(request, obj, form, change)
 
     def save_related(self, request, form, formsets, change):
