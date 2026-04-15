@@ -22,6 +22,7 @@ class UserManager(BaseUserManager):
             password=password,
             first_name=extra_fields['first_name'],
             last_name=extra_fields['first_name'],
+            phone_number=extra_fields.get("phone_number", None),
             notify=True,
         )
         return user
