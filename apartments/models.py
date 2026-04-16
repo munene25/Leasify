@@ -2,7 +2,7 @@ from django.db import models
 from django.db.models.query import QuerySet
 from semesters.selectors import semester_current
 from common.models import BaseModel
-
+from common.helpers import raise_not_found
 
 class Apartment(BaseModel):
     """
@@ -11,19 +11,24 @@ class Apartment(BaseModel):
     Rentable flag describes if the apartment is viewable for other users and tenants looking to book.
     """
 
+    class Meta:
+        unique_together = ("block", "unit_number")
+        permissions = (
+            ("view_overview", "Can view the apartments overview status for the semester"),
+        )
+    
     class ApartmentChoices(models.TextChoices):
         NEW = "NEW", "New Block"
         OLD = "OLD", "OLD Block"
 
-    block = models.CharField(max_length=10, choices=ApartmentChoices.choices)
-    unit_number = models.PositiveSmallIntegerField()
+    block = models.CharField(max_length=10, choices=ApartmentChoices.choices, blank=False, null=False,)
+    unit_number = models.PositiveSmallIntegerField(blank=False, null=False)
     rent = models.DecimalField(decimal_places=2, max_digits=10, blank=False, null=False)
     rentable = models.BooleanField(
         default=True, help_text="Viewable and available to rent"
     )
 
-    class Meta:
-        unique_together = ("block", "unit_number")
+
 
     def __str__(self) -> str:
         return f"Block: {self.block} - Unit: {self.unit_number}"
@@ -40,7 +45,7 @@ class Apartment(BaseModel):
     @property
     def current_tenant(self) -> QuerySet:
         tset = getattr(self, "tenancy_set")
-        curr = tset.select_related("user").filter(semester=semester_current()).first()
+        curr = tset.select_related("user").filter(semester_id=semester_current().pk).first()
         return curr
 
     @property
