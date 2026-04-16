@@ -16,7 +16,7 @@ class BaseAPIView(APIView):
     def perform_authentication(self, request):
         """
         Centralizes setting of the user_id for the whole request.
-        Better here coz django-structlog depends on signals ie request-finished.
+        Better here coz django-structlog depends on signals i.e., request-finished.
 
         Proves important in service and view level logs, now that the actor is automatically attached.
         Throttle and permission class logs will also share the same context
