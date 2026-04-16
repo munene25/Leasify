@@ -7,7 +7,7 @@ from datetime import date
 import random
 from tenancy.services import TenancyService
 from semesters.services import SemesterService
-from apartments.services import ApartmentService
+from apartments.services import apartment_create
 from payments.services import PaymentCreateService
 from users.services import user_account_create
 from .permissions import setup_roles_and_permissions
@@ -19,14 +19,19 @@ ITERATIONS = list(range(1, 20))
 
 f = Faker("en_KE")
 
+def dump_data(file_name: str, *app_labels: str):
+    with open(file_name, "w") as f:
+        call_command("dumpdata", *app_labels, stdout=f, indent=4)
 
 def run():
-    # setup roles and permissions
+    # ============================================= Roles =============================================
     try:
         call_command("loaddata", "fixtures/roles.json")
     except Exception:
         setup_roles_and_permissions()
+        dump_data("fixtures/roles.json", "auth.Permission", "auth.Group")
 
+    # ============================================= Users =============================================
     try:
         call_command("loaddata", "fixtures/test_users.json")
         users = User.objects.all()
@@ -49,7 +54,11 @@ def run():
             last_name="Munene",
             phone_number="+254-791-573-104",
         ) # type: ignore
+        dump_data("fixtures/test_users.json", "users")
 
+
+
+    # ============================================= Semesters =============================================
     try:
         call_command("loaddata", "fixtures/test_semesters.json")
     except Exception:
@@ -75,7 +84,10 @@ def run():
             return semesters
 
         [SemesterService().create(**s) for s in generate_semesters(2025, 2030)]
+        dump_data("fixtures/test_semesters.json", "semesters")
 
+
+    # ============================================= Apartments =============================================
     try:
         call_command("loaddata", "fixtures/test_apartments.json")
     except Exception:
@@ -86,8 +98,12 @@ def run():
             for i in range(1, no_of_apts + 1)
         ]
 
-        apartments = [ApartmentService().create(**a) for a in aps]
+        apartments = [apartment_create(**a) for a in aps]
+        dump_data("fixtures/test_apartments.json", "apartments")
 
+
+
+    # ============================================= Tenancies =============================================
     curr_sem = semester_current().pk
     tenancies = [
         TenancyService().create(
