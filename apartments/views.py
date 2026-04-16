@@ -2,60 +2,81 @@ from rest_framework.response import Response
 from common.views import BaseAPIView
 from rest_framework import status
 from semesters.selectors import semester_current
-from apartments import selectors
-from apartments.services import ApartmentService
-from apartments.serializer import (
-    ApartmentCreateSerializer,
-    ApartmentDetailSerializer,
-    ApartmentListSerializer,
-    ApartmentOverviewSerializer,
-    ApartmentUpdateSerializer,
-)
-
+from apartments import selectors, services, serializer as sc
+from rest_framework import serializers
+from common.pagination import get_paginated_response
+from common.permissions import check_perms
+from rest_framework.permissions import IsAuthenticated, AllowAny
 
 class ApartmentListCreateView(BaseAPIView):
-    serializer_class = ApartmentCreateSerializer
+    class FilterSerializer(serializers.Serializer):
+        search = serializers.CharField()
+        rentable = serializers.BooleanField(allow_null=True)
+        rent_min = serializers.IntegerField()
+        rent_max = serializers.IntegerField()
+
+    serializer_class = sc.ApartmentCreateSerializer
+    filter_class = FilterSerializer
+    
+    def get_permissions(self):
+        """Only authenticated users during apartment creation, otherwise open to all."""    
+        return [IsAuthenticated()] if self.request.method == "POST" else [AllowAny()]
 
     def get(self, request):
-        apts = selectors.apartment_list()
-        serializer = ApartmentListSerializer(apts, many=True)
-        return Response(status=status.HTTP_200_OK, data=serializer.data)
+        filters = self.validate_filter(data=request.query_params)
+        qs = selectors.apartment_list_for(user=request.user, filters=filters)
+        return get_paginated_response(
+            serializer_class=sc.ApartmentListSerializer, 
+            queryset=qs, 
+            request=request, 
+            view=self
+        )
 
     def post(self, request):
-        data = self.validate_serializer(data=request.data)
-        ApartmentService().create(**data)
-        return Response(status=status.HTTP_201_CREATED)
+        check_perms(request.user, "apartments.add_apartment")
+        incoming = self.validate_serializer(data=request.data)
+        apartment = services.apartment_create(**incoming)
+        outgoing = sc.ApartmentDetailSerializer(instance=apartment)
+        return Response(data=outgoing.data, status=status.HTTP_201_CREATED)
 
 
 class ApartmentDetailUpdateDeleteView(BaseAPIView):
-    serializer_class = ApartmentUpdateSerializer
+    serializer_class = sc.ApartmentUpdateSerializer
+    permission_classes =[IsAuthenticated]
+
 
     def get(self, request, apartment_id):
-        apt = selectors.apartment_get_by_id(apartment_id)
-        serializer = ApartmentDetailSerializer(instance=apt)
-        return Response(status=status.HTTP_200_OK, data=serializer.data)
+        apartment = selectors.apartment_get_for(user=request.user, apartment_id=apartment_id)
+        outgoing = sc.ApartmentDetailSerializer(instance=apartment)
+        return Response(status=status.HTTP_200_OK, data=outgoing.data)
 
     def patch(self, request, apartment_id):
-        data = self.validate_serializer(data=request.data, partial=True)
-        ApartmentService(apartment_id).update(**data)
-        return Response(status=status.HTTP_200_OK)
+        check_perms(request.user, "apartments.change_apartment")
 
-    def put(self, request, apartment_id):
-        data = self.validate_serializer(data=request.data)
-        ApartmentService(apartment_id).update(**data)
-        return Response(status=status.HTTP_200_OK)
+        incoming = self.validate_serializer(data=request.data, partial=True)
+        apartment = selectors.apartment_get_for(user=request.user, apartment_id=apartment_id)
+
+        updated_apartment = services.apartment_update(apartment=apartment, **incoming)
+        outgoing  = sc.ApartmentDetailSerializer(instance=updated_apartment)
+        return Response(data=outgoing.data, status=status.HTTP_200_OK)
 
     def delete(self, request, apartment_id):
-        ApartmentService(apartment_id).delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        check_perms(request.user, "apartments.delete_apartment")
+
+        selected = selectors.apartment_get_for(user=request.user, apartment_id=apartment_id)
+        services.apartment_delete(apartment=selected)
+        return Response(status=status.HTTP_204_NO_CONTENT, data={"message": "Apartment deleted successfully"})
 
 
 class ApartmentOverviewView(BaseAPIView):
-    def get(self, request):
-        semester = semester_current()
-        overview = selectors.apartment_overview(semester.pk)
+    permission_classes = [IsAuthenticated]
 
-        serializer = ApartmentOverviewSerializer(instance=overview)
+    def get(self, request):
+        check_perms(request.user, "apartments.view_overview")
+        semester = semester_current()
+        overview = selectors.apartment_overview(semester)
+
+        serializer = sc.ApartmentOverviewSerializer(instance=overview)
         return Response(
             status=status.HTTP_200_OK,
             data=serializer.data,
