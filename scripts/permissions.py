@@ -5,7 +5,7 @@ from django.contrib.contenttypes.models import ContentType
 
 ROLE_PERMISSIONS = {
     "manager": [
-        {"apartment" : ["add_apartment", "view_apartment", "change_apartment", "delete_apartment"]},
+        {"apartment" : ["add_apartment", "view_apartment", "change_apartment", "delete_apartment", "view_overview"]},
         {"semester" :["add_semester", "view_semester", "change_semester", "delete_semester"]},
         {"tenancy": ["add_tenancy", "view_tenancy", "change_tenancy", "delete_tenancy"]},
         {"user": ["add_user", "view_user", "change_user", "delete_user"]},
