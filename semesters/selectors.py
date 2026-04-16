@@ -2,11 +2,11 @@ from django.core.cache import cache
 from .models import Semester
 from rest_framework.exceptions import NotFound
 from django.utils import timezone
-
+from django.db.models import QuerySet
 def semester_list():
     return Semester.objects.all()
 
-def semester_for_update(semester_id: int):
+def semester_for_update(semester_id: int) -> Semester:
     """
     Return a Semester instance filtered by the semester_name else 404
     """
@@ -16,16 +16,16 @@ def semester_for_update(semester_id: int):
         raise NotFound({"semester_id": f"Semester {semester_id} not found"})
 
 
-def semester_get_by_id(semester_id):
+def semester_get_by_id(semester_id)-> Semester:
     try:
         return Semester.objects.get(pk=semester_id)
     except Semester.DoesNotExist:
         raise NotFound({"semester_id": f"Semester {semester_id} not found"})
 
-def semesters_get_all_from_today():
-    return Semester.objects.filter(end_date__gte=timezone.localdate()).only("id")
+def semesters_get_all_from_today()-> QuerySet:
+    return Semester.objects.filter(end_date__gte=timezone.now()).only("id")
 
-def semester_current():
+def semester_current() -> Semester:
     cache_key = "semester:semester_current"
     if semester := cache.get(cache_key):
        return semester
