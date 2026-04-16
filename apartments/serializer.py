@@ -6,6 +6,7 @@ class ApartmentListSerializer(serializers.Serializer):
     apartment_name = serializers.CharField()
     rent = serializers.DecimalField(max_digits=10, decimal_places=2)
     rentable = serializers.BooleanField()
+    occupied = serializers.BooleanField()
 
 class ApartmentCreateSerializer(serializers.Serializer):
     block = serializers.CharField(required=True)
