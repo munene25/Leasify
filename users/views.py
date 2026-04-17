@@ -62,7 +62,7 @@ class UserListCreateView(BaseAPIView):
         check_perms(request.user, "users.view_user")
         filters = self.validate_filter(data=request.query_params)
         qs = user_list_for(user=request.user, filters=filters)
-        return get_paginated_response(s_cls=sc.UserListSerializer, qs=qs, req=request, view=self)
+        return get_paginated_response(serializer_class=sc.UserListSerializer, queryset=qs, request=request, view=self)
 
     def post(self, request):
         incoming = self.validate_serializer(data=request.data)
