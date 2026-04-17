@@ -77,7 +77,7 @@ class User(BaseModel, AbstractUser):
 
 # Account Model
 class Account(BaseModel):
-    """Extra information on the user: Requires phone number field"""
+    """Extra information on the user"""
 
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     phone_number = PhoneNumberModelField(unique=True, null=True, blank=True)
