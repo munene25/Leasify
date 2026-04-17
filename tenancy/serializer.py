@@ -3,8 +3,8 @@ from rest_framework import serializers
 from semesters.serializer import SemesterListSerializer
 from common.fields import PhoneNumberSerializerField
 from users.models import User
-from apartments.selectors import apartment_list
-from semesters.selectors import semester_list
+from apartments.models import Apartment
+from semesters.models import Semester
 
 # --- Shifted to primary key related fields to centralize object existence validation in serializers ---
 # --- This is necessary only for input serializers ---
@@ -16,9 +16,9 @@ class TenancyListSerializer(serializers.Serializer):
     payment_status = serializers.CharField()
 
 class TenancyCreateSerializer(serializers.Serializer):
-    user_id = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
-    semester_id = serializers.PrimaryKeyRelatedField(queryset=semester_list())
-    apartment_id = serializers.PrimaryKeyRelatedField(queryset=apartment_list())
+    user = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
+    semester = serializers.PrimaryKeyRelatedField(queryset=Semester.objects.all())
+    apartment = serializers.PrimaryKeyRelatedField(queryset=Apartment.objects.all())
 
 class TenancyDetailSerializer(serializers.Serializer):
     tenant_id = serializers.IntegerField(source="pk")
@@ -27,7 +27,7 @@ class TenancyDetailSerializer(serializers.Serializer):
     apartment_name = serializers.CharField()
     payment_status = serializers.CharField()
     balance = serializers.DecimalField(max_digits=10, decimal_places=2)
-    created_at = serializers.DateTimeField()
+    admission_date = serializers.DateTimeField(source="created_at")
     semester = SemesterListSerializer()
 
 class TenancyUpdateSerializer(serializers.Serializer):
