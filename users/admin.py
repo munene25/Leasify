@@ -93,7 +93,7 @@ class UserAdmin(admin.ModelAdmin):
             obj.set_password(form.cleaned_data["password"])
 
         state = {True: "updated", False: "created"}[change]
-        logger.info(f"admin {state} user {obj.get_full_name()} [user_id: {obj.pk}]. data[{form.changed_data}]")
+        logger.info(f"admin {state} [user_id: {obj.pk}]. data{form.changed_data}")
         super().save_model(request, obj, form, change)
         
     def save_related(self, request, form, formsets, change):
@@ -112,5 +112,8 @@ class UserAdmin(admin.ModelAdmin):
 
         state = {True: "updated", False: "created"}[change]
         for formset in formsets:
-            logger.info(f"admin {state} {formset.model} for user [user_id: {form.instance.pk}]")
+            if formset.has_changed():
+                changed = [fset_form.changed_data for fset_form in formset] #type: ignore
+                formatted = ", ".join(map(str, changed))
+                logger.info(f"admin {state} [model: {formset.model.__name__}] for user [user_id: {form.instance.pk}] data:{formatted}") # type: ignore
         super().save_related(request, form, formsets, change)
