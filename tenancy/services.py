@@ -1,7 +1,6 @@
-from datetime import timezone, date
-from typing import Any
 from decimal import Decimal
 from django.db import transaction
+from django.utils import timezone
 from django.contrib.auth.models import Group
 from rest_framework.exceptions import ValidationError
 from tenancy.models import Tenancy
@@ -24,7 +23,7 @@ class TenancyService:
     
     def _validate_semester_dates(self, semester_id: int) -> None:
         selected_semester = sem_selectors.semester_get_by_id(semester_id)
-        now = date.today()
+        now = timezone.now().date()
         if now > selected_semester.end_date:
             err = "Invalid semester. Please select a semester that has not yet concluded"
             raise ValidationError({"semester_id": [err]})
