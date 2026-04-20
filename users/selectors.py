@@ -48,10 +48,8 @@ def user_list_for(*, user: User, filters: dict[str, Any] | QueryDict | None = No
             )
 
     exclusions = UserExclusions.for_user(user)
-    users = BASE_QS.exclude(exclusions, user_id=user.pk)
+    users = BASE_QS.exclude(exclusions).exclude(pk=user.pk)
     return UserFilter(filters, users).qs
-
-
 
 @user_not_found
 def user_get(user_id: int) -> User:
@@ -69,7 +67,7 @@ def user_get_for(*, user: User, user_id: int) -> User:
     """
 
     exclusions = UserExclusions.for_user(user)
-    return BASE_QS.exclude(exclusions).get(user_id=user_id)
+    return BASE_QS.exclude(exclusions).get(pk=user_id)
 
 
 @raise_not_found("email", "User with given email not found")
