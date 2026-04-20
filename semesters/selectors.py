@@ -1,8 +1,12 @@
 from django.core.cache import cache
-from .models import Semester
+from semesters.models import Semester
 from rest_framework.exceptions import NotFound
 from django.utils import timezone
 from django.db.models import QuerySet
+from common.helpers import raise_not_found
+
+
+
 def semester_list():
     return Semester.objects.all()
 
@@ -25,13 +29,15 @@ def semester_get_by_id(semester_id)-> Semester:
 def semesters_get_all_from_today()-> QuerySet:
     return Semester.objects.filter(end_date__gte=timezone.now()).only("id")
 
+@raise_not_found("current_semester", "No current semester has been set for this time period")
 def semester_current() -> Semester:
+    """This has to be cached due to the mulitple number of times it will be called"""
     cache_key = "semester:semester_current"
-    if semester := cache.get(cache_key):
-       return semester
-    try: 
-        semester = Semester.objects.get(start_date__lte=timezone.localdate(), end_date__gte=timezone.localdate())
-        cache.set(cache_key, semester, timeout=3600)
-        return semester
-    except Semester.DoesNotExist:
-        raise NotFound({"current_semester": [f"Semester not found. Please create a semester for this time period"]})
+    if cached := cache.get(cache_key):
+        return cached
+    
+    now = timezone.now()
+    semester = Semester.objects.get(start_date__lte=now, end_date__gte=now)
+    timeout = max(1, int((semester.end_date - now).total_seconds()))
+    cache.set(cache_key, semester, timeout=timeout)
+    return semester
