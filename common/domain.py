@@ -7,11 +7,11 @@ class RoleBasedExclusions:
     A tiered mapping of how each role affects how list views are rendered based on the user's role
     """
 
-    SUPERUSER = Q()
-    MANAGER = Q()
-    CARETAKER = Q()
-    TENANT = Q()
-    GENERAL = Q()
+    SUPERUSER: Q
+    MANAGER: Q
+    CARETAKER: Q
+    TENANT: Q
+    GENERAL: Q
 
     @classmethod
     def for_user(cls, user: User):
