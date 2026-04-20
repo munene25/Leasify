@@ -27,7 +27,7 @@ class ApartmentDetailSerializer(serializers.Serializer):
     rent = serializers.DecimalField(max_digits=10, decimal_places=2)
     rentable = serializers.BooleanField()
     created_at = serializers.DateTimeField()
-    tenants = TenancyListSerializer(source="tenancy_set", many=True)
+    current_tenant = serializers.CharField(source="user.full_name")
 
     
 class ApartmentOverviewSerializer(serializers.Serializer):
