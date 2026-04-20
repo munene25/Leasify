@@ -10,28 +10,20 @@ class Tenancy(BaseModel):
         ordering = ["-created_at"]
 
         constraints = [
-            models.UniqueConstraint(
-                fields=["user", "semester"], name="unique_user_per_semester"
-            ),
+            models.UniqueConstraint(fields=["user", "semester"], name="unique_user_per_semester"),
             models.UniqueConstraint(
                 fields=["apartment", "semester"],
                 name="unique_apartment_per_semester",
             ),
         ]
-    
-    user = models.ForeignKey(User, on_delete=models.PROTECT, null=False, blank=False)
-    apartment = models.ForeignKey(
-        Apartment, on_delete=models.PROTECT, null=False, blank=False
-    )
-    semester = models.ForeignKey(
-        Semester, on_delete=models.PROTECT, null=False, blank=False
-    )
-    total_paid = models.DecimalField(
-        decimal_places=2,
-        max_digits=10,
-    )
 
+    user = models.ForeignKey(User, on_delete=models.PROTECT, null=False, blank=False)
+    apartment = models.ForeignKey(Apartment, on_delete=models.PROTECT, null=False, blank=False)
+    semester = models.ForeignKey(Semester, on_delete=models.PROTECT, null=False, blank=False)
+    total_paid = models.DecimalField(decimal_places=2, max_digits=10)
     
+
+
     def __str__(self) -> str:
         return f"[{self.pk}] User: {getattr(self, "user_id")} Apt: {getattr(self, "apartment_id")}"
 
@@ -52,7 +44,7 @@ class Tenancy(BaseModel):
 
     @property
     def phone_number(self):
-        return self.user.account.phone_number #type: ignore
+        return self.user.account.phone_number  # type: ignore
 
     @property
     def payment_status(self):
