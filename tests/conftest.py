@@ -9,6 +9,8 @@ from rest_framework.test import APIClient
 from django.core.cache import cache
 
 
+# ------------------------------------------------------ Globals  ------------------------------------------------------ #
+
 @pytest.fixture(scope="session")
 def django_db_setup(django_db_setup, django_db_blocker):
     with django_db_blocker.unblock():
@@ -77,11 +79,11 @@ def fake():
     return Faker("en_KE")
 
 
+# ------------------------------------------------------ Users  ------------------------------------------------------ #
+
 @pytest.fixture
 def user_factory(fake, phone_no) -> typing.Callable[[int, dict[str, typing.Any]], list[User]]:
-    """
-    Returns a user object with an account created
-    """
+    """Returns a callable for generating users"""
 
     def create(quantity: int = 1, overrides: dict[str, typing.Any] = {}) -> list[User]:
         users = []
@@ -155,17 +157,15 @@ def tenant_user(user_factory, get_role) -> User:
 @pytest.fixture
 def password() -> str:
     """Default password for test users"""
-    
     return "Pa55word!"
 
 
 @pytest.fixture
 def phone_no(fake) -> typing.Callable[[str | None], str]:
-    """
-    A callable to generate a phone number object
-    """
-
     return lambda num=None: num or fake.numerify("+2547########")
+
+
+# ------------------------------------------------------ API clients  ------------------------------------------------------ #
 
 
 @pytest.fixture
@@ -176,7 +176,6 @@ def client() -> APIClient:
 @pytest.fixture
 def csrf_client() -> APIClient:
     return APIClient(enforce_csrf_checks=True)
-
 
 @pytest.fixture
 def user_client(user) -> APIClient:
