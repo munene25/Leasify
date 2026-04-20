@@ -1,7 +1,16 @@
+from typing import TypedDict, Unpack
 from decimal import Decimal
 from django.db import transaction
 from rest_framework.exceptions import ValidationError
-from .models import Apartment
+from apartments.models import Apartment
+
+class ApartmentUpdateData(TypedDict, total=False):
+    """Represents the payload expected for the user_update function"""
+
+    block: str
+    unit_number: int
+    rent: int | Decimal
+    rentable: bool
 
 @transaction.atomic
 def apartment_create(*, block: str, unit_number: int, rent: Decimal | int, rentable: bool = True) -> Apartment:
@@ -35,7 +44,7 @@ def apartment_create(*, block: str, unit_number: int, rent: Decimal | int, renta
     return apt
 
 @transaction.atomic
-def apartment_update(apartment: Apartment, **kwargs: str | int) -> Apartment:
+def apartment_update(apartment: Apartment, **kwargs: Unpack[ApartmentUpdateData]) -> Apartment:
     """
     Update apartment fields.
     
@@ -51,6 +60,7 @@ def apartment_update(apartment: Apartment, **kwargs: str | int) -> Apartment:
     :return: updated Apartment instance
     "rtype: Apartment
     """
+
     editable_fields = {"rent", "block", "unit_number", "rentable"}
     update_fields: dict= {
         k: v for k, v in kwargs.items() if k in editable_fields and getattr(apartment, k) != v
