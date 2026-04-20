@@ -7,6 +7,8 @@ from users.models import User
 from users.services import user_account_create, user_set_role
 from rest_framework.test import APIClient
 from django.core.cache import cache
+from apartments.services import apartment_create
+from apartments.models import Apartment
 
 
 # ------------------------------------------------------ Globals  ------------------------------------------------------ #
@@ -210,3 +212,30 @@ def super_user_client(super_user) -> APIClient:
     client = APIClient()
     client.force_authenticate(user=super_user)
     return client
+
+
+# ------------------------------------------------ Apartments  ------------------------------------------------
+
+@pytest.fixture
+def apartment_factory(fake) -> typing.Callable[[int, dict, bool], list[Apartment]]:
+    """Returns a callable for generating apartments"""
+
+    def create(quantity: int = 1, overrides: dict[str, typing.Any] = {}, ordered: bool = False):
+        import random
+        from decimal import Decimal
+
+        apartments: list[Apartment] = []
+        for i in range(quantity):
+            apt = apartment_create(
+                block=overrides.get("block", random.choice(Apartment.ApartmentChoices.values)),
+                unit_number=(i+1) if ordered else int(fake.building_number()),
+                rent=overrides.get("rent", Decimal(fake.numerify("1#000"))),
+                rentable=overrides.get("rentable", random.choice((True, False)))
+            )
+            apartments.append(apt)
+        return apartments
+    return create
+
+@pytest.fixture
+def apartment(apartment_factory):
+    return apartment_factory(ordered=True, overrides={"block": "NEW", "rent": 20_000, "rentable": True})[0]
