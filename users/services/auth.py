@@ -4,7 +4,7 @@ from django.utils import timezone
 from rest_framework.exceptions import AuthenticationFailed
 from django.contrib.auth import authenticate
 
-logger = getLogger("users.services.login")
+logger = getLogger("users.services.authenticate")
 
 def user_authenticate(*, email: str, password: str) -> AbstractUser:
     """
@@ -19,13 +19,14 @@ def user_authenticate(*, email: str, password: str) -> AbstractUser:
     :return: returns a user or will raise an 401 if authentication failed 
     :rtype: User
     """
+    
     normalized_email = BaseUserManager.normalize_email(email)
     user = authenticate(email=normalized_email, password=password)
     if user is None:
         err = "Incorrect email or password"
-        logger.warning(f"Failed authentication attempt for [user_emai: {email}]")
+        logger.warning("user_authentication_failed", email=email)
         raise AuthenticationFailed({"email": [err], "password": [err]})
 
     # user_login from django.contrib.auth.user_login will update last_login
-    logger.info(f"user [user_id: {user.pk} authenticated")
+    logger.info("user_authenticated", target_id=user.pk)
     return user

@@ -92,29 +92,3 @@ def account_create(*, user: User, phone_number: str | None = None, bio: str | No
     return account
 
 
-@transaction.atomic
-def user_set_role(*, user: User, role: Group, replace: bool = False) -> User:
-    """
-    Responsible for adding a user to a group.
-    Ensures that only one role can be assigned to a user at a time.
-    replace flag explicitly requires the caller to acknowledge that an existing role will be replaced if it exists.
-
-    :param user: The user to whom the role will be added.
-    :type user: User
-
-    :param role: The role (Group) to be added to the user.
-    :type role: Group
-
-    :param replace: If True, allows replacing an existing role.
-    :type replace: bool
-
-    :raises RoleAssignmentError: If the user already has a role and replace is False.
-    
-    :return: The user with the newly added role.
-    :rtype: User
-    """
-    if replace == False and user.groups.exists():
-        raise RoleAssignmentError()
-    user.groups.set([role])
-    logger.info(f"Roles [role: {role}] set for [user_id: {user.pk}]")
-    return user

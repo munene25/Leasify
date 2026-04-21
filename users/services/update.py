@@ -109,3 +109,89 @@ def user_change_password(
     logger.info(f"user [user_id: {user.pk}] password changed")
     transaction.on_commit(lambda: notify_password_change.delay(user.pk))
     return user
+
+
+@transaction.atomic
+def account_update_mailing_status(account: Account, status: bool) -> Account:
+    """
+    Changes ability of a user to receive non-critical mail in their inbox.
+
+    :param account: account obj
+    :type account: Account
+
+    :return: unsubed account instance
+    :rtype: Account
+    """
+    account.can_receive_emails = status
+    account.save(update_fields=["can_receive_emails"])
+    logger.info("account_mailing_status_updated", target_id=account.user_id, status=status)
+    return account
+
+
+@transaction.atomic
+def user_update_active_status(user: User, status: bool) -> User:
+    """
+    Simplified the delete/deactivate dance: No deletions apart from through the admin.
+    This service serves both the user and admin deactiavations
+
+    :param user: The user obj
+    :type user: User
+
+    :return: deactivated user
+    :rtype: User
+    """
+    user.is_active = status
+    status_change = {True: "activated", False: "deactivated"}[status]
+    user.save(update_fields=["is_active"])
+    logger.info("users_active_status_updated", target_id=user.pk, status=status)
+    return user
+
+@transaction.atomic
+def user_email_verify(user: User) -> User:
+    """
+    Simply verifies the user in a transaction,
+    Could add more features in the future like a confirmaiton email.
+
+    :param user: User object
+    :type user: User
+
+    :return: A user that is verified
+    :rtype: User
+    """
+    user.verified = True
+    user.save(update_fields=["verified"])
+    logger.info("user_email_verified", target_id=user.pk)
+    return user
+
+
+@transaction.atomic
+def user_email_update(user: User, email: str, password: str) -> User:
+    """
+    Email updater that limits email changes based on EMAIL_COOLDOWN in model.
+
+    :param user: User obj
+    :type user: User
+    :param email: the intended email to change to
+    :type email: str
+    :param password: current password for the user
+    :type password: str
+
+    :return: user
+    :rtype: User
+    """
+    user.validate_password(password)
+
+    # Ensure change is available
+    if user.next_email_change is not None:
+        raise EmailUpdateError({"email": f"Email updates are allowed once every {EMAIL_COOLDOWN.days} days"})
+
+    # Normalize email first
+    user.email = User.objects.normalize_email(email)
+
+    user.verified = False
+    user.last_email_change = timezone.now()
+
+    user.full_clean()
+    user.save(update_fields=["email", "verified", "last_email_change"])
+    logger.info("user_email_updated", target_id=user.pk, email=user.email)
+    return user
