@@ -18,7 +18,7 @@ class TestApartmentCreateService:
         """
         apartment data must match what was input, the db and the returned object
         """
-        
+
         data = self.data
         apartment = apartment_create(**data)
         fetched = Apartment.objects.first()
@@ -28,13 +28,13 @@ class TestApartmentCreateService:
         assert apartment.unit_number == data["unit_number"] == fetched.unit_number
         assert apartment.rent == data["rent"] == fetched.rent
         assert apartment.rentable == data["rentable"] == fetched.rentable
-    
+
     @pytest.mark.parametrize("invalid_block_name", ["new", "New", "old", "OLD "])
     def test_apartment_creation_fails_for_invalid_block(self, invalid_block_name: str):
         """
         apartment block should be only allow those defined in the apartment choices
         """
-        
+
         data = self.data
         data["block"] = invalid_block_name
 
@@ -43,12 +43,23 @@ class TestApartmentCreateService:
 
         assert "block" in exc.value.detail
 
+    def test_apartment_unique_constraints(self, apartment: Apartment):
+        """
+        No two apartments can have the same block and unit_number
+        """
+
+        with pytest.raises(ValidationError) as exc:
+            apartment_create(block=apartment.block, unit_number=apartment.unit_number, rent=apartment.rent)
+        assert "Apartment with this Block and Unit number already exists" in str(exc.value.detail)
+        assert Apartment.objects.count() == 1
+
     def test_apartment_defaults_to_rentable(self):
         """
         Apartment should by default be rentable
         """
         apartment = apartment_create(block="NEW", unit_number=11, rent=20_000)
         assert apartment.rentable == True
+
 
 class TestApartmentUpdateService:
     def test_apartment_updates_successfully(self, apartment: Apartment):
