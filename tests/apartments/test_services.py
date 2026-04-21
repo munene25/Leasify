@@ -62,12 +62,14 @@ class TestApartmentCreateService:
 
 
 class TestApartmentUpdateService:
+    data = {"block": "OLD", "rent": 10_000, "rentable": True, "unit_number": 2}
+
     def test_apartment_updates_successfully(self, apartment: Apartment):
         """
         Updated fields should match what is in the db, the returned object and the update data
         """
-        
-        updates: ApartmentUpdateData  = {"block":"OLD", "rent":10_000, "rentable":True, "unit_number": 2}
+
+        updates = self.data
         updated = apartment_update(apartment, **updates)
 
         apartment.refresh_from_db()
@@ -110,3 +112,32 @@ class TestApartmentUpdateService:
         assert apartment.unit_number == self.data["unit_number"]
         assert apartment.rent == self.data["rent"]
         assert apartment.rentable == self.data["rentable"]
+
+
+class TestApartmentDeleteService:
+
+    def test_apartment_deletion_succeeds(self, apartment: Apartment):
+        """
+        Should delete normally if it's not attached to any tenancy
+        """
+
+        apartment_delete(apartment)
+        assert Apartment.objects.count() == 0
+
+    def test_apartment_with_tenant_fails(self, user, apartment: Apartment):
+        """
+        Should fail to delete and unit should persist
+        """
+        from tenancy.models import Tenancy
+        from semesters.models import Semester
+        from datetime import date
+
+        # create sem
+        s = Semester.objects.create(start_date=date(2025, 1, 1), end_date=date(2025, 5, 31), off_season=True)
+        # create tenant
+        Tenancy.objects.create(user=user, semester=s, apartment=apartment, total_paid=Decimal(0))
+
+        with pytest.raises(ValidationError) as exc:
+            apartment_delete(apartment)
+
+        assert "apartment_id" in exc.value.detail
