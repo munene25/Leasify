@@ -78,7 +78,8 @@ class User(BaseModel, AbstractUser):
 # Account Model
 class Account(BaseModel):
     """Extra information on the user"""
-
+    
+    user_id: int
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     phone_number = PhoneNumberModelField(unique=True, null=True, blank=True)
     bio = models.TextField(null=True, blank=True, max_length=300)
