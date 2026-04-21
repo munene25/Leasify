@@ -1,12 +1,14 @@
 from typing import TypedDict
 from typing_extensions import Unpack
 from structlog import getLogger
-from users.models import User
+from users.models import User, Account, EMAIL_COOLDOWN
 from django.db import transaction
 from rest_framework.exceptions import ValidationError
 from users.tasks import notify_password_change
+from django.utils import timezone
+from common.exceptions import EmailUpdateError
 
-logger = getLogger("users.services,update")
+logger = getLogger("users.services.update")
 
 
 class UserUpdateData(TypedDict, total=False):
@@ -44,9 +46,10 @@ def user_update(user: User, **kwargs: Unpack[UserUpdateData]):
     account = user.account
 
     # Normalize email
-    backup_email = kwargs.get("backup_email", None)
-    if backup_email:
-        kwargs["backup_email"] = User.objects.normalize_email(backup_email)
+    try:
+        kwargs["backup_email"] = User.objects.normalize_email(kwargs["backup_email"]) # type: ignore
+    except KeyError:
+        pass
 
     for field, value in kwargs.items():
 
@@ -61,20 +64,18 @@ def user_update(user: User, **kwargs: Unpack[UserUpdateData]):
     if user_updates:
         user.full_clean()
         user.save(update_fields=user_updates)
-        logger.info(f"user [user_id: {user.pk}] data modified. fields: {user_updates}")
+        logger.info("user_updated", target_id=user.pk, fields=user_updates)
 
     if account_updates:
         account.full_clean()
         account.save(update_fields=account_updates)
-        logger.info(f"account [account_id: {account.pk}] modified. fields: {account_updates}")
+        logger.info("account_updated", target_id=user.pk, fields=account_updates)
 
     return user
 
 
 @transaction.atomic
-def user_change_password(
-    *, user: User, new_password: str, password: str | None = None, is_ressetting: bool = False
-) -> User:
+def user_change_password(*, user: User, new_password: str, password: str | None = None, is_ressetting: bool = False) -> User:
     """
     This service is used in both password recovery and password changes
     Therefore in password recovery flows, the current password is unknown
@@ -106,7 +107,8 @@ def user_change_password(
     user.set_password(new_password)
     user.full_clean()
     user.save(update_fields=["password"])
-    logger.info(f"user [user_id: {user.pk}] password changed")
+    status = {True: "user_password_reset", False: "user_password_changed"}[is_ressetting]
+    logger.info(status, target_id=user.pk)
     transaction.on_commit(lambda: notify_password_change.delay(user.pk))
     return user
 
