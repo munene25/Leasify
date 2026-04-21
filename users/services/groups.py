@@ -48,5 +48,5 @@ def user_remove_role(user: User) -> User:
     """
 
     user.groups.clear()
-    logger.info("user_role_revoked", target_id=user.pk)
+    logger.warning("user_role_revoked", target_id=user.pk)
     return user
