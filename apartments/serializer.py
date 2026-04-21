@@ -1,5 +1,4 @@
 from rest_framework import serializers
-from tenancy.serializer import TenancyListSerializer
 
 class ApartmentListSerializer(serializers.Serializer):
     apartment_id = serializers.IntegerField(source="pk")
