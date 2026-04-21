@@ -76,3 +76,37 @@ class TestApartmentUpdateService:
         assert updated.rentable == apartment.rentable == updates["rentable"]
         assert updated.unit_number == apartment.unit_number == updates["unit_number"]
         assert updated.block == apartment.block == updates["block"]
+
+    def test_apartment_unique_constraints(self, apartment: Apartment):
+        """No two apartments should share same block and unit number"""
+
+        apt = apartment_create(**self.data)
+        with pytest.raises(ValidationError) as exc:
+            apartment_update(apartment=apt, block=apartment.block, unit_number=apartment.unit_number)
+        assert "Apartment with this Block and Unit number already exists" in str(exc.value.detail)
+        apt.refresh_from_db()
+        assert apt.block == self.data["block"]
+        assert apt.unit_number == self.data["unit_number"]
+        assert apt.rent == self.data["rent"]
+        assert apt.rentable == self.data["rentable"]
+
+    def test_number_of_querries_vary_based_on_the_update_kwargs(self, apartment: Apartment, django_assert_num_queries):
+        """
+        Apartment should only be updated if fields actually change
+        """
+
+        # Should always include the transactions
+        with django_assert_num_queries(2):
+            apartment_update(apartment, block=apartment.block, unit_number=apartment.unit_number)
+
+        # 2 transaction querries
+        # 1 uniqueness check via full clean
+        # 1 update
+        with django_assert_num_queries(4):
+            apartment_update(apartment, **self.data)
+
+        apartment.refresh_from_db()
+        assert apartment.block == self.data["block"]
+        assert apartment.unit_number == self.data["unit_number"]
+        assert apartment.rent == self.data["rent"]
+        assert apartment.rentable == self.data["rentable"]
