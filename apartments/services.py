@@ -1,8 +1,11 @@
+from structlog import get_logger
 from typing import TypedDict, Unpack
 from decimal import Decimal
 from django.db import transaction
 from rest_framework.exceptions import ValidationError
 from apartments.models import Apartment
+
+logger = get_logger("apartments.services")
 
 class ApartmentUpdateData(TypedDict, total=False):
     """Represents the payload expected for the user_update function"""
@@ -33,15 +36,16 @@ def apartment_create(*, block: str, unit_number: int, rent: Decimal | int, renta
     :rtype: Apartment
     """
 
-    apt = Apartment(
+    apartment = Apartment(
         block=block,
         unit_number=unit_number,
         rent=rent,
         rentable=rentable,
     )
-    apt.full_clean()
-    apt.save()
-    return apt
+    apartment.full_clean()
+    apartment.save()
+    logger.info(f"apartment {str(apartment)} created")
+    return apartment
 
 @transaction.atomic
 def apartment_update(apartment: Apartment, **kwargs: Unpack[ApartmentUpdateData]) -> Apartment:
@@ -73,12 +77,14 @@ def apartment_update(apartment: Apartment, **kwargs: Unpack[ApartmentUpdateData]
 
     apartment.full_clean()
     apartment.save(update_fields=list(update_fields.keys()))
+    logger.info(f"apartment {str(apartment)} updated. [data: {update_fields}]")
     return apartment
 
 def apartment_delete(apartment: Apartment) -> None:
     """
-    Delete an apartment if it has not been associated with a tenancy
+    Delete an apartment if it has not been associated with a tenancy.
     """
     if getattr(apartment, "tenancy_set").exists():
         raise ValidationError({"apartment_id": ["Apartment is booked and cannot be deleted"]})
     apartment.delete()
+    logger.warning(f"apartment {str(apartment)} deleted")
