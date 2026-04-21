@@ -13,7 +13,7 @@ def user_account_create(notify: bool=True, **kwargs) -> User:
     """
     Creates a user and account instance in one transaction.
 
-    :param notify: If True, sends a welcome email to the user after account creation.
+    :param notify: If to send a welcome email to the user after account creation.
     :type notify: bool
 
     :param kwargs:
@@ -32,7 +32,9 @@ def user_account_create(notify: bool=True, **kwargs) -> User:
 
     if notify == True:
         transaction.on_commit(lambda: send_welcome_email.delay(user.pk))
+    logger.info("user_account_created", target_id=user.pk, email=user.email)
     return user
+
 
 
 def user_create(*, email: str, first_name: str, last_name: str, password: str) -> User:
@@ -62,7 +64,6 @@ def user_create(*, email: str, first_name: str, last_name: str, password: str) -
     user.set_password(password)
     user.full_clean()
     user.save()
-    logger.info(f"user {user.get_full_name()} [user_id: {user.pk}] created an account.")
     return user
 
 
