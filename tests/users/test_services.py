@@ -7,18 +7,7 @@ from django.core.mail import EmailMessage
 from rest_framework.exceptions import ValidationError, AuthenticationFailed
 from users.models import User, EMAIL_COOLDOWN
 from freezegun import freeze_time
-from users.services import (
-    user_account_create,
-    user_set_role,
-    user_change_active_status,
-    account_unsubscribe,
-    user_remove_role,
-    user_email_update,
-    user_email_verify,
-    user_authenticate,
-    user_change_password,
-    user_update,
-)
+from users import services as s
 from tests.types import UserCreatePayload
 
 
@@ -27,7 +16,7 @@ class TestAccountCreation:
         """
         Test whether account creation is successfull and data is data matches
         """
-        user_account_create(**user_create_payload)
+        s.user_account_create(**user_create_payload)
         user = User.objects.get(email=user_create_payload["email"])
         account = user.account
         # Assert reverse relationship
@@ -50,7 +39,7 @@ class TestAccountCreation:
         Test whether mailing will be ignored with notify flag set to false
         """
         with django_capture_on_commit_callbacks() as callback:
-            user_account_create(**user_create_payload)
+            s.user_account_create(**user_create_payload)
         assert len(callback) == 0
         assert User.objects.count() == 1
 
@@ -71,7 +60,7 @@ class TestAccountCreation:
         user_create_payload["notify"] = True
 
         with django_capture_on_commit_callbacks() as callback:
-            user_account_create(**user_create_payload)
+            s.user_account_create(**user_create_payload)
         assert User.objects.count() == 1
         # Assert callback stores the mail sender
         assert len(callback) == 1
@@ -101,7 +90,7 @@ class TestAccountCreation:
         with pytest.raises(Exception, match="Cache Down"):
 
             with django_capture_on_commit_callbacks(execute=True):
-                user_account_create(**user_create_payload)
+                s.user_account_create(**user_create_payload)
 
         assert User.objects.count() == 1
 
@@ -120,7 +109,7 @@ class TestAccountCreation:
         """
         user_create_payload["password"] = password
         with pytest.raises(ValidationError) as exc:
-            user_account_create(**user_create_payload)
+            s.user_account_create(**user_create_payload)
         assert "password" in exc.value.detail
         assert exception in str(exc.value.detail)
         assert User.objects.count() == 0
@@ -144,7 +133,7 @@ class TestAccountCreation:
         user_create_payload["password"] = password
 
         with pytest.raises(ValidationError) as exc:
-            user_account_create(**user_create_payload)
+            s.user_account_create(**user_create_payload)
         assert "password" in exc.value.detail
         assert "similar" in str(exc.value.detail)
         assert User.objects.count() == 0
@@ -190,9 +179,9 @@ class TestAccountCreation:
         data1[field] = value
         data2[field] = duplicate
 
-        user_account_create(**data1)
+        s.user_account_create(**data1)
         with pytest.raises(ValidationError) as exc:
-            user_account_create(**data2)
+            s.user_account_create(**data2)
 
         assert User.objects.count() == 1
         assert field in exc.value.detail
@@ -207,7 +196,7 @@ class TestAccountCreation:
         """
         user_create_payload["phone_number"] = wrong_phone_number
         with pytest.raises(ValidationError) as exc:
-            user_account_create(**user_create_payload)
+            s.user_account_create(**user_create_payload)
         assert "phone_number" in exc.value.detail
         assert User.objects.count() == 0
 
@@ -220,7 +209,7 @@ class TestRoleAssignment:
         """
         assert user.groups.count() == 0
         role = get_role("manager")
-        user_set_role(user=user, role=role)
+        s.user_set_role(user=user, role=role)
 
         user.refresh_from_db()
 
@@ -237,10 +226,10 @@ class TestRoleAssignment:
         from common.exceptions import RoleAssignmentError
 
         assert user.groups.count() == 0
-        mod_user = user_set_role(user=user, role=roles_list[0])
+        mod_user = s.user_set_role(user=user, role=roles_list[0])
 
         with pytest.raises(RoleAssignmentError) as exc:
-            user_set_role(user=mod_user, role=roles_list[1])
+            s.user_set_role(user=mod_user, role=roles_list[1])
         assert "Only one role is allowed per user." in exc.value.detail
         assert mod_user.groups.count() == 1
 
@@ -251,7 +240,7 @@ class TestUserDeactivation:
         Check whether the returned user is deactivated
         """
 
-        mod_user = user_change_active_status(user, False)
+        mod_user = s.user_update_active_status(user, False)
         fetched = User.objects.get(pk=user.pk)
         assert fetched == mod_user == user
         assert mod_user.is_active == False
@@ -261,22 +250,24 @@ class TestUserDeactivation:
         Check whether the returned user is deactivated
         """
 
-        mod_user = user_change_active_status(user, True)
+        mod_user = s.user_update_active_status(user, True)
         fetched = User.objects.get(pk=user.pk)
         assert fetched == mod_user == user
         assert mod_user.is_active == True
 
 
 class TestAccountUnsubscribe:
-    def test_deactivation_succeeds(self, user: User):
+
+    @pytest.mark.parametrize("status", [True, False])
+    def test_deactivation_succeeds(self, status: bool, user: User):
         """
         Account should be marked as cannot receive emails
         """
 
-        mod_acc = account_unsubscribe(user.account)
-        fetched = User.objects.get(pk=user.pk)
-        assert fetched.account == mod_acc == user.account
-        assert fetched.account.can_receive_emails == False
+        mod_acc = s.account_update_mailing_status(user.account, status)
+        mod_acc.refresh_from_db()
+        assert mod_acc == mod_acc == user.account
+        assert mod_acc.can_receive_emails == status
 
 
 class TestRoleRemoval:
@@ -287,7 +278,7 @@ class TestRoleRemoval:
         first_role = manager_user.role
 
         assert first_role is not None
-        user_remove_role(user=manager_user)
+        s.user_remove_role(user=manager_user)
 
         manager_user.refresh_from_db()
 
@@ -304,7 +295,7 @@ class TestEmailUpdate:
         """
         new_email = "test@EXAMPLE.com"
         normalized = new_email.lower()
-        mod_user = user_email_update(user=user, email=new_email, password="Pa55word!")
+        mod_user = s.user_email_update(user=user, email=new_email, password="Pa55word!")
         fetched = User.objects.get(pk=user.pk)
 
         assert mod_user == user == fetched
@@ -328,7 +319,7 @@ class TestEmailUpdate:
         user.save(update_fields=["last_email_change"])
 
         with pytest.raises(EmailUpdateError) as exc:
-            user_email_update(user=user, email=new_email, password="Pa55word!")
+            s.user_email_update(user=user, email=new_email, password="Pa55word!")
 
         assert "email" in exc.value.detail
         assert User.objects.get(pk=user.pk).email == user.email
@@ -346,7 +337,7 @@ class TestEmailUpdate:
         with freeze_time(before, tz_offset=0) as frozen_time:
             user.last_email_change = timezone.now()
             user.save()
-            updater = lambda: user_email_update(user=user, email=new_email, password=password)
+            updater = lambda: s.user_email_update(user=user, email=new_email, password=password)
 
             with pytest.raises(EmailUpdateError) as exc:
                 updater()
@@ -368,7 +359,7 @@ class TestUserEmailVerifyConfirmation:
         """
         Verified status should reflect
         """
-        mod_user = user_email_verify(user)
+        mod_user = s.user_email_verify(user)
         mod_user.refresh_from_db()
         assert mod_user == user
         assert mod_user.verified == True
@@ -381,7 +372,7 @@ class TestLoginService:
         last_login field should be updated
         returned user should be the match
         """
-        authenticated_user = user_authenticate(email=user.email, password=password)
+        authenticated_user = s.user_authenticate(email=user.email, password=password)
         assert authenticated_user == user
 
     def test_login_service_fails_with_inactive_users(self, user: User):
@@ -389,14 +380,14 @@ class TestLoginService:
         user.save(update_fields=["is_active"])
 
         with pytest.raises(AuthenticationFailed) as exc:
-            user_authenticate(email=user.email, password="Pa55word!")
+            s.user_authenticate(email=user.email, password="Pa55word!")
         assert "email" in exc.value.detail and "password" in exc.value.detail
 
     def test_login_fails_for_wrong_credentials(self, user: User):
         wrong_email = "test@testemail.com"
         wrong_pass = "password"
         with pytest.raises(AuthenticationFailed) as exc:
-            user_authenticate(email=wrong_email, password=wrong_pass)
+            s.user_authenticate(email=wrong_email, password=wrong_pass)
         assert "email" in exc.value.detail and "password" in exc.value.detail
 
     def test_login_succeds_with_normalization(self, user: User):
@@ -405,7 +396,7 @@ class TestLoginService:
         """
         parts = user.email.split("@")
         email = parts[0] + "@" + parts[1].upper()
-        authd_user = user_authenticate(email=email, password="Pa55word!")
+        authd_user = s.user_authenticate(email=email, password="Pa55word!")
         assert authd_user == user
 
 
@@ -419,7 +410,7 @@ class TestUserUpdate:
             "last_name": "Some last name",
             "phone_number": phone_no(),
         }
-        mod_user = user_update(user, **data)
+        mod_user = s.user_update(user, **data)
         mod_account = mod_user.account
         # assert same user returned
         assert user == mod_user
@@ -440,13 +431,13 @@ class TestUserUpdate:
         Emails should be normalized and incorrect changes should not reflect
         """
         backup_email = "test@GMAIl.com"
-        mod_user = user_update(user, backup_email=backup_email)
+        mod_user = s.user_update(user, backup_email=backup_email)
         mod_acc = mod_user.account
         assert mod_acc.backup_email == "test@gmail.com"
 
         wrong_format = "test@gmail"
         with pytest.raises(ValidationError) as exc:
-            user_update(mod_user, backup_email=wrong_format)
+            s.user_update(mod_user, backup_email=wrong_format)
         assert "backup_email" in exc.value.detail
 
         db_version = User.objects.get(pk=user.pk)
@@ -467,7 +458,7 @@ class TestUserUpdate:
         Originally, these fields do not exist on the db,
         User should be able to add and data
         """
-        mod_user = user_update(user, **{field: value})
+        mod_user = s.user_update(user, **{field: value})
         mod_account = mod_user.account
         obj = mod_user if model == "user" else mod_account
         assert getattr(obj, field) == value
@@ -477,7 +468,7 @@ class TestUserUpdate:
         Phone numbers that should be rejected based on incorrect countrycode
         """
         with pytest.raises(ValidationError) as exc:
-            user_update(user, **{"phone_number": wrong_phone_number})
+            s.user_update(user, **{"phone_number": wrong_phone_number})
 
         assert "phone_number" in exc.value.detail
 
@@ -495,7 +486,7 @@ class TestUserUpdate:
         Short names and unexpected punctuations are not allowed.
         """
         with pytest.raises(ValidationError) as exc:
-            user_update(user, **{field: value})
+            s.user_update(user, **{field: value})
         assert field in exc.value.detail
 
 
@@ -509,7 +500,7 @@ class TestUserChangePassword:
         current_password = "Pa55word!"
         new_password = "TimT@tman!"
         user.validate_password(current_password)
-        modified = user_change_password(user=user, new_password=new_password, password=current_password)
+        modified = s.user_change_password(user=user, new_password=new_password, password=current_password)
         assert user == modified == User.objects.get(pk=user.pk)
         # Password should be hashed
         assert modified.password != new_password
@@ -536,7 +527,7 @@ class TestUserChangePassword:
         new_password = "TimT@tman!"
         user.validate_password(current_password)
         with django_capture_on_commit_callbacks(execute=True) as callbacks:
-            user_change_password(user=user, new_password=new_password, password=current_password)
+            s.user_change_password(user=user, new_password=new_password, password=current_password)
         assert len(callbacks) == 1
         assert len(mailoutbox) == 1
         mail = mailoutbox[0]
@@ -547,6 +538,6 @@ class TestUserChangePassword:
 
     def test_password_changed_without_password(self, user: User):
         new_password = "Everl@sting!"
-        mod_user = user_change_password(user=user, new_password=new_password, is_ressetting=True)
+        mod_user = s.user_change_password(user=user, new_password=new_password, is_ressetting=True)
         assert mod_user == user
         mod_user.validate_password(new_password)
