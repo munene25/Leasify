@@ -44,7 +44,7 @@ def apartment_create(*, block: str, unit_number: int, rent: Decimal | int, renta
     )
     apartment.full_clean()
     apartment.save()
-    logger.info(f"apartment {str(apartment)} created")
+    logger.info("apartment_created", apartment_id=apartment.pk, apartment_name=str(apartment))
     return apartment
 
 @transaction.atomic
@@ -76,8 +76,9 @@ def apartment_update(apartment: Apartment, **kwargs: Unpack[ApartmentUpdateData]
         setattr(apartment, field, value)
 
     apartment.full_clean()
-    apartment.save(update_fields=list(update_fields.keys()))
-    logger.info(f"apartment {str(apartment)} updated. [data: {update_fields}]")
+    updates = list(update_fields.keys())
+    apartment.save(update_fields=updates)
+    logger.info("apartment_updated", apartment_id=apartment.pk, fields=updates)
     return apartment
 
 def apartment_delete(apartment: Apartment) -> None:
@@ -87,4 +88,4 @@ def apartment_delete(apartment: Apartment) -> None:
     if getattr(apartment, "tenancy_set").exists():
         raise ValidationError({"apartment_id": ["Apartment is booked and cannot be deleted"]})
     apartment.delete()
-    logger.warning(f"apartment {str(apartment)} deleted")
+    logger.warning("apartment_deleted", apartment_id=apartment.pk, apartment_name=str(apartment))
