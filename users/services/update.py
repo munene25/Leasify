@@ -108,7 +108,7 @@ def user_change_password(*, user: User, new_password: str, password: str | None 
     user.full_clean()
     user.save(update_fields=["password"])
     status = {True: "user_password_reset", False: "user_password_changed"}[is_ressetting]
-    logger.info(status, target_id=user.pk)
+    logger.warning(status, target_id=user.pk)
     transaction.on_commit(lambda: notify_password_change.delay(user.pk))
     return user
 
