@@ -12,6 +12,7 @@ from django.contrib.auth.models import Group
 
 logger = get_logger("users.admin")
 
+
 class AccountAdminForm(forms.ModelForm):
     class Meta:
         model = Account
@@ -23,6 +24,7 @@ class AccountAdminForm(forms.ModelForm):
             return BaseUserManager.normalize_email(value)
         return value
 
+
 class UserAdminForm(forms.ModelForm):
     group = forms.ChoiceField(choices=[], help_text="Select a group to assign to the user to.", label="Group")
 
@@ -32,7 +34,7 @@ class UserAdminForm(forms.ModelForm):
         group_field = self.fields["group"]
         group_choices = [("none", "None")]
         initial = "none"
-        
+
         for group in Group.objects.all():
             if self.instance and self.instance.groups.first() == group:
                 initial = group.name
@@ -40,7 +42,6 @@ class UserAdminForm(forms.ModelForm):
 
         group_field.choices = group_choices
         group_field.initial = initial
-
 
     class Meta:
         model = User
@@ -51,7 +52,8 @@ class UserAdminForm(forms.ModelForm):
         if value:
             return BaseUserManager.normalize_email(value)
         return value
-    
+
+
 # Account inline model
 class AccountInline(admin.StackedInline):
     model = Account
@@ -60,9 +62,7 @@ class AccountInline(admin.StackedInline):
     max_num = 1
     extra = 1
     verbose_name_plural = "Account Info"
-    exclude = (
-        "created_at",
-    )
+    exclude = ("created_at",)
     fk_name = "user"
 
 
@@ -87,15 +87,14 @@ class UserAdmin(admin.ModelAdmin):
         Hook for intercepting the save action for the user model.
         Used to hash the password when creating a user via the admin panel and to log the action.
         """
-        
-            
+
         if "password" in form.changed_data:
             obj.set_password(form.cleaned_data["password"])
 
-        state = {True: "updated", False: "created"}[change]
-        logger.info(f"admin {state} [user_id: {obj.pk}]. data{form.changed_data}")
+        state = {True: "user_updated", False: "user_created"}[change]
         super().save_model(request, obj, form, change)
-        
+        logger.info(state, target_id=obj.pk, email=obj.email)
+
     def save_related(self, request, form, formsets, change):
         """
         Hook for intercepting the save action for the related user models.
@@ -103,17 +102,18 @@ class UserAdmin(admin.ModelAdmin):
         """
         if "group" in form.changed_data:
             from users.services import user_set_role, user_remove_role
+
             user, role = form.instance, form.cleaned_data.get("group")
             if role is "none":
                 user_remove_role(user)
-            else: 
+            else:
                 group = Group.objects.get(name=role)
                 user_set_role(user=user, role=group, replace=True)
 
         state = {True: "updated", False: "created"}[change]
         for formset in formsets:
             if formset.has_changed():
-                changed = [fset_form.changed_data for fset_form in formset] #type: ignore
-                formatted = ", ".join(map(str, changed))
-                logger.info(f"admin {state} [model: {formset.model.__name__}] for user [user_id: {form.instance.pk}] data:{formatted}") # type: ignore
+                changed = [fset_form.changed_data for fset_form in formset]
+                event = formset.model.__name__ + "_" + {state}
+                logger.info(event, target_id=form.instance.pk, fields=changed)
         super().save_related(request, form, formsets, change)
