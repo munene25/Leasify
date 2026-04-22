@@ -20,6 +20,19 @@ class UserUpdatePayload(TypedDict, total=False):
     phone_number: str
 
 
+
+class IsError(TypedDict):
+    code: str
+    detail: str
+    attr: str
+
+class PaginatedResponse(TypedDict):
+    count: int
+    next: str | None
+    previous: str | None
+    results: list[dict[str, Any]]
+
+
 class IsResponse(Protocol):
     @property
     def status_code(self) -> int: ...
