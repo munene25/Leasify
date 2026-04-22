@@ -4,10 +4,10 @@ from typing import Protocol
 from rest_framework.request import Request
 from rest_framework.views import View
 from rest_framework.throttling import AnonRateThrottle, UserRateThrottle, ScopedRateThrottle
-from logging import getLogger
+from structlog import get_logger
 
 
-logger = getLogger("throttling")
+logger = get_logger("trhottling")
 
 
 class ThrottleProtocol(Protocol):
@@ -25,15 +25,13 @@ class ThrottleMixin:
         setattr(request, "throttle_cache_key", self.get_cache_key(request, view))
         if not allowed:
             scope = self.scope or getattr(view, "throttle_scope", "undefined")
-            logger.warning(f"Throttled. [scope: {scope}] [rate: {self.get_rate()}]")
+            logger.warning("user_throttled", scope=scope, rate=self.get_rate())
         return allowed
 
 
 class EmailScopedThrottle(ThrottleMixin, ScopedRateThrottle):
     @override
     def get_cache_key(self, request, view):
-        # Realized this throttles even on successful attempts
-        # like login or requesting email verifications
         email_from_data = request.data.get("email", None)
         user_email = request.user.email if request.user and request.user.is_authenticated else None
         ident = email_from_data or user_email
