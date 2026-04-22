@@ -11,6 +11,7 @@ class BaseModel(models.Model):
     class Meta:
         ordering = ["-created_at"]
         abstract = True
+        
     created_at = models.DateTimeField(auto_now_add=True, editable=False)
 
     def full_clean(self, *args, **kwargs) -> None:
