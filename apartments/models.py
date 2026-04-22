@@ -14,6 +14,7 @@ class Apartment(BaseModel):
     """
 
     class Meta:
+        ordering = ["-created_at"]
         unique_together = ("block", "unit_number")
         permissions = (
             ("view_overview", "Can view the apartments overview status for the semester"),
@@ -30,7 +31,7 @@ class Apartment(BaseModel):
         default=True, blank=False, help_text="Viewable and available to rent"
     )
     tenancy_set: models.QuerySet[Tenancy]
-
+    current_tenants: list[Tenancy]
 
     def __str__(self) -> str:
         return f"{self.block}-{self.unit_number:02}"
@@ -49,7 +50,7 @@ class Apartment(BaseModel):
         ! REQUIRES CURRENT_TENANT_PREFETCH
         Return the current tenant if they exist.
         """
-        return self.tenancy_set.first()
+        return next(iter(self.current_tenants), None)
     
     @property
     def occupied(self) -> bool:
@@ -57,4 +58,4 @@ class Apartment(BaseModel):
         ! REQUIRES CURRENT_TENANT_PREFETCH
         Whether or not the apartment is currently occupied.
         """
-        return self.tenancy_set.exists()
+        return bool(self.current_tenant)
