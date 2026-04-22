@@ -2,7 +2,7 @@ from typing import Any
 from django.db import models
 from apartments.models import Apartment
 from semesters.models import Semester
-
+from rest_framework.exceptions import NotFound
 from common.helpers import raise_not_found
 from users.models import User
 from common.domain import RoleBasedExclusions
@@ -25,17 +25,21 @@ class ApartmentExclusions(RoleBasedExclusions):
 def get_base_qs_with_current_tenant_prefetch() -> models.QuerySet[Apartment]:
     """
     This is defined within a function to avoid prematurely evaluating the current_semester
+    In essence it's important to tell at a glance whether the apartment is occupied or not.
+    It is also important to decouple the semester existing or not in order to get the current tenant.
     """
 
     from semesters.selectors import semester_current
     from tenancy.models import Tenancy
 
-    sem = semester_current()
+    try:
+        sem = semester_current()
+        tenancy = Tenancy.objects.select_related("user").filter(semester_id=sem.pk)
+    except NotFound:
+        tenancy = Tenancy.objects.none()
+        
+    return Apartment.objects.prefetch_related(models.Prefetch("tenancy_set", tenancy, to_attr="current_tenants"))
 
-    qs = Apartment.objects.prefetch_related(
-        models.Prefetch("tenancy_set", Tenancy.objects.select_related("user").filter(semester_id=sem.pk))
-    )
-    return qs
 
 def apartment_list_for(*, user: User, filters: dict[str, Any] | None = None):
     """
