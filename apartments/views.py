@@ -41,7 +41,6 @@ class ApartmentListCreateView(BaseAPIView):
         incoming = self.validate_serializer(data=request.data)
         apartment = services.apartment_create(**incoming)
         outgoing = sc.ApartmentDetailSerializer(instance=apartment)
-        logger.info(f"Admin added a new apartment {str(apartment)}")
         return Response(data=outgoing.data, status=status.HTTP_201_CREATED)
 
 
@@ -68,9 +67,8 @@ class ApartmentDetailUpdateDeleteView(BaseAPIView):
     def delete(self, request, apartment_id):
         check_perms(request.user, "apartments.delete_apartment")
         selected = selectors.apartment_get_for(user=request.user, apartment_id=apartment_id)
-        services.apartment_delete(apartment=selected)
-        logger.warning(f"Admin deleted apartment {str(selected)}")
-        return Response(status=status.HTTP_204_NO_CONTENT, data={"message": "Apartment deleted successfully"})
+        services.apartment_delete(selected)
+        return Response(status=status.HTTP_204_NO_CONTENT, data={"message": f"Apartment {str(selected)} deleted successfully"})
 
 
 class ApartmentOverviewView(BaseAPIView):
