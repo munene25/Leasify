@@ -29,9 +29,11 @@ def semester_get_by_id(semester_id)-> Semester:
 def semesters_get_all_from_today()-> QuerySet:
     return Semester.objects.filter(end_date__gte=timezone.now()).only("id")
 
+
 @raise_not_found("current_semester", "No current semester has been set for this time period")
 def semester_current() -> Semester:
     """This has to be cached due to the mulitple number of times it will be called"""
+
     cache_key = "semester:semester_current"
     if cached := cache.get(cache_key):
         return cached
