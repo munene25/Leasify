@@ -16,6 +16,7 @@ class ApartmentListCreateView(BaseAPIView):
     class FilterSerializer(serializers.Serializer):
         search = serializers.CharField()
         rentable = serializers.BooleanField(allow_null=True)
+        order_by = serializers.CharField()
         rent_min = serializers.IntegerField()
         rent_max = serializers.IntegerField()
 
