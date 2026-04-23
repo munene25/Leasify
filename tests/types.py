@@ -1,4 +1,4 @@
-from typing import Protocol, Any, TypedDict, Mapping
+from typing import Protocol, Any, TypedDict, Mapping, TypeVar, Callable
 from typing_extensions import Unpack
 
 
@@ -56,3 +56,10 @@ class IsClient(Protocol):
     def login(self, **credentials: str) -> bool: ...
 
 _UserCreatePayload = Unpack[UserCreatePayload]
+
+
+# ----------------------- Factory  -----------------------
+T = TypeVar("T")
+
+class Factory[T](Protocol):
+    def __call__(self, *args, **kwargs) -> list[T]: ...
