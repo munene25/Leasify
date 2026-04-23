@@ -21,6 +21,9 @@ class UserUpdatePayload(TypedDict, total=False):
 
 
 
+
+
+# ----------------------- Clients  -----------------------
 class IsError(TypedDict):
     code: str
     detail: str
@@ -31,7 +34,6 @@ class PaginatedResponse(TypedDict):
     next: str | None
     previous: str | None
     results: list[dict[str, Any]]
-
 
 class IsResponse(Protocol):
     @property
