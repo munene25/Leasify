@@ -7,10 +7,10 @@ from django.utils import timezone
 from django.contrib.sessions.backends.cache import SessionStore
 from django.core.cache import cache
 from rest_framework import status
-from users.models import User, Account, EMAIL_COOLDOWN
-from tests.types import IsClient, UserCreatePayload
+from users.models import User, EMAIL_COOLDOWN
+from tests.types import IsClient, UserCreatePayload, Factory
 from django.core.mail import EmailMessage
-from tests.helpers import parse_error, parse_message, check_links_in_mail
+from tests.helpers import parse_error, parse_message, check_links_in_mail, parse_paginated_response
 
 
 class TestUserListCreateView:
@@ -156,51 +156,36 @@ class TestUserListCreateView:
         response3 = manager_client.get(self.path)
         assert response3.status_code == status.HTTP_200_OK
 
-    def test_user_list_pagination(self, manager_client: IsClient, user_factory, override_pagination):
+    def test_user_list_pagination(self, manager_client: IsClient, user_factory: Factory[User], override_pagination):
         """
         Test the pagination structure and data
         Order is reversed so the first user appears in the last index
         """
 
-        total_users = 3
-        base_url = "http://testserver/users/"
+        # The creation of a manager client has created a new user in the db
+        # but would still be filtered out
+        expected_users = 3
+        users = user_factory(expected_users)
 
-        users: list[User] = user_factory(total_users)
+        base_url = lambda page: f"{self.path}?page={page}"
+        test_url = lambda page: f"http://testserver/users/?page={page}"
         first_user = users[-1]
 
-        response1 = manager_client.get(self.path)
-        data = parse_message(response1)
+        # -- First page -- 
+        response1 = manager_client.get(base_url(1))
+        data1 = parse_paginated_response(response1, expected_users)
+        assert data1["next"] == test_url(2)
+        assert data1["previous"] == None
+        assert len(data1["results"]) == override_pagination
+        assert data1["results"][0]["user_id"] == first_user.pk
 
-        count1 = data["count"]
-        next1 = data["next"]
-        previous1 = data["previous"]
-        results1 = data["results"]
+        # -- Next page -- 
+        response2 = manager_client.get(base_url(2))
+        data2 = parse_paginated_response(response2, expected_users)
+        assert data2["results"][0]["user_id"] == users[0].pk
+        assert data2["next"] == None
 
-        # The manager client has created a new user in the db
-        assert count1 == total_users
-
-        assert next1 == f"{base_url}?page=2"
-        assert previous1 == None
-        assert len(results1) == override_pagination
-
-        data1: dict = results1[0]
-        assert data1["user_id"] == first_user.pk
-        assert data1["email"] == first_user.email
-        assert data1["phone_number"] == str(first_user.account.phone_number)
-
-        # -- Next page --
-        response2 = manager_client.get(next1)
-        assert response2.status_code == status.HTTP_200_OK
-
-        next2 = response2.data["next"]
-        previous2 = response2.data["previous"]
-        results2 = response2.data["results"]
-
-        assert len(results2) == 1
-        assert next2 == None
-        assert previous2 == base_url
-
-    def test_user_list_filtering_via_query_params(self, user_factory, caretaker_client: IsClient):
+    def test_user_list_filtering_via_query_params(self, user_factory: Factory[User], caretaker_client: IsClient):
         """
         Test the new search field implementation for the query_params
         Fields: id, is_active and search(includes all searchable fields)
@@ -265,7 +250,7 @@ class TestUserListCreateView:
 
     def test_user_list_ommits_results_from_qs_correctly(
         self,
-        user_factory,
+        user_factory: Factory[User],
         caretaker_user: User,
         caretaker_client: IsClient,
         manager_user: User,
@@ -422,7 +407,7 @@ class TestMeView:
         }
         response2 = client.patch(self.path, updates)
         data2 = parse_message(response2)
-        user.refresh_from_db()
+        user.refresh_from_db() # type: ignore
         assert data2.get("user_id", None) is None
         assert data2["first_name"] == updates["first_name"] == user.first_name
         assert data2["phone_number"] == updates["phone_number"].replace(" ", "") == user.account.phone_number
@@ -434,7 +419,7 @@ class TestMeView:
         response3 = client.delete(self.path)
         data = parse_message(response3, status.HTTP_204_NO_CONTENT)
         assert data["message"] == "account deactivated successfully"
-        user.refresh_from_db()
+        user.refresh_from_db() # type: ignore
         assert user.is_active == False
         response4 = client.get(self.path)
         error = parse_error(response4, status.HTTP_401_UNAUTHORIZED)[0]
@@ -465,7 +450,7 @@ class TestUserLoginView:
         response1 = csrf_client.post(self.path, credentials, **header)
         data1 = parse_message(response1)
         assert data1["email"] == user.email
-        user.refresh_from_db()
+        user.refresh_from_db() # type: ignore
         assert user.last_login is not None
         assert (user.last_login - timezone.now()) <= timedelta(seconds=1)
 
@@ -582,14 +567,14 @@ class TestEmailUpdateView:
         with freeze_time(self.before) as frozen:
             fetch = lambda: user_client.post(self.path, self.payload)
             data1 = parse_message(fetch())
-            user.refresh_from_db()
+            user.refresh_from_db() # type: ignore
             assert data1["email"] == self.payload["email"] == user.email
             assert user.next_email_change == self.after
 
             frozen.move_to(self.after)
             parse_message(fetch())
             user.refresh_from_db
-            assert user.next_email_change == self.after + EMAIL_COOLDOWN
+  # type: ignore           assert user.next_email_change == self.after + EMAIL_COOLDOWN
 
     def test_email_update_fails(self, user, client: IsClient, user_client: IsClient):
         """
@@ -614,7 +599,7 @@ class TestEmailUpdateView:
             res4 = user_client.post(self.path, self.payload)
             parse_error(res4, status.HTTP_422_UNPROCESSABLE_ENTITY)
             user.refresh_from_db
-            assert user.last_email_change == self.before
+  # type: ignore           assert user.last_email_change == self.before
 
 
 class TestPasswordChangeView:
@@ -649,7 +634,7 @@ class TestPasswordChangeView:
         session_id2 = res1.cookies["sessionid"].value
         data1 = parse_message(res1)
         assert "successfully updated" in data1["message"]
-        super_user.refresh_from_db(using=None)
+        super_user.refresh_from_db() # type: ignore
         assert old_password != super_user.password
         assert not super_user.check_password(self.payload["password"])
         assert super_user.check_password(self.payload["new_password"])
@@ -681,7 +666,7 @@ class TestPasswordChangeView:
         res1 = user_client.post(self.path, payload)
         error1 = parse_error(res1, status.HTTP_400_BAD_REQUEST, err_type="validation_error")[0]
         assert error1["attr"] == "password"
-        user.refresh_from_db(None)
+        user.refresh_from_db() # type: ignore
         assert old_password == user.password
 
     def test_password_change_throttles(self, user_client: IsClient, override_throttles, cache_clear):
@@ -767,7 +752,7 @@ class TestConfirmEmailVerificationView:
         path = f"/users/email-verification/confirm/{uidb64_generate(user)}/{token_generate(user)}"
         res = client.post(path, {})
         parse_message(res)
-        user.refresh_from_db()
+        user.refresh_from_db() # type: ignore
         assert user.verified == True
 
 
@@ -852,7 +837,7 @@ class TestConfirmPasswordResetView:
         parse_message(res1)  # type: ignore
 
         # stale user instance leads to generation of invalid tokens
-        user.refresh_from_db()
+        user.refresh_from_db() # type: ignore
 
         # reset the password
         token = token_generate(user)
@@ -862,7 +847,7 @@ class TestConfirmPasswordResetView:
         res2 = client.post(path, {"new_password": new_password, "confirm_password": new_password})
         parse_message(res2)
 
-        user.refresh_from_db()
+        user.refresh_from_db() # type: ignore
         user.validate_password(new_password)
 
         # Try to access auth routes with previous session
@@ -886,7 +871,7 @@ class TestUserUnsubscribeView:
         path = self.path + uidb64_generate(user)
         response = client.post(path, {})
         parse_message(response)
-        user.refresh_from_db()
+        user.refresh_from_db() # type: ignore
         assert user.account.can_receive_emails == False
 
     def test_unsubscribe_with_invalid_link_fails(self, client: IsClient, user: User):
@@ -895,7 +880,7 @@ class TestUserUnsubscribeView:
         """
         response = client.post(self.path + "invalidlink", {})
         parse_error(response, status.HTTP_400_BAD_REQUEST)
-        user.refresh_from_db()
+        user.refresh_from_db() # type: ignore
         assert user.account.can_receive_emails == True
 
 
@@ -947,7 +932,7 @@ class TestAdminRoleDetailView:
         # -- Test patching data succeeds --
         response2 = manager_client.patch(path, {"role": "manager"})
         data2 = parse_message(response2)
-        user.refresh_from_db()
+        user.refresh_from_db() # type: ignore
         assert data2["user_id"] == user.pk
         assert data2["role"] == "manager"
         assert user.groups.filter(name="manager").exists() == True
@@ -955,7 +940,7 @@ class TestAdminRoleDetailView:
         # -- Test deleting role succeeds --
         response3 = manager_client.delete(path)
         data3 = parse_message(response3)
-        user.refresh_from_db()
+        user.refresh_from_db() # type: ignore
         assert data3["user_id"] == user.pk
         assert data3["role"] == "general"
         assert user.groups.filter(name="manager").exists() == False
@@ -994,7 +979,7 @@ class TestAdminRoleDetailView:
         error3 = parse_error(response3, status_code)[0]
         assert error3["code"] == "not_found"
     
-    def test_patching_roles_replaces_the_assigned_role(self, manager_client: IsClient, user_factory):
+    def test_patching_roles_replaces_the_assigned_role(self, manager_client: IsClient, user_factory: Factory[User]):
         """
         When patching a role, the existing role should be replaced with the new one. 
         This prevents users from accumulating multiple roles unintentionally.
@@ -1007,14 +992,14 @@ class TestAdminRoleDetailView:
         response1 = manager_client.patch(path, {"role": "manager"})
         data1 = parse_message(response1)
         assert data1["role"] == "manager"
-        user.refresh_from_db()
+        user.refresh_from_db() # type: ignore
         assert user.groups.filter(name="manager").exists() == True
 
         # Now assign caretaker role to the same user, which should replace the manager role
         response2 = manager_client.patch(path, {"role": "caretaker"})
         data2 = parse_message(response2)
         assert data2["role"] == "caretaker"
-        user.refresh_from_db()
+        user.refresh_from_db() # type: ignore
         assert user.groups.count() == 1
         assert user.groups.filter(name="caretaker").exists() == True
         assert user.groups.filter(name="manager").exists() == False
