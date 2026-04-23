@@ -1,5 +1,6 @@
 import pytest
 import typing
+from tests.types import Factory
 from faker import Faker
 from django.core.management import call_command
 from django.contrib.auth.models import Group
@@ -84,7 +85,7 @@ def fake():
 # ------------------------------------------------------ Users  ------------------------------------------------------ #
 
 @pytest.fixture
-def user_factory(fake, phone_no) -> typing.Callable[[int, dict[str, typing.Any]], list[User]]:
+def user_factory(fake, phone_no) -> Factory[User]:
     """Returns a callable for generating users"""
 
     def create(quantity: int = 1, overrides: dict[str, typing.Any] = {}) -> list[User]:
@@ -217,7 +218,7 @@ def super_user_client(super_user) -> APIClient:
 # ------------------------------------------------ Apartments  ------------------------------------------------
 
 @pytest.fixture
-def apartment_factory(fake) -> typing.Callable[[int, dict, bool], list[Apartment]]:
+def apartment_factory(fake) -> Factory[Apartment]:
     """Returns a callable for generating apartments"""
 
     def create(quantity: int = 1, overrides: dict[str, typing.Any] = {}, ordered: bool = False):
@@ -228,7 +229,7 @@ def apartment_factory(fake) -> typing.Callable[[int, dict, bool], list[Apartment
         for i in range(quantity):
             apt = apartment_create(
                 block=overrides.get("block", random.choice(Apartment.ApartmentChoices.values)),
-                unit_number=(i+1) if ordered else int(fake.building_number()),
+                unit_number=(i+1) if ordered else overrides.get("unit_number", int(fake.building_number())),
                 rent=overrides.get("rent", Decimal(fake.numerify("1#000"))),
                 rentable=overrides.get("rentable", random.choice((True, False)))
             )
@@ -237,5 +238,5 @@ def apartment_factory(fake) -> typing.Callable[[int, dict, bool], list[Apartment
     return create
 
 @pytest.fixture
-def apartment(apartment_factory):
+def apartment(apartment_factory) -> Apartment:
     return apartment_factory(ordered=True, overrides={"block": "NEW", "rent": 20_000, "rentable": True})[0]
