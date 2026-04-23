@@ -45,7 +45,7 @@ def apartment_list_for(*, user: User, filters: dict[str, Any] | None = None):
     """
     Fetches apartment list visible for the requesting user.
     filters based on fields: search and rentable.
-    rent can be filtered against rent_max and rent_min as well
+    rent can be filtered against rent_max and rent_min as well.
     prefetch is necessary in the list view to be able to tell if it's occupied.
     """
 
@@ -53,6 +53,7 @@ def apartment_list_for(*, user: User, filters: dict[str, Any] | None = None):
     from decimal import Decimal
 
     class ApartmentFilter(django_filters.FilterSet):
+        order_by=django_filters.OrderingFilter(fields=("unit_number", "rent"))
         search = django_filters.CharFilter(method="search_fields")
         rent = django_filters.RangeFilter(field_name="rent")
 
