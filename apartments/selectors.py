@@ -102,7 +102,7 @@ def apartment_for_update(apartment_id: int):
 def apartment_get_for(*, user: User, apartment_id: int):
     """Filter the apartment based on the type of user first before fetch"""
     exclusions = ApartmentExclusions.for_user(user)
-    return get_base_qs_with_current_tenant_prefetch.exclude(exclusions).get(pk=apartment_id)
+    return get_base_qs_with_current_tenant_prefetch().exclude(exclusions).get(pk=apartment_id)
 
 
 def apartment_available_units(semester_id: int):
