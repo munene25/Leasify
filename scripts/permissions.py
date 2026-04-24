@@ -18,10 +18,8 @@ ROLE_PERMISSIONS = {
         {"user": ["add_user", "view_user"]},
         {"payment": ["view_payment"]},
     ],
-    "tenant": [
-        {"apartment": ["view_apartment"]},
-        {"semester": ["view_semester"]},
-    ],
+    "tenant": []
+
 }
 
 
