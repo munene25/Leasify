@@ -458,10 +458,7 @@
     "pk": 3,
     "fields": {
         "name": "tenant",
-        "permissions": [
-            36,
-            45
-        ]
+        "permissions": []
     }
 }
 ]
