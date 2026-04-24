@@ -1,11 +1,14 @@
 import pytest
 from decimal import Decimal
-from typing import Any
+from typing import Any, TYPE_CHECKING
 from rest_framework import status
 from apartments.models import Apartment
 from tests.types import IsClient, Factory
 from tests.helpers import parse_error, parse_message, parse_paginated_response
 
+if TYPE_CHECKING:
+    from semesters.models import Semester
+    from users.models import User
 
 class TestApartmentListCreateView:
     path = "/apartments/"
@@ -95,7 +98,6 @@ class TestApartmentListCreateView:
         assert data["apartment_name"] == apartment.apartment_name
         assert Decimal(data["rent"]) == apartment.rent
         assert data["occupied"] == False
-        assert data["current_tenant"] == None
 
     def test_apartment_list_filters_based_on_role(
         self,
@@ -129,21 +131,19 @@ class TestApartmentListCreateView:
         res5 = client.get(self.path)
         parse_paginated_response(res5, 2)
 
-
     @pytest.mark.parametrize(
-            "field,query_param,value,expected",
-            [
-                ("block", "search", "NEW", 1),
-                ("block", "search", "OLD", 6),
-                ("rent", "search", Decimal(15_000), 1),
-                ("rent", "search", Decimal(12_000), 6),
-                ("unit_number", "search", 100, 1),
-                ("rentable", "rentable", False, 1),
-                ("rentable", "rentable", False, 1),
-                ("rent", "rent_min", Decimal(15_000), 1),
-                ("rent", "rent_max", Decimal(8_000), 1),
-
-            ]
+        "field,query_param,value,expected",
+        [
+            ("block", "search", "NEW", 1),
+            ("block", "search", "OLD", 6),
+            ("rent", "search", Decimal(15_000), 1),
+            ("rent", "search", Decimal(12_000), 6),
+            ("unit_number", "search", 100, 1),
+            ("rentable", "rentable", False, 1),
+            ("rentable", "rentable", False, 1),
+            ("rent", "rent_min", Decimal(15_000), 1),
+            ("rent", "rent_max", Decimal(8_000), 1),
+        ],
     )
     def test_apartment_list_filter_sets(
         self,
@@ -162,11 +162,9 @@ class TestApartmentListCreateView:
         """
 
         other_apartments = apartment_factory(
-            quantity=5,
-            ordered=True, 
-            overrides={"block": "OLD", "rent": Decimal(12_000), "rentable": True}
+            quantity=5, ordered=True, overrides={"block": "OLD", "rent": Decimal(12_000), "rentable": True}
         )
-        apartment: Apartment = apartment_factory(overrides={field: value}, quantity=1)[0]
+        apartment = apartment_factory(overrides={field: value}, quantity=1)[0]
         path = self.path + f"?{query_param}={value}"
 
         response = manager_client.get(path)
@@ -174,14 +172,13 @@ class TestApartmentListCreateView:
         filtered = data["results"][0]
         assert filtered["apartment_id"] == apartment.pk
 
-
     def test_apartment_pagination(self, apartment_factory: Factory[Apartment], override_pagination: int, caretaker_client: IsClient):
         """
         Pages should reflect whats defined in the restframework settings
         """
-        
-        base_url = lambda page : f"{self.path}?page={page}"
-        next_url = lambda page : f"http://testserver/apartments?page={page}"
+
+        base_url = lambda page: f"{self.path}?page={page}"
+        next_url = lambda page: f"http://testserver/apartments/?page={page}"
 
         q: int = 3
         apartments = apartment_factory(quantity=q, ordered=True)
@@ -190,7 +187,7 @@ class TestApartmentListCreateView:
         page1 = caretaker_client.get(self.path)
         data1 = parse_paginated_response(page1, q)
         assert data1["previous"] is None
-        assert data1["next"] is not None
+        assert data1["next"] == next_url(2)
         assert len(data1["results"]) == override_pagination
         assert data1["results"][0]["apartment_id"] == apartments[2].pk
         assert data1["results"][1]["apartment_id"] == apartments[1].pk
@@ -200,15 +197,14 @@ class TestApartmentListCreateView:
         assert data2["results"][0]["apartment_id"] == apartments[0].pk
         assert data2["next"] == None
 
-
     @pytest.mark.parametrize(
-            "field,first,last",
-            [
-                ("rent", 3, 1),
-                ("-rent", 1, 3),
-                ("-unit_number", 3, 2),
-                ("unit_number", 2, 3),
-            ]
+        "field,first,last",
+        [
+            ("rent", 3, 1),
+            ("-rent", 1, 3),
+            ("-unit_number", 3, 2),
+            ("unit_number", 2, 3),
+        ],
     )
     def test_ordering_of_filtersets(self, field: str, first: int, last: int, apartment_factory: Factory[Apartment], manager_client: IsClient):
         """Ordering by price or unit_number should possible"""
@@ -216,10 +212,86 @@ class TestApartmentListCreateView:
         apartment1 = apartment_factory(overrides={"unit_number": 20, "rent": Decimal(30_000)})[0]
         apartment2 = apartment_factory(overrides={"unit_number": 10, "rent": Decimal(20_000)})[0]
         apartment3 = apartment_factory(overrides={"unit_number": 30, "rent": Decimal(10_000)})[0]
-        
+
         apts = [apartment1, apartment2, apartment3]
-        
+
         response1 = manager_client.get(f"{self.path}?order_by={field}")
         data1 = parse_paginated_response(response1, 3)["results"]
         assert data1[0]["apartment_id"] == apts[first - 1].pk
         assert data1[-1]["apartment_id"] == apts[last - 1].pk
+
+
+class TestApartmentDetailUpdateDeleteView:
+
+    @staticmethod
+    def path(apt):
+        return f"/apartments/{apt.pk}/"
+
+    def test_apartment_detail_correctly_serializes_apartment(
+        self,
+        user: "User",
+        current_semester: "Semester",
+        apartment: Apartment,
+        manager_client: IsClient,
+        django_assert_num_queries,
+    ):
+        """
+        Checking especially for current tenant
+        """
+        from tenancy.models import Tenancy
+
+        response1 = manager_client.get(self.path(apartment))
+        data1 = parse_message(response1)
+
+        assert data1["apartment_id"] == apartment.pk
+        assert data1["block"] == apartment.block
+        assert data1["unit_number"] == apartment.unit_number
+        assert Decimal(data1["rent"]) == apartment.rent
+        assert data1["rentable"] == apartment.rentable
+        assert data1["current_tenant"] == None
+
+        tenant = Tenancy.objects.create(
+            total_paid=0, semester_id=current_semester.pk, apartment_id=apartment.pk, user_id=user.pk
+        )
+
+        # Queries:
+        # 1. groups -> exclusions
+        # 2. apartment -> main qs
+        # 3. tenancy -> current_tenant
+        with django_assert_num_queries(3):
+            response2 = manager_client.get(self.path(apartment))
+
+        data2 = parse_message(response2)
+        assert data2["apartment_id"] == apartment.pk
+        assert data2["current_tenant"] == tenant.user.full_name
+
+    @pytest.mark.parametrize(
+        "selected,expected",
+        [
+            ("manager_client", status.HTTP_200_OK),
+            ("caretaker_client", status.HTTP_200_OK),
+            ("tenant_client", status.HTTP_403_FORBIDDEN),
+            ("user_client", status.HTTP_403_FORBIDDEN),
+            ("client", status.HTTP_401_UNAUTHORIZED),
+        ],
+    )
+    def test_apartment_detail_authorization_and_authentication(
+        self,
+        selected: str,
+        expected: int,
+        apartment: Apartment,
+        manager_client: IsClient,
+        caretaker_client: IsClient,
+        tenant_client,
+        user_client: IsClient,
+        client: IsClient,
+    ):
+        selected_client: IsClient = {
+            "manager_client": manager_client,
+            "caretaker_client": caretaker_client,
+            "tenant_client": tenant_client,
+            "user_client": user_client,
+            "client": client,
+        }[selected]
+        response = selected_client.get(self.path(apartment))
+        assert response.status_code == expected
