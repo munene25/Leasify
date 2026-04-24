@@ -40,6 +40,6 @@ def semester_current() -> Semester:
     
     now = timezone.now()
     semester = Semester.objects.get(start_date__lte=now, end_date__gte=now)
-    timeout = max(1, int((semester.end_date - now).total_seconds()))
+    timeout = max(1, int((semester.end_date - now.date()).total_seconds()))
     cache.set(cache_key, semester, timeout=timeout)
     return semester
