@@ -62,10 +62,11 @@ class User(BaseModel, AbstractUser):
     @property
     def role(self) -> str:
         """
-            Returns the inherent role of the user on the domain.
-            Ranges from superuser, or the group they belong to.
-            caching the property causes unexpected behavior when changing user roles mid session.
-            Defaults to general.
+        Returns the inherent role of the user on the domain.
+        Ranges from superuser, or the group they belong to.
+        caching the property causes unexpected behavior when changing user roles mid session.
+        Defaults to general.
+        ? Instead of user.role better to have user.rank? as an interger?
         """
         group = self.groups.first()
         if self.is_superuser:
