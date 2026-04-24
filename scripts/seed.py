@@ -6,7 +6,7 @@ from users.models import User
 from datetime import date
 import random
 from tenancy.services import TenancyService
-from semesters.services import SemesterService
+from semesters.services import semester_create
 from apartments.services import apartment_create
 from payments.services import PaymentCreateService
 from users.services import user_account_create
@@ -83,7 +83,7 @@ def run():
                     )
             return semesters
 
-        [SemesterService().create(**s) for s in generate_semesters(2025, 2030)]
+        [semester_create(**s) for s in generate_semesters(2025, 2030)]
         dump_data("fixtures/test_semesters.json", "semesters")
 
 
