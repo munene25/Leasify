@@ -10,6 +10,7 @@ from rest_framework.test import APIClient
 from django.core.cache import cache
 from apartments.services import apartment_create
 from apartments.models import Apartment
+from semesters.models import Semester
 
 
 # ------------------------------------------------------ Globals  ------------------------------------------------------ #
@@ -240,3 +241,49 @@ def apartment_factory(fake) -> Factory[Apartment]:
 @pytest.fixture
 def apartment(apartment_factory) -> Apartment:
     return apartment_factory(ordered=True, overrides={"block": "NEW", "rent": 20_000, "rentable": True})[0]
+
+
+# ------------------------------------------------ Semesters  ------------------------------------------------
+@pytest.fixture
+def semester_factory() -> Factory[Semester]:
+    """ Semester generator """
+    def create(start_year: int, end_year: int) -> list[Semester]:
+        from datetime import date
+        from semesters.services import semester_create
+
+        semesters = []
+        periods = [
+            ((1, 1), (4, 30)),
+            ((5, 1), (8, 31)),
+            ((9, 1), (12, 31)),
+        ]
+        for year in range(start_year, end_year + 1):
+            for (sm, sd), (em, ed) in periods:
+                start = date(year, sm, sd)
+                off_season = True if sm == 5 else False
+                end = date(year, em, ed)
+                semesters.append(
+                    {
+                        "start_date": start,
+                        "end_date": end,
+                        "off_season": off_season,
+                    }
+                )
+       
+
+        return [semester_create(**s) for s in semesters]
+    return create
+
+@pytest.fixture
+def current_semester() -> Semester:
+    from datetime import timedelta
+    from django.utils import timezone
+
+    middle = timedelta(days=90)
+    now = timezone.now()
+    semester = {
+        "start_date": now - middle,
+        "end_date": now + middle,
+        "off_season": False,
+    }
+    return Semester.objects.create(**semester)
