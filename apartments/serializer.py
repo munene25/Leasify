@@ -1,12 +1,6 @@
 from rest_framework import serializers
 from apartments.models import Apartment
 
-class BlockValidator:
-    def validate_block(self, data: str):
-        string = data.upper()
-        if string not in Apartment.ApartmentChoices.values:
-            raise serializers.ValidationError(f"Only available choices are {Apartment.ApartmentChoices.values})")
-        return string
     
 class ApartmentListSerializer(serializers.Serializer):
     apartment_id = serializers.IntegerField(source="pk")
@@ -15,13 +9,13 @@ class ApartmentListSerializer(serializers.Serializer):
     rentable = serializers.BooleanField()
     occupied = serializers.BooleanField(allow_null=True)
 
-class ApartmentCreateSerializer(serializers.Serializer, BlockValidator):
-    block = serializers.CharField()
+class ApartmentCreateSerializer(serializers.Serializer):
+    block = serializers.ChoiceField(choices=Apartment.ApartmentChoices.values)
     unit_number = serializers.IntegerField()
     rent = serializers.DecimalField(max_digits=10, decimal_places=2)
     rentable = serializers.BooleanField(required=False, default=True)
 
-class ApartmentUpdateSerializer(serializers.Serializer, BlockValidator):
+class ApartmentUpdateSerializer(serializers.Serializer):
     block = serializers.ChoiceField(choices=Apartment.ApartmentChoices.values)
     unit_number = serializers.IntegerField()
     rent = serializers.DecimalField(max_digits=10, decimal_places=2)
