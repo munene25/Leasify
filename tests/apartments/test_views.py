@@ -223,10 +223,13 @@ class TestApartmentListCreateView:
 
 class TestApartmentDetailUpdateDeleteView:
 
+    patch_data = {"block": Apartment.ApartmentChoices.OLD, "unit_number": 4, "rentable": False, "rent": 30_000}
+    
     @staticmethod
     def path(apt):
         return f"/apartments/{apt.pk}/"
 
+    
     def test_apartment_detail_correctly_serializes_apartment(
         self,
         user: "User",
@@ -266,19 +269,21 @@ class TestApartmentDetailUpdateDeleteView:
         assert data2["current_tenant"] == tenant.user.full_name
 
     @pytest.mark.parametrize(
-        "selected,expected",
+        "selected,get,patch,delete",
         [
-            ("manager_client", status.HTTP_200_OK),
-            ("caretaker_client", status.HTTP_200_OK),
-            ("tenant_client", status.HTTP_403_FORBIDDEN),
-            ("user_client", status.HTTP_403_FORBIDDEN),
-            ("client", status.HTTP_401_UNAUTHORIZED),
+            ("manager_client", status.HTTP_200_OK, status.HTTP_200_OK, status.HTTP_204_NO_CONTENT),
+            ("caretaker_client", status.HTTP_200_OK, status.HTTP_200_OK, status.HTTP_403_FORBIDDEN),
+            ("tenant_client", status.HTTP_403_FORBIDDEN, status.HTTP_403_FORBIDDEN, status.HTTP_403_FORBIDDEN),
+            ("user_client", status.HTTP_403_FORBIDDEN, status.HTTP_403_FORBIDDEN, status.HTTP_403_FORBIDDEN),
+            ("client", status.HTTP_401_UNAUTHORIZED, status.HTTP_401_UNAUTHORIZED, status.HTTP_401_UNAUTHORIZED),
         ],
     )
-    def test_apartment_detail_authorization_and_authentication(
+    def test_apartment_detail_update_delete_authorization_and_authentication(
         self,
         selected: str,
-        expected: int,
+        get: int,
+        patch: int,
+        delete: int,
         apartment: Apartment,
         manager_client: IsClient,
         caretaker_client: IsClient,
@@ -293,5 +298,40 @@ class TestApartmentDetailUpdateDeleteView:
             "user_client": user_client,
             "client": client,
         }[selected]
-        response = selected_client.get(self.path(apartment))
-        assert response.status_code == expected
+        
+        assert selected_client.get(self.path(apartment)).status_code == get
+        assert selected_client.patch(self.path(apartment), self.patch_data).status_code == patch
+        assert selected_client.delete(self.path(apartment)).status_code == delete
+
+
+    def test_apartment_update_successful(self, apartment: Apartment, manager_client: IsClient):
+        """
+        An apartment can be updated correctly
+        """
+        
+        response = manager_client.patch(self.path(apartment), self.patch_data)
+        data = parse_message(response)
+        apartment.refresh_from_db() # type: ignore
+        assert data["apartment_id"] == apartment.pk
+        assert data["unit_number"] == apartment.unit_number
+        assert data["rentable"] == apartment.rentable
+        assert Decimal(data["rent"]) == apartment.rent
+    
+    @pytest.mark.parametrize(
+            "field,value",
+            [
+                ("block", "free"),
+                ("unit_number", "free"),
+                ("rent", 1000000000),
+                ("rentable", "null"),
+            ]
+    )
+    def test_apartment_update_serializer_fails(self, field: str, value: Any, apartment: Apartment, caretaker_client: IsClient):
+        """
+        Raises validation Error on wrong formatted fields
+        """
+        patch_data = self.patch_data.copy()
+        patch_data[field] = value
+        response = caretaker_client.patch(self.path(apartment), patch_data)
+        error = parse_error(response, status.HTTP_400_BAD_REQUEST, "validation_error", 1)[0]
+        assert error["attr"] == field
