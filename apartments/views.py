@@ -1,5 +1,6 @@
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
+from rest_framework.request import Request
 from rest_framework import serializers
 from rest_framework import status
 from common.views import BaseAPIView
@@ -88,11 +89,18 @@ class ApartmentDetailUpdateDeleteView(BaseAPIView):
 
 
 class ApartmentOverviewView(BaseAPIView):
-    permission_classes = [IsAuthenticated]
 
-    def get(self, request):
+    class FilterSerializer(serializers.Serializer):
+        from semesters.models import Semester
+        semester = serializers.PrimaryKeyRelatedField(queryset=Semester.objects.all())
+
+    permission_classes = [IsAuthenticated]
+    filter_class = FilterSerializer
+    
+    def get(self, request: Request):
         check_perms(request.user, "apartments.view_overview")
-        semester = semester_current()
+        query_filter = self.validate_filter(data=request.query_params)
+        semester = query_filter.get("semester") or semester_current()
         overview = selectors.apartment_overview(semester)
 
         serializer = sc.ApartmentOverviewSerializer(instance=overview)
