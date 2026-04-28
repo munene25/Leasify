@@ -2,8 +2,11 @@ from typing import Any
 from datetime import date
 from django.db import transaction
 from rest_framework.exceptions import ValidationError
-from .models import Semester
-from . import selectors
+from semesters.models import Semester
+from semesters import selectors
+from structlog import get_logger
+
+logger = get_logger("semesters.services")
 
 
 @transaction.atomic
@@ -34,6 +37,7 @@ def semester_create(
     )
     semester.full_clean()
     semester.save()
+    logger.info("semester_created", semester_name=semester.name)
     return semester
 
 
