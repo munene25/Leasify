@@ -35,5 +35,10 @@ class ApartmentDetailSerializer(serializers.Serializer):
     
 class ApartmentOverviewSerializer(serializers.Serializer):
     total_apartments = serializers.IntegerField()
-    rentable = serializers.BooleanField()
-    vacant = serializers.IntegerField()
+    occupied = serializers.IntegerField()
+    rentable = serializers.IntegerField()
+    occupied = serializers.IntegerField()
+    average_rent = serializers.DecimalField(max_digits=10, decimal_places=2)
+    max_rent = serializers.DecimalField(max_digits=10, decimal_places=2)
+    min_rent = serializers.DecimalField(max_digits=10, decimal_places=2)
+    expected_income = serializers.DecimalField(max_digits=10, decimal_places=2)
