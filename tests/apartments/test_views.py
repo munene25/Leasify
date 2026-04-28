@@ -326,12 +326,73 @@ class TestApartmentDetailUpdateDeleteView:
                 ("rentable", "null"),
             ]
     )
-    def test_apartment_update_serializer_fails(self, field: str, value: Any, apartment: Apartment, caretaker_client: IsClient):
+    def test_apartment_update_serializer_raises_on_invalid_fields(self, field: str, value: Any, apartment: Apartment, caretaker_client: IsClient):
         """
         Raises validation Error on wrong formatted fields
         """
+
         patch_data = self.patch_data.copy()
         patch_data[field] = value
         response = caretaker_client.patch(self.path(apartment), patch_data)
         error = parse_error(response, status.HTTP_400_BAD_REQUEST, "validation_error", 1)[0]
         assert error["attr"] == field
+
+    def test_apartment_deletion_successful(self, apartment: Apartment, manager_client: IsClient):
+        """
+        Apartment can be deleted if it does not have tenancies associated with it.
+        """
+
+        response = manager_client.delete(self.path(apartment))
+        data = parse_message(response, status.HTTP_204_NO_CONTENT)
+
+    def test_apartment_deletion_fails_if_it_has_associated_tenancies(self, user: "User", current_semester: "Semester", manager_client: IsClient, apartment: Apartment):
+        """
+        First assign a tenancy to the apartment then try deletion
+        Should fail
+        """
+        from tenancy.models import Tenancy
+
+        tenant = Tenancy.objects.create(user=user, semester=current_semester, apartment=apartment, total_paid=0)
+        assert Tenancy.objects.count() == 1
+        response = manager_client.delete(self.path(apartment))
+        parse_error(response, status.HTTP_400_BAD_REQUEST, err_type="validation_error")
+
+    
+    def test_not_found_for_apartment_ids(self, caretaker_client: IsClient):
+        """Not found is raised"""
+
+        res = caretaker_client.get("/apartments/22/")
+        assert parse_error(res, status.HTTP_404_NOT_FOUND)
+
+    
+class TestApartmentOverviewView:
+    
+    @staticmethod
+    def path(semester: "Semester"):
+        return f"/apartments/overview?semester={semester.pk}"
+    
+    def test_overview_works_based_on_semesters(self, user_factory: Factory["User"], semester_factory: Factory["Semester"], apartment_factory: Factory[Apartment], manager_client: IsClient):
+        """should return the correct values"""
+
+        from tenancy.models import Tenancy
+
+        semesters = semester_factory(2026, 2026)
+        users = user_factory(quantity=5)
+        apartments = [
+            *apartment_factory(quantity=2, overrides={"rent": 12000, "rentable": True}),
+            *apartment_factory(quantity=3, overrides={"rent": 18000, "rentable": False}),
+            *apartment_factory(quantity=2, overrides={"rent": 17000, "rentable": True}),
+        ]
+        sem_one_tenancies = [Tenancy(apartment=apartments[i], semester=semesters[0], user=users[i], total_paid=0) for i, _ in enumerate(range(3))]
+        sem_two_tenancies = [Tenancy(apartment=apartments[i], semester=semesters[1], user=users[i], total_paid=0) for i, _ in enumerate(range(5))]
+        Tenancy.objects.bulk_create([*sem_two_tenancies, *sem_one_tenancies])
+        response1 = manager_client.get(self.path(semesters[0]))
+        data1 = parse_message(response1)
+        total_rent = sum(apt.rent for apt in apartments)
+        assert data1["total_apartments"] == len(apartments)
+        assert data1["occupied"] == 3
+        assert data1["rentable"] == 4
+        assert Decimal(data1["average_rent"]) == total_rent/len(apartments)
+        assert Decimal(data1["min_rent"]) == Decimal(12000)
+        assert Decimal(data1["max_rent"]) == Decimal(18000)
+        assert Decimal(data1["expected_income"]) == total_rent
