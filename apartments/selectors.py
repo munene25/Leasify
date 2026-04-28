@@ -82,13 +82,24 @@ def apartment_overview(semester: Semester):
     """
 
     apartments = Apartment.objects.all()
+    aggregates = apartments.aggregate(
+        models.Avg("rent"),
+        models.Max("rent"),
+        models.Min("rent"),
+        models.Sum("rent"),
+    )
     total_apartments = apartments.count()
-    available = apartment_available_units(semester_id=semester.pk).count()
+    rentable = apartments.filter(rentable=True).count()
+    occupied = apartments.filter(tenancy__semester_id=semester.pk).count()
 
     return {
         "total_apartments": total_apartments,
-        "rentable": available,
-        "vacant": total_apartments - available,
+        "rentable": rentable,
+        "occupied": occupied,
+        "average_rent": aggregates["rent__avg"],
+        "min_rent": aggregates["rent__min"],
+        "max_rent": aggregates["rent__max"],
+        "expected_income": aggregates["rent__sum"],
     }
 
 
