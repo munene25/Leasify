@@ -1,13 +1,11 @@
 from typing import Any
-
-from django.contrib import admin
-from django.http import HttpRequest
-from .models import User
-from .models import Account
-from django import forms
 from structlog import get_logger
-from django.contrib.auth.models import BaseUserManager
+from django import forms
+from django.contrib import admin
 from django.contrib.auth.models import Group
+from django.contrib.auth.models import BaseUserManager
+from django.http import HttpRequest
+from users.models import User, Account
 
 
 logger = get_logger("users.admin")
@@ -70,12 +68,11 @@ class AccountInline(admin.StackedInline):
 class UserAdmin(admin.ModelAdmin):
     list_display = ("email", "full_name", "is_staff", "is_superuser", "is_active", "phone_number")
     list_select_related = ("account",)
+    search_fields = ("email", "first_name", "last_name")
+    list_filter = ("is_active", "is_staff", "is_superuser",)
+
     form = UserAdminForm
     exclude = ("last_login", "created_at", "last_email_change", "groups")
-    search_fields = ("username", "email", "first_name", "last_name")
-    list_filter = ("is_active",)
-    can_delete = False
-    list_select_related = True
     inlines = (AccountInline,)
 
     def phone_number(self, obj: User) -> str:
