@@ -377,22 +377,31 @@ class TestApartmentOverviewView:
         from tenancy.models import Tenancy
 
         semesters = semester_factory(2026, 2026)
+        
         users = user_factory(quantity=5)
+        
         apartments = [
             *apartment_factory(quantity=2, overrides={"rent": 12000, "rentable": True}),
             *apartment_factory(quantity=3, overrides={"rent": 18000, "rentable": False}),
             *apartment_factory(quantity=2, overrides={"rent": 17000, "rentable": True}),
         ]
+        
         sem_one_tenancies = [Tenancy(apartment=apartments[i], semester=semesters[0], user=users[i], total_paid=0) for i, _ in enumerate(range(3))]
         sem_two_tenancies = [Tenancy(apartment=apartments[i], semester=semesters[1], user=users[i], total_paid=0) for i, _ in enumerate(range(5))]
         Tenancy.objects.bulk_create([*sem_two_tenancies, *sem_one_tenancies])
-        response1 = manager_client.get(self.path(semesters[0]))
+        
+        response1 = manager_client.get(self.path(semesters[1]))
         data1 = parse_message(response1)
         total_rent = sum(apt.rent for apt in apartments)
         assert data1["total_apartments"] == len(apartments)
-        assert data1["occupied"] == 3
+        assert data1["occupied"] == len(sem_two_tenancies)
         assert data1["rentable"] == 4
         assert Decimal(data1["average_rent"]) == total_rent/len(apartments)
         assert Decimal(data1["min_rent"]) == Decimal(12000)
         assert Decimal(data1["max_rent"]) == Decimal(18000)
         assert Decimal(data1["expected_income"]) == total_rent
+
+        # assert that the current semester will be used
+        response2 = manager_client.get("/apartments/overview")
+        data2 = parse_message(response2)
+        assert data2["occupied"] == len(sem_one_tenancies)
