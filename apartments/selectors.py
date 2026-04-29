@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Callable, TYPE_CHECKING
 from django.db import models
 from apartments.models import Apartment
 from semesters.models import Semester
@@ -6,7 +6,10 @@ from rest_framework.exceptions import NotFound
 from common.helpers import raise_not_found
 from users.models import User
 from common.domain import RoleBasedExclusions
+from tenancy.selectors import tenancy_current
 
+if TYPE_CHECKING:
+    from tenancy.models import Tenancy
 
 # wrapper to raise not found for each id
 apartment_not_found = raise_not_found("apartment_id", "Apartment does not exist")
@@ -21,24 +24,16 @@ class ApartmentExclusions(RoleBasedExclusions):
     TENANT = models.Q(rentable=False)
     GENERAL = TENANT
 
+# decoupled in order to use modularly eg. in admin
+tenancy_prefetch = lambda: models.Prefetch("tenancy_set", tenancy_current(), to_attr="current_tenants")
 
-def get_base_qs_with_current_tenant_prefetch() -> models.QuerySet[Apartment]:
+def get_base_qs() -> models.QuerySet[Apartment]:
     """
     This is defined within a function to avoid prematurely evaluating the current_semester
-    In essence it's important to tell at a glance whether the apartment is occupied or not.
-    It is also important to decouple the semester existing or not in order to get the current tenant.
+    In essence it's important to tell at a glance whether the apartment is occupied or not.    
     """
 
-    from semesters.selectors import semester_current
-    from tenancy.models import Tenancy
-
-    try:
-        sem = semester_current()
-        tenancy = Tenancy.objects.select_related("user").filter(semester_id=sem.pk)
-    except NotFound:
-        tenancy = Tenancy.objects.none()
-        
-    return Apartment.objects.prefetch_related(models.Prefetch("tenancy_set", tenancy, to_attr="current_tenants"))
+    return Apartment.objects.prefetch_related(tenancy_prefetch())
 
 
 def apartment_list_for(*, user: User, filters: dict[str, Any] | None = None):
@@ -71,7 +66,7 @@ def apartment_list_for(*, user: User, filters: dict[str, Any] | None = None):
             return queryset.filter(query)
 
     exclusions = ApartmentExclusions.for_user(user)
-    apartments = get_base_qs_with_current_tenant_prefetch().exclude(exclusions)
+    apartments = get_base_qs().exclude(exclusions)
     return ApartmentFilter(filters, apartments).qs
 
 
@@ -113,7 +108,7 @@ def apartment_for_update(apartment_id: int):
 def apartment_get_for(*, user: User, apartment_id: int):
     """Filter the apartment based on the type of user first before fetch"""
     exclusions = ApartmentExclusions.for_user(user)
-    return get_base_qs_with_current_tenant_prefetch().exclude(exclusions).get(pk=apartment_id)
+    return get_base_qs().exclude(exclusions).get(pk=apartment_id)
 
 
 def apartment_available_units(semester_id: int):
