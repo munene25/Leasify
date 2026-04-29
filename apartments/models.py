@@ -1,7 +1,7 @@
 from __future__ import annotations 
+from typing import TYPE_CHECKING
 from django.db import models
 from common.models import BaseModel
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from tenancy.models import Tenancy
@@ -22,7 +22,7 @@ class Apartment(BaseModel):
     
     class ApartmentChoices(models.TextChoices):
         NEW = "NEW", "New Block"
-        OLD = "OLD", "OLD Block"
+        OLD = "OLD", "Old Block"
 
     block = models.CharField(max_length=10, choices=ApartmentChoices.choices, blank=False, null=False)
     unit_number = models.PositiveSmallIntegerField(blank=False, null=False)
