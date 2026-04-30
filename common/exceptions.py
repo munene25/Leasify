@@ -29,3 +29,22 @@ class RoleAssignmentError(APIException):
     status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
     default_detail = "Only one role is allowed per user."
     default_code = "roles_exceeded"
+
+class SemesterEndedError(APIException):
+    """
+    Raised when a user tries to book an apartment for a semester that's already concluded.
+    """
+
+    status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
+    default_code = "invalid_semester"
+    default_detail = "Semester has already concluded"
+
+
+class ApartmentOccupiedError(APIException):
+    """
+    Raised when a user tries to book an already booked apartment.
+    This is in cases where the apartment is marked rentable but occupied at the same time.
+    """
+    status_code = status.HTTP_409_CONFLICT
+    default_detail = "Apartment is already occupied."
+    default_code = "apartment_occupied"
