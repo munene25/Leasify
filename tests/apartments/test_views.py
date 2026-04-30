@@ -10,6 +10,7 @@ if TYPE_CHECKING:
     from semesters.models import Semester
     from users.models import User
 
+
 class TestApartmentListCreateView:
     path = "/apartments/"
     data = {"block": "NEW", "unit_number": 10, "rent": Decimal(10_000), "rentable": True}
@@ -97,7 +98,7 @@ class TestApartmentListCreateView:
         assert data["apartment_id"] == apartment.pk, data
         assert data["apartment_name"] == apartment.apartment_name
         assert Decimal(data["rent"]) == apartment.rent
-        assert data["occupied"] == False
+        assert data["is_occupied"] == False
 
     def test_apartment_list_filters_based_on_role(
         self,
@@ -224,12 +225,11 @@ class TestApartmentListCreateView:
 class TestApartmentDetailUpdateDeleteView:
 
     patch_data = {"block": Apartment.ApartmentChoices.OLD, "unit_number": 4, "rentable": False, "rent": 30_000}
-    
+
     @staticmethod
     def path(apt):
         return f"/apartments/{apt.pk}/"
 
-    
     def test_apartment_detail_correctly_serializes_apartment(
         self,
         user: "User",
@@ -298,33 +298,32 @@ class TestApartmentDetailUpdateDeleteView:
             "user_client": user_client,
             "client": client,
         }[selected]
-        
+
         assert selected_client.get(self.path(apartment)).status_code == get
         assert selected_client.patch(self.path(apartment), self.patch_data).status_code == patch
         assert selected_client.delete(self.path(apartment)).status_code == delete
-
 
     def test_apartment_update_successful(self, apartment: Apartment, manager_client: IsClient):
         """
         An apartment can be updated correctly
         """
-        
+
         response = manager_client.patch(self.path(apartment), self.patch_data)
         data = parse_message(response)
-        apartment.refresh_from_db() # type: ignore
+        apartment.refresh_from_db()  # type: ignore
         assert data["apartment_id"] == apartment.pk
         assert data["unit_number"] == apartment.unit_number
         assert data["rentable"] == apartment.rentable
         assert Decimal(data["rent"]) == apartment.rent
-    
+
     @pytest.mark.parametrize(
-            "field,value",
-            [
-                ("block", "free"),
-                ("unit_number", "free"),
-                ("rent", 1000000000),
-                ("rentable", "null"),
-            ]
+        "field,value",
+        [
+            ("block", "free"),
+            ("unit_number", "free"),
+            ("rent", 1000000000),
+            ("rentable", "null"),
+        ],
     )
     def test_apartment_update_serializer_raises_on_invalid_fields(self, field: str, value: Any, apartment: Apartment, caretaker_client: IsClient):
         """
@@ -357,29 +356,34 @@ class TestApartmentDetailUpdateDeleteView:
         response = manager_client.delete(self.path(apartment))
         parse_error(response, status.HTTP_400_BAD_REQUEST, err_type="validation_error")
 
-    
     def test_not_found_for_apartment_ids(self, caretaker_client: IsClient):
         """Not found is raised"""
 
         res = caretaker_client.get("/apartments/22/")
         assert parse_error(res, status.HTTP_404_NOT_FOUND)
 
-    
+
 class TestApartmentOverviewView:
-    
+
     @staticmethod
     def path(semester: "Semester"):
         return f"/apartments/overview?semester={semester.pk}"
-    
-    def test_overview_works_based_on_semesters(self, user_factory: Factory["User"], semester_factory: Factory["Semester"], apartment_factory: Factory[Apartment], manager_client: IsClient):
+
+    def test_overview_works_based_on_semesters(
+        self,
+        user_factory: Factory["User"],
+        semester_factory: Factory["Semester"],
+        apartment_factory: Factory[Apartment],
+        manager_client: IsClient,
+    ):
         """should return the correct values"""
 
         from tenancy.models import Tenancy
 
         semesters = semester_factory(2026, 2026)
-        
+
         users = user_factory(quantity=5)
-        
+
         apartments = [
             *apartment_factory(quantity=2, overrides={"rent": 12000, "rentable": True}),
             *apartment_factory(quantity=3, overrides={"rent": 18000, "rentable": False}),
@@ -389,14 +393,14 @@ class TestApartmentOverviewView:
         sem_one_tenancies = [Tenancy(apartment=apartments[i], semester=semesters[0], user=users[i], total_paid=0) for i, _ in enumerate(range(3))]
         sem_two_tenancies = [Tenancy(apartment=apartments[i], semester=semesters[1], user=users[i], total_paid=0) for i, _ in enumerate(range(5))]
         Tenancy.objects.bulk_create([*sem_two_tenancies, *sem_one_tenancies])
-        
+
         response1 = manager_client.get(self.path(semesters[1]))
         data1 = parse_message(response1)
         total_rent = sum(apt.rent for apt in apartments)
         assert data1["total_apartments"] == len(apartments)
         assert data1["occupied"] == len(sem_two_tenancies)
         assert data1["rentable"] == 4
-        assert Decimal(data1["average_rent"]) == total_rent/len(apartments)
+        assert Decimal(data1["average_rent"]) == total_rent / len(apartments)
         assert Decimal(data1["min_rent"]) == Decimal(12000)
         assert Decimal(data1["max_rent"]) == Decimal(18000)
         assert Decimal(data1["expected_income"]) == total_rent
