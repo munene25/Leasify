@@ -13,7 +13,7 @@ def tenancy_list() -> QuerySet:
     return Tenancy.objects.select_related("apartment", "user").all()
 
 
-def tenancy_for_update(tenancy_id: int) -> Tenancy:
+def tenancy_lock(tenancy_id: int) -> Tenancy:
     """Fetches the tenancy and related apartment for update"""
     try:
         return Tenancy.objects.select_related("apartment", "user").select_for_update().get(pk=tenancy_id)
