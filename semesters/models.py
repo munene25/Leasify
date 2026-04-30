@@ -44,3 +44,9 @@ class Semester(BaseModel):
     @property
     def name(self):
         return self.alt_name or self.cannonical_name
+    
+    @property
+    def has_ended(self):
+        """Check if the semester has ended"""
+        now = timezone.now().date()
+        return bool(now > self.end_date)
