@@ -53,7 +53,7 @@ class Apartment(BaseModel):
         return next(iter(self.current_tenants), None)
     
     @property
-    def occupied(self) -> bool:
+    def is_occupied(self) -> bool:
         """
         ! REQUIRES CURRENT_TENANT_PREFETCH
         Whether or not the apartment is currently occupied.
