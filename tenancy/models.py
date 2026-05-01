@@ -1,16 +1,27 @@
 from django.db import models
+from enum import StrEnum
 from apartments.models import Apartment
 from users.models import User
 from semesters.models import Semester
 from common.models import BaseModel
+from decimal import Decimal
 
+
+class TenantPaymentStatus(StrEnum):
+    UNPAID = "unpaid"
+    PENDING = "pending"
+    CLEARED = "cleared"
+    OVERPAID = "overpaid"
 
 class Tenancy(BaseModel):
     class Meta:
         ordering = ["-created_at"]
 
         constraints = [
-            models.UniqueConstraint(fields=["user", "semester"], name="unique_user_per_semester"),
+            models.UniqueConstraint(
+                fields=["user", "semester"], 
+                name="unique_user_per_semester"
+            ),
             models.UniqueConstraint(
                 fields=["apartment", "semester"],
                 name="unique_apartment_per_semester",
@@ -21,44 +32,26 @@ class Tenancy(BaseModel):
     apartment = models.ForeignKey(Apartment, on_delete=models.PROTECT, null=False, blank=False)
     semester = models.ForeignKey(Semester, on_delete=models.PROTECT, null=False, blank=False)
     total_paid = models.DecimalField(decimal_places=2, max_digits=10)
-    
+    user_id: int
+    semester_id: int
+    apartment_id: int
 
 
     def __str__(self) -> str:
-        return f"[{self.pk}] User: {getattr(self, "user_id")} Apt: {getattr(self, "apartment_id")}"
+        return f"user:{self.user_id} - tenancy:{self.pk}"
 
     @property
-    def balance(self):
-        """
-        On each tenancy instance get the balance based computed form joined apartment rent , fetch balance.
-        """
+    def balance(self) -> Decimal:
+        """The amount of money owed by the tenant"""
         return self.apartment.rent - self.total_paid
 
     @property
-    def tenant_name(self):
-        return self.user.get_full_name()
-
-    @property
-    def apartment_name(self):
-        return self.apartment.apartment_name
-
-    @property
-    def phone_number(self):
-        return self.user.account.phone_number  # type: ignore
-
-    @property
-    def payment_status(self):
-        rent = self.apartment.rent
-        balance = rent - self.total_paid
-        if balance < 0:
-            payment_status = "owing"
-        elif balance == 0:
-            payment_status = "cleared"
-        elif rent > balance > 0:
-            payment_status = "pending"
-        elif balance == rent:
-            payment_status = "unpaid"
-        else:
-            payment_status = "unpaid with arrears"
-
-        return payment_status
+    def payment_status(self) -> TenantPaymentStatus:
+        # options are unpaid, pending, cleared
+        if self.total_paid <= 0:
+            return TenantPaymentStatus.UNPAID
+        elif self.total_paid < self.apartment.rent:
+            return TenantPaymentStatus.PENDING
+        elif self.total_paid == self.apartment.rent:
+            return TenantPaymentStatus.CLEARED
+        return TenantPaymentStatus.OVERPAID
