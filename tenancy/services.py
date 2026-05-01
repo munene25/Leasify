@@ -1,22 +1,22 @@
 from decimal import Decimal
 from typing import TypedDict, Unpack, TYPE_CHECKING
+from structlog import get_logger
 from django.db import transaction
-from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 from tenancy.models import Tenancy
 from tenancy.selectors import tenancy_lock
-from semesters import selectors as sem_selectors
-from apartments.selectors import apartment_for_update
 from users.services import user_set_role
 from payments.services import PaymentCreateService
 from users.services import user_set_role
 from common.exceptions import SemesterEndedError, ApartmentOccupiedError
 
+logger = get_logger("tenancy.services")
 
 if TYPE_CHECKING:
     from users.models import User
     from semesters.models import Semester
     from apartments.models import Apartment
+    from payments.models import Payment
 
 class TenancyUpdate(TypedDict, total=False):
     semester: Semester
@@ -42,7 +42,7 @@ def validate_apartment_and_semester(apartment: "Apartment", semester: "Semester"
     
 
 @transaction.atomic
-def create(*, user: "User", apartment: "Apartment", semester: "Semester", total_paid: Decimal = Decimal(0)) -> Tenancy:
+def tenancy_create(*, user: "User", apartment: "Apartment", semester: "Semester", total_paid: Decimal = Decimal(0)) -> Tenancy:
     """
     Create a tenancy record for a user, apartment, and semester.
     Add user to tenant group.
@@ -78,19 +78,18 @@ def create(*, user: "User", apartment: "Apartment", semester: "Semester", total_
     
     if not user.groups.filter(name="tenant").exists():
         user_set_role(user=user, role=Group.objects.get(name="tenant"))
+    logger.info("tenancy_created", tenancy_id=tenancy.pk, tenant_name=user.full_name, semester=str(semester), apartment=str(apartment))
     return tenancy
 
 @transaction.atomic
 def tenancy_update(tenancy: Tenancy, **kwargs: Unpack[TenancyUpdate] ) -> Tenancy:
     """
-    Update tenant's semester or apartment
+    Updates a tenant's semester or apartment
     
     :param tenancy: Tenant object being updated
     :type tenancy: Tenancy
-
     :param kwargs: semester: Semester, apartment: Apartment
     :type kwargs: Any
-    
     :return: Description
     :rtype: Tenancy
     """
@@ -113,12 +112,38 @@ def tenancy_update(tenancy: Tenancy, **kwargs: Unpack[TenancyUpdate] ) -> Tenanc
         setattr(tenancy, field, value)
 
     tenancy.full_clean()
-    tenancy.save(update_fields=list(update_fields.keys()))
+    update_fields = list(update_fields.keys())
+    tenancy.save(update_fields=update_fields)
+    logger.info("tenancy_updated", tenancy_id=tenancy.pk, fields=update_fields)
     return tenancy
 
 @transaction.atomic
-def delete(tenancy: Tenancy) -> None:
-    """Delete tenant record and credit the payments"""
+def tenancy_update_balance(payment: Payment) -> Tenancy:
+    """
+    Updates the total amount paid for the tenant once payment status changes to completed.
+    At this point, it does not make sense to raise an error if payment amount exceeds rent since payment is already accepted.
+    
+    :param payment: The confirmed payment instance
+    :type payment: Payment
+    :return: the updated tenant object
+    :rtype: Tenancy
+    """
+
+    tenancy = tenancy_lock(payment.tenancy_id)
+    if payment.transaction_type == Payment.TransactionChoices.DEBIT:
+        tenancy.total_paid += payment.amount
+    else:
+        tenancy.total_paid -= payment.amount
+    
+    tenancy.save(update_fields=["total_paid"])
+
+    logger.info("tenant_balance_updated", tenancy_id=tenancy.pk, payment=payment.ref_no, amount_due=int(tenancy.balance))
+    return tenancy
+
+
+@transaction.atomic
+def tenancy_delete(tenancy: Tenancy) -> None:
+    """Delete tenant record and credit all the payments"""
 
     if tenancy.total_paid > Decimal(0):
         PaymentCreateService(
