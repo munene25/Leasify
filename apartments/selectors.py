@@ -1,12 +1,11 @@
-from typing import Any, Callable, TYPE_CHECKING
+from typing import Any, TYPE_CHECKING
 from django.db import models
 from apartments.models import Apartment
 from semesters.models import Semester
-from rest_framework.exceptions import NotFound
 from common.helpers import raise_not_found
 from users.models import User
 from common.domain import RoleBasedExclusions
-from tenancy.selectors import tenancy_current
+from tenancy.selectors import current_tenant_prefetch
 
 if TYPE_CHECKING:
     from tenancy.models import Tenancy
@@ -24,8 +23,6 @@ class ApartmentExclusions(RoleBasedExclusions):
     TENANT = models.Q(rentable=False)
     GENERAL = TENANT
 
-# decoupled in order to use modularly eg. in admin
-tenancy_prefetch = lambda: models.Prefetch("tenancy_set", tenancy_current(), to_attr="current_tenants")
 
 def get_base_qs() -> models.QuerySet[Apartment]:
     """
@@ -33,7 +30,7 @@ def get_base_qs() -> models.QuerySet[Apartment]:
     In essence it's important to tell at a glance whether the apartment is occupied or not.    
     """
 
-    return Apartment.objects.prefetch_related(tenancy_prefetch())
+    return Apartment.objects.prefetch_related(current_tenant_prefetch())
 
 
 def apartment_list_for(*, user: User, filters: dict[str, Any] | None = None):
@@ -97,19 +94,8 @@ def apartment_overview(semester: Semester):
         "expected_income": aggregates["rent__sum"],
     }
 
-
-@apartment_not_found
-def apartment_for_update(apartment_id: int):
-    """Lock the apartment during payment processing"""
-    return Apartment.objects.select_for_update().get(pk=apartment_id)
-
-
 @apartment_not_found
 def apartment_get_for(*, user: User, apartment_id: int):
     """Filter the apartment based on the type of user first before fetch"""
     exclusions = ApartmentExclusions.for_user(user)
     return get_base_qs().exclude(exclusions).get(pk=apartment_id)
-
-
-def apartment_available_units(semester_id: int):
-    return Apartment.objects.filter(rentable=True).exclude(tenancy__semester_id=semester_id)
