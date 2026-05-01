@@ -1,14 +1,7 @@
 from common.views import BaseAPIView
 from rest_framework.response import Response
 from rest_framework import status
-from .services import TenancyService
-from .selectors import tenancy_list, tenancy_get_by_id
-from .serializer import (
-    TenancyListSerializer,
-    TenancyCreateSerializer,
-    TenancyDetailSerializer,
-    TenancyUpdateSerializer,
-)
+from tenancy import services as sr, serializer as sc, selectors as sl
 
 class TenancyListCreateView(BaseAPIView):
     serializer_class = TenancyCreateSerializer
