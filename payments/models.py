@@ -20,6 +20,7 @@ class Payment(BaseModel):
     tenancy = models.ForeignKey(Tenancy, null=True, on_delete=models.SET_NULL)
     phone_number = PhoneNumberModelField(null=False, blank=False)
     payee = models.CharField(max_length=30, blank=True)
+    tenancy_id: int
 
     def __str__(self):
         return f"Ref: {self.ref_no} Amt: {self.amount} Type: ({self.transaction_type})"
