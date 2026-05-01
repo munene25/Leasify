@@ -48,3 +48,11 @@ class ApartmentOccupiedError(APIException):
     status_code = status.HTTP_409_CONFLICT
     default_detail = "Apartment is already occupied."
     default_code = "apartment_occupied"
+
+class OverpaymentError(APIException):
+    """
+    Raised when the total amount being paid is more than the rent due for the apartment.
+    """
+    status_code = status.HTTP_409_CONFLICT
+    default_detail = "This payment will result in an overpay."
+    default_code = "payment_exceeds_rent"
