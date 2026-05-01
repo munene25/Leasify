@@ -31,7 +31,7 @@ class Apartment(BaseModel):
         default=True, blank=False, help_text="Viewable and available to rent"
     )
     tenancy_set: models.QuerySet[Tenancy]
-    current_tenants: list[Tenancy]
+    _current_tenant: list[Tenancy]
 
     def __str__(self) -> str:
         return f"{self.block}-{self.unit_number:02}"
@@ -50,7 +50,7 @@ class Apartment(BaseModel):
         ! REQUIRES CURRENT_TENANT_PREFETCH
         Return the current tenant if they exist.
         """
-        return next(iter(self.current_tenants), None)
+        return next(iter(self._current_tenant), None)
     
     @property
     def is_occupied(self) -> bool:
