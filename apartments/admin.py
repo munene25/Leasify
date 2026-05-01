@@ -46,9 +46,9 @@ class ApartmentAdmin(admin.ModelAdmin):
         return format_html('<a href="{}">{}</a>', url, tenant.user.full_name)
     
     def get_queryset(self, request: HttpRequest) -> QuerySet:
-        from apartments.selectors import tenancy_prefetch
+        from tenancy.selectors import current_tenant_prefetch
 
-        return super().get_queryset(request).prefetch_related(tenancy_prefetch())
+        return super().get_queryset(request).prefetch_related(current_tenant_prefetch())
 
     @admin.action(description="Mark selected apartments as rentable")
     def make_rentable(self, request, queryset):
