@@ -1,22 +1,28 @@
 from typing import Any, TYPE_CHECKING
 from django.http.request import QueryDict
-from django.db import models
+from django.db.models import Q, F, QuerySet, Prefetch
 from tenancy.models import Tenancy
 from common.helpers import raise_not_found
+from common.domain import FilteringPolicy
 
 if TYPE_CHECKING:
     from semesters.models import Semester
+    from users.models import User
+
+
+class TenancyFilterPolicy(FilteringPolicy):
+    SUPERUSER =  MANAGER = CARETAKER = Q()
+    TENANT = REGULAR = lambda user: Q(user_id=user.pk)
+
 
 BASE_QS = Tenancy.objects.select_related("user", "apartment")
-
-
 
 tenancy_not_found = raise_not_found("tenancy_id", "Tenancy does not exist.")
 
 
-def tenancy_list(filters: QueryDict | dict[str, Any]) -> models.QuerySet[Tenancy]:
+def tenancy_list_for(user: "User", filters: QueryDict | dict[str, Any]) -> QuerySet[Tenancy]:
     import django_filters
-    from django.db.models import Q, F
+    
 
     class TenancyFilter(django_filters.FilterSet):
         class Meta:
@@ -50,7 +56,8 @@ def tenancy_list(filters: QueryDict | dict[str, Any]) -> models.QuerySet[Tenancy
 
             return queryset.filter(semester__end_date__gte=start_date, semester__start_date__lte=end_date)  
 
-    tenancies = BASE_QS.select_related("semester").all()
+    t_filters = TenancyFilterPolicy.for_user(user)
+    tenancies = BASE_QS.select_related("semester").filter(t_filters)
     return TenancyFilter(filters, tenancies).qs
 
 @tenancy_not_found
@@ -63,11 +70,14 @@ def tenancy_lock(tenancy_id: int) -> Tenancy:
     return Tenancy.objects.select_related("apartment").select_for_update().get(pk=tenancy_id)
 
 @tenancy_not_found
-def tenancy_get(tenancy_id: int):
-    BASE_QS.get(pk=tenancy_id)
+def tenancy_get_for(user: "User", tenancy_id: int):
+    """Will filter out the tenancies viewable only to the user based on the policy"""
+
+    t_filters = TenancyFilterPolicy.for_user(user)
+    BASE_QS.filter(t_filters).get(pk=tenancy_id)
 
 
-def tenancy_for_semester(semester: "Semester | None" = None) -> models.QuerySet[Tenancy]:
+def tenancy_for_semester(semester: "Semester | None" = None) -> QuerySet[Tenancy]:
     """
     Defaults to current_semester.
     Filter out the tenants in that semester.
@@ -85,4 +95,4 @@ def tenancy_for_semester(semester: "Semester | None" = None) -> models.QuerySet[
         # This is in cases where the semester is none
         return Tenancy.objects.none()
 
-current_tenant_prefetch = lambda: models.Prefetch("tenancy_set", tenancy_for_semester(), to_attr="_current_tenant")
+current_tenant_prefetch = lambda: Prefetch("tenancy_set", tenancy_for_semester(), to_attr="_current_tenant")
