@@ -282,7 +282,7 @@ class TestRoleRemoval:
 
         manager_user.refresh_from_db()
 
-        assert manager_user.role == "general"
+        assert manager_user.role == "regular"
         assert not manager_user.groups.exists()
 
 
