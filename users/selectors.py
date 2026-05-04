@@ -7,7 +7,7 @@ from django.db.models.query import QuerySet
 from django.contrib.auth.models import Group
 from users.models import User
 from common.helpers import raise_not_found
-from common.domain import RoleBasedExclusions
+from common.domain import FilteringPolicy
 
 # base queryset with related account to avoid repetition of select_related in each selector
 BASE_QS = User.objects.select_related("account")
@@ -16,12 +16,12 @@ BASE_QS = User.objects.select_related("account")
 user_not_found = raise_not_found("user_id", "User with given id not found")
 
 
-class UserExclusions(RoleBasedExclusions):
+class UserFilterPolicy(FilteringPolicy):
     SUPERUSER = Q()
     MANAGER = Q(is_superuser=True)
     CARETAKER = MANAGER | Q(groups__name="manager")
     TENANT = CARETAKER | Q(groups__name="caretaker")
-    GENERAL = TENANT
+    REGULAR = TENANT
 
 
 def user_list_for(*, user: User, filters: dict[str, Any] | QueryDict | None = None) -> QuerySet:
@@ -47,14 +47,15 @@ def user_list_for(*, user: User, filters: dict[str, Any] | QueryDict | None = No
                 | Q(account__phone_number__contains=value)
             )
 
-    exclusions = UserExclusions.for_user(user)
+    exclusions = UserFilterPolicy.for_user(user)
     users = BASE_QS.exclude(exclusions).exclude(pk=user.pk)
     return UserFilter(filters, users).qs
+
 
 @user_not_found
 def user_get(user_id: int) -> User:
     """
-    The primary way to fetch data for non admin routes and within domain in general
+    The primary way to fetch data for non admin routes and within domain in regular
     """
     return BASE_QS.get(pk=user_id)
 
@@ -66,7 +67,7 @@ def user_get_for(*, user: User, user_id: int) -> User:
     User will *only* be able to view users intended to be visible to them.
     """
 
-    exclusions = UserExclusions.for_user(user)
+    exclusions = UserFilterPolicy.for_user(user)
     return BASE_QS.exclude(exclusions).get(pk=user_id)
 
 
