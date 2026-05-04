@@ -171,7 +171,7 @@ class TestUserListCreateView:
         test_url = lambda page: f"http://testserver/users/?page={page}"
         first_user = users[-1]
 
-        # -- First page -- 
+        # -- First page --
         response1 = manager_client.get(base_url(1))
         data1 = parse_paginated_response(response1, expected_users)
         assert data1["next"] == test_url(2)
@@ -179,7 +179,7 @@ class TestUserListCreateView:
         assert len(data1["results"]) == override_pagination
         assert data1["results"][0]["user_id"] == first_user.pk
 
-        # -- Next page -- 
+        # -- Next page --
         response2 = manager_client.get(base_url(2))
         data2 = parse_paginated_response(response2, expected_users)
         assert data2["results"][0]["user_id"] == users[0].pk
@@ -396,7 +396,7 @@ class TestMeView:
         assert data1["backup_email"] == user.account.backup_email
         assert data1["phone_number"] == str(user.account.phone_number)
         assert data1["next_email_change"] == None
-        assert data1["role"] == "general"
+        assert data1["role"] == "regular"
 
         updates = {
             "first_name": "Zane",
@@ -407,19 +407,19 @@ class TestMeView:
         }
         response2 = client.patch(self.path, updates)
         data2 = parse_message(response2)
-        user.refresh_from_db() # type: ignore
+        user.refresh_from_db()  # type: ignore
         assert data2.get("user_id", None) is None
         assert data2["first_name"] == updates["first_name"] == user.first_name
         assert data2["phone_number"] == updates["phone_number"].replace(" ", "") == user.account.phone_number
         assert data2["bio"] == updates["bio"] == user.account.bio
         assert data2["email"] != updates["email"] and data2["email"] == user.email
-        assert data2["role"] != updates["role"] and data2["role"] == "general"
+        assert data2["role"] != updates["role"] and data2["role"] == "regular"
 
         # Unauthorized will be raised
         response3 = client.delete(self.path)
         data = parse_message(response3, status.HTTP_204_NO_CONTENT)
         assert data["message"] == "account deactivated successfully"
-        user.refresh_from_db() # type: ignore
+        user.refresh_from_db()  # type: ignore
         assert user.is_active == False
         response4 = client.get(self.path)
         error = parse_error(response4, status.HTTP_401_UNAUTHORIZED)[0]
@@ -450,7 +450,7 @@ class TestUserLoginView:
         response1 = csrf_client.post(self.path, credentials, **header)
         data1 = parse_message(response1)
         assert data1["email"] == user.email
-        user.refresh_from_db() # type: ignore
+        user.refresh_from_db()  # type: ignore
         assert user.last_login is not None
         assert (user.last_login - timezone.now()) <= timedelta(seconds=1)
 
@@ -567,14 +567,14 @@ class TestEmailUpdateView:
         with freeze_time(self.before) as frozen:
             fetch = lambda: user_client.post(self.path, self.payload)
             data1 = parse_message(fetch())
-            user.refresh_from_db() # type: ignore
+            user.refresh_from_db()  # type: ignore
             assert data1["email"] == self.payload["email"] == user.email
             assert user.next_email_change == self.after
 
             frozen.move_to(self.after)
             parse_message(fetch())
             user.refresh_from_db
-  # type: ignore           assert user.next_email_change == self.after + EMAIL_COOLDOWN
+            assert user.next_email_change == self.after + EMAIL_COOLDOWN          
 
     def test_email_update_fails(self, user, client: IsClient, user_client: IsClient):
         """
@@ -599,7 +599,7 @@ class TestEmailUpdateView:
             res4 = user_client.post(self.path, self.payload)
             parse_error(res4, status.HTTP_422_UNPROCESSABLE_ENTITY)
             user.refresh_from_db
-  # type: ignore           assert user.last_email_change == self.before
+            assert user.last_email_change == self.before     
 
 
 class TestPasswordChangeView:
@@ -634,7 +634,7 @@ class TestPasswordChangeView:
         session_id2 = res1.cookies["sessionid"].value
         data1 = parse_message(res1)
         assert "successfully updated" in data1["message"]
-        super_user.refresh_from_db() # type: ignore
+        super_user.refresh_from_db()  # type: ignore
         assert old_password != super_user.password
         assert not super_user.check_password(self.payload["password"])
         assert super_user.check_password(self.payload["new_password"])
@@ -666,7 +666,7 @@ class TestPasswordChangeView:
         res1 = user_client.post(self.path, payload)
         error1 = parse_error(res1, status.HTTP_400_BAD_REQUEST, err_type="validation_error")[0]
         assert error1["attr"] == "password"
-        user.refresh_from_db() # type: ignore
+        user.refresh_from_db()  # type: ignore
         assert old_password == user.password
 
     def test_password_change_throttles(self, user_client: IsClient, override_throttles, cache_clear):
@@ -752,7 +752,7 @@ class TestConfirmEmailVerificationView:
         path = f"/users/email-verification/confirm/{uidb64_generate(user)}/{token_generate(user)}"
         res = client.post(path, {})
         parse_message(res)
-        user.refresh_from_db() # type: ignore
+        user.refresh_from_db()  # type: ignore
         assert user.verified == True
 
 
@@ -837,7 +837,7 @@ class TestConfirmPasswordResetView:
         parse_message(res1)  # type: ignore
 
         # stale user instance leads to generation of invalid tokens
-        user.refresh_from_db() # type: ignore
+        user.refresh_from_db()  # type: ignore
 
         # reset the password
         token = token_generate(user)
@@ -847,7 +847,7 @@ class TestConfirmPasswordResetView:
         res2 = client.post(path, {"new_password": new_password, "confirm_password": new_password})
         parse_message(res2)
 
-        user.refresh_from_db() # type: ignore
+        user.refresh_from_db()  # type: ignore
         user.validate_password(new_password)
 
         # Try to access auth routes with previous session
@@ -871,7 +871,7 @@ class TestUserUnsubscribeView:
         path = self.path + uidb64_generate(user)
         response = client.post(path, {})
         parse_message(response)
-        user.refresh_from_db() # type: ignore
+        user.refresh_from_db()  # type: ignore
         assert user.account.can_receive_emails == False
 
     def test_unsubscribe_with_invalid_link_fails(self, client: IsClient, user: User):
@@ -880,7 +880,7 @@ class TestUserUnsubscribeView:
         """
         response = client.post(self.path + "invalidlink", {})
         parse_error(response, status.HTTP_400_BAD_REQUEST)
-        user.refresh_from_db() # type: ignore
+        user.refresh_from_db()  # type: ignore
         assert user.account.can_receive_emails == True
 
 
@@ -892,7 +892,7 @@ class TestAdminRoleListView:
         data1 = parse_message(response1)
         roles = [role.name for role in roles_list]
         assert data1["roles"] == roles
-    
+
     def test_response_with_no_available_groups(self, manager_client: IsClient, monkeypatch):
         monkeypatch.setattr("users.views.groups_list", lambda: [])
         response1 = manager_client.get(self.path, {})
@@ -912,7 +912,6 @@ class TestAdminRoleListView:
         response2 = caretaker_client.get(self.path)
         error2 = parse_error(response2, status_code)[0]
         assert error2["code"] == "permission_denied"
-        
 
 
 class TestAdminRoleDetailView:
@@ -927,12 +926,12 @@ class TestAdminRoleDetailView:
         response1 = manager_client.get(path)
         data1 = parse_message(response1)
         assert data1["user_id"] == user.pk
-        assert data1["role"] == "general"
+        assert data1["role"] == "regular"
 
         # -- Test patching data succeeds --
         response2 = manager_client.patch(path, {"role": "manager"})
         data2 = parse_message(response2)
-        user.refresh_from_db() # type: ignore
+        user.refresh_from_db()  # type: ignore
         assert data2["user_id"] == user.pk
         assert data2["role"] == "manager"
         assert user.groups.filter(name="manager").exists() == True
@@ -940,11 +939,11 @@ class TestAdminRoleDetailView:
         # -- Test deleting role succeeds --
         response3 = manager_client.delete(path)
         data3 = parse_message(response3)
-        user.refresh_from_db() # type: ignore
+        user.refresh_from_db()  # type: ignore
         assert data3["user_id"] == user.pk
-        assert data3["role"] == "general"
+        assert data3["role"] == "regular"
         assert user.groups.filter(name="manager").exists() == False
-    
+
     def test_user_role_view_authentication_and_authorization(self, user_client: IsClient, caretaker_client: IsClient):
         """
         Pemission denied for regular users and caretakers
@@ -959,7 +958,7 @@ class TestAdminRoleDetailView:
         response2 = caretaker_client.get(path)
         error2 = parse_error(response2, status_code)[0]
         assert error2["code"] == "permission_denied"
-    
+
     def test_modifying_priviledged_users_fails(self, manager_client: IsClient, super_user: User):
         """
         Priviledged users can't have their roles modified or retrieved
@@ -978,10 +977,10 @@ class TestAdminRoleDetailView:
         response3 = manager_client.delete(path)
         error3 = parse_error(response3, status_code)[0]
         assert error3["code"] == "not_found"
-    
+
     def test_patching_roles_replaces_the_assigned_role(self, manager_client: IsClient, user_factory: Factory[User]):
         """
-        When patching a role, the existing role should be replaced with the new one. 
+        When patching a role, the existing role should be replaced with the new one.
         This prevents users from accumulating multiple roles unintentionally.
         """
         users: list[User] = user_factory(2)
@@ -992,14 +991,14 @@ class TestAdminRoleDetailView:
         response1 = manager_client.patch(path, {"role": "manager"})
         data1 = parse_message(response1)
         assert data1["role"] == "manager"
-        user.refresh_from_db() # type: ignore
+        user.refresh_from_db()  # type: ignore
         assert user.groups.filter(name="manager").exists() == True
 
         # Now assign caretaker role to the same user, which should replace the manager role
         response2 = manager_client.patch(path, {"role": "caretaker"})
         data2 = parse_message(response2)
         assert data2["role"] == "caretaker"
-        user.refresh_from_db() # type: ignore
+        user.refresh_from_db()  # type: ignore
         assert user.groups.count() == 1
         assert user.groups.filter(name="caretaker").exists() == True
         assert user.groups.filter(name="manager").exists() == False
