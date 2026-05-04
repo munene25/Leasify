@@ -72,7 +72,7 @@ class TestApartmentUpdateService:
         updates = self.data
         updated = apartment_update(apartment, **updates)
 
-        apartment.refresh_from_db()
+        apartment.refresh_from_db() #type: ignore
         assert updated.pk == apartment.pk
         assert updated.rent == apartment.rent == Decimal(updates["rent"])
         assert updated.rentable == apartment.rentable == updates["rentable"]
@@ -86,7 +86,7 @@ class TestApartmentUpdateService:
         with pytest.raises(ValidationError) as exc:
             apartment_update(apartment=apt, block=apartment.block, unit_number=apartment.unit_number)
         assert "Apartment with this Block and Unit number already exists" in str(exc.value.detail)
-        apt.refresh_from_db()
+        apt.refresh_from_db() #type: ignore
         assert apt.block == self.data["block"]
         assert apt.unit_number == self.data["unit_number"]
         assert apt.rent == self.data["rent"]
@@ -107,7 +107,7 @@ class TestApartmentUpdateService:
         with django_assert_num_queries(4):
             apartment_update(apartment, **self.data)
 
-        apartment.refresh_from_db()
+        apartment.refresh_from_db() #type: ignore
         assert apartment.block == self.data["block"]
         assert apartment.unit_number == self.data["unit_number"]
         assert apartment.rent == self.data["rent"]
