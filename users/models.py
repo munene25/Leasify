@@ -10,8 +10,8 @@ from common.models import BaseModel
 from users.manager import UserManager
 from common.fields import NameModelField, PhoneNumberModelField
 
-
 EMAIL_COOLDOWN: timedelta = timedelta(days=14)
+
 
 class User(BaseModel, AbstractUser):
     username = None
@@ -20,12 +20,12 @@ class User(BaseModel, AbstractUser):
     email = models.EmailField(unique=True, blank=False, db_index=True)
     verified = models.BooleanField(default=False)
     last_email_change = models.DateTimeField(null=True, blank=True)
-    
+
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = ["first_name", "last_name"]
 
     account: Account
-    objects = UserManager() # type: ignore
+    objects = UserManager()  # type: ignore
 
     def clean(self):
         """Properly attatch password requirement messages to the error message"""
@@ -49,8 +49,9 @@ class User(BaseModel, AbstractUser):
         Initially localtime was being returned
         Safer to deal with utc timezone throughout
         """
-        if self.last_email_change is None: return None
-        
+        if self.last_email_change is None:
+            return None
+
         next_change_time = self.last_email_change + EMAIL_COOLDOWN
         if next_change_time > timezone.now():
             return next_change_time
@@ -65,7 +66,7 @@ class User(BaseModel, AbstractUser):
         Returns the inherent role of the user on the domain.
         Ranges from superuser, or the group they belong to.
         caching the property causes unexpected behavior when changing user roles mid session.
-        Defaults to general.
+        Defaults to regular.
         ? Instead of user.role better to have user.rank? as an interger?
         """
         group = self.groups.first()
@@ -73,13 +74,14 @@ class User(BaseModel, AbstractUser):
             return "superuser"
         elif group:
             return group.name
-        else: return "general"
+        else:
+            return "regular"
 
 
 # Account Model
 class Account(BaseModel):
     """Extra information on the user"""
-    
+
     user_id: int
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     phone_number = PhoneNumberModelField(unique=True, null=True, blank=True)
