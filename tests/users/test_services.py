@@ -211,7 +211,7 @@ class TestRoleAssignment:
         role = get_role("manager")
         s.user_set_role(user=user, role=role)
 
-        user.refresh_from_db()
+        user.refresh_from_db() #type: ignore
 
         groups = user.groups
 
@@ -265,7 +265,7 @@ class TestAccountUnsubscribe:
         """
 
         mod_acc = s.account_update_mailing_status(user.account, status)
-        mod_acc.refresh_from_db()
+        mod_acc.refresh_from_db() #type: ignore
         assert mod_acc == mod_acc == user.account
         assert mod_acc.can_receive_emails == status
 
@@ -280,7 +280,7 @@ class TestRoleRemoval:
         assert first_role is not None
         s.user_remove_role(user=manager_user)
 
-        manager_user.refresh_from_db()
+        manager_user.refresh_from_db() #type: ignore
 
         assert manager_user.role == "regular"
         assert not manager_user.groups.exists()
@@ -360,7 +360,7 @@ class TestUserEmailVerifyConfirmation:
         Verified status should reflect
         """
         mod_user = s.user_email_verify(user)
-        mod_user.refresh_from_db()
+        mod_user.refresh_from_db() #type: ignore
         assert mod_user == user
         assert mod_user.verified == True
 
