@@ -4,7 +4,7 @@ from apartments.models import Apartment
 from semesters.models import Semester
 from common.helpers import raise_not_found
 from users.models import User
-from common.domain import RoleBasedExclusions
+from common.domain import FilteringPolicy
 from tenancy.selectors import current_tenant_prefetch
 
 if TYPE_CHECKING:
@@ -14,20 +14,20 @@ if TYPE_CHECKING:
 apartment_not_found = raise_not_found("apartment_id", "Apartment does not exist")
 
 
-class ApartmentExclusions(RoleBasedExclusions):
+class ApartmentFilterPolicy(FilteringPolicy):
     """How each user role affects which apartments are visible to them"""
 
     SUPERUSER = models.Q()
     MANAGER = models.Q()
     CARETAKER = models.Q()
     TENANT = models.Q(rentable=False)
-    GENERAL = TENANT
+    REGULAR = TENANT
 
 
 def get_base_qs() -> models.QuerySet[Apartment]:
     """
     This is defined within a function to avoid prematurely evaluating the current_semester
-    In essence it's important to tell at a glance whether the apartment is occupied or not.    
+    In essence it's important to tell at a glance whether the apartment is occupied or not.
     """
 
     return Apartment.objects.prefetch_related(current_tenant_prefetch())
@@ -45,7 +45,7 @@ def apartment_list_for(*, user: User, filters: dict[str, Any] | None = None):
     from decimal import Decimal
 
     class ApartmentFilter(django_filters.FilterSet):
-        order_by=django_filters.OrderingFilter(fields=("unit_number", "rent"))
+        order_by = django_filters.OrderingFilter(fields=("unit_number", "rent"))
         search = django_filters.CharFilter(method="search_fields")
         rent = django_filters.RangeFilter(field_name="rent")
 
@@ -62,7 +62,7 @@ def apartment_list_for(*, user: User, filters: dict[str, Any] | None = None):
                     pass
             return queryset.filter(query)
 
-    exclusions = ApartmentExclusions.for_user(user)
+    exclusions = ApartmentFilterPolicy.for_user(user)
     apartments = get_base_qs().exclude(exclusions)
     return ApartmentFilter(filters, apartments).qs
 
@@ -94,8 +94,9 @@ def apartment_overview(semester: Semester):
         "expected_income": aggregates["rent__sum"],
     }
 
+
 @apartment_not_found
 def apartment_get_for(*, user: User, apartment_id: int):
     """Filter the apartment based on the type of user first before fetch"""
-    exclusions = ApartmentExclusions.for_user(user)
+    exclusions = ApartmentFilterPolicy.for_user(user)
     return get_base_qs().exclude(exclusions).get(pk=apartment_id)
