@@ -31,5 +31,5 @@ class TenancyDetailSerializer(serializers.Serializer):
     semester = SemesterListSerializer()
 
 class TenancyUpdateSerializer(serializers.Serializer):
-    apartment_id = serializers.IntegerField()
-    semester_id = serializers.IntegerField()
+    semester = serializers.PrimaryKeyRelatedField(queryset=Semester.objects.all())
+    apartment = serializers.PrimaryKeyRelatedField(queryset=Apartment.objects.all())
