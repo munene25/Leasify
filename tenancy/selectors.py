@@ -21,8 +21,9 @@ tenancy_not_found = raise_not_found("tenancy_id", "Tenancy does not exist.")
 
 
 def tenancy_list_for(user: "User", filters: QueryDict | dict[str, Any]) -> QuerySet[Tenancy]:
-    import django_filters
     
+    
+    import django_filters
 
     class TenancyFilter(django_filters.FilterSet):
         class Meta:
@@ -63,18 +64,18 @@ def tenancy_list_for(user: "User", filters: QueryDict | dict[str, Any]) -> Query
 @tenancy_not_found
 def tenancy_lock(tenancy_id: int) -> Tenancy:
     """
-    Fetches the tenancy and related apartment for update
-    Important: It selects the apartment for update as well for payment computations
+    Fetches the tenancy and related apartment for update.
+    Important: It selects the apartment for update as well for payment computations.
     """
 
     return Tenancy.objects.select_related("apartment").select_for_update().get(pk=tenancy_id)
 
 @tenancy_not_found
-def tenancy_get_for(user: "User", tenancy_id: int):
+def tenancy_get_for(user: "User", tenancy_id: int) -> Tenancy:
     """Will filter out the tenancies viewable only to the user based on the policy"""
 
     t_filters = TenancyFilterPolicy.for_user(user)
-    BASE_QS.filter(t_filters).get(pk=tenancy_id)
+    return BASE_QS.filter(t_filters).get(pk=tenancy_id)
 
 
 def tenancy_for_semester(semester: "Semester | None" = None) -> QuerySet[Tenancy]:
