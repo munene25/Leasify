@@ -19,8 +19,8 @@ if TYPE_CHECKING:
     from payments.models import Payment
 
 class TenancyUpdate(TypedDict, total=False):
-    semester: Semester
-    apartment: Apartment
+    semester: "Semester"
+    apartment: "Apartment"
 
 def validate_apartment_and_semester(apartment: "Apartment", semester: "Semester") -> None:
     """
@@ -118,7 +118,7 @@ def tenancy_update(tenancy: Tenancy, **kwargs: Unpack[TenancyUpdate] ) -> Tenanc
     return tenancy
 
 @transaction.atomic
-def tenancy_update_balance(payment: Payment) -> Tenancy:
+def tenancy_update_balance(payment: "Payment") -> Tenancy:
     """
     Updates the total amount paid for the tenant once payment status changes to completed.
     At this point, it does not make sense to raise an error if payment amount exceeds rent since payment is already accepted.
