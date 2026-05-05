@@ -1,10 +1,14 @@
+from __future__ import annotations
 import uuid
 from rest_framework.exceptions import ValidationError
 from decimal import Decimal
 from .models import Payment
-from tenancy.selectors import tenancy_get_by_id
+from tenancy.selectors import tenancy_get_for
 from django.db import transaction
+from typing import TYPE_CHECKING
 
+if TYPE_CHECKING:
+    from tenancy.models import Tenancy
 
 class PaymentCreateService:
     def __init__(
@@ -28,7 +32,7 @@ class PaymentCreateService:
 
     def get_tenancy(self):
         # Need to verify tenant exists
-        self.tenancy = tenancy_get_by_id(tenancy_id=self.tenancy_id)
+        self.tenancy: Tenancy = tenancy_get_for(tenancy_id=self.tenancy_id)
 
     def verify_transaction_type(self):
         if self.transaction_type not in Payment.TransactionChoices.values:
@@ -64,7 +68,7 @@ class PaymentCreateService:
         if not self.phone_number:
             self.phone_number = self.tenancy.user.account.phone_number
         elif isinstance(self.phone_number, str):
-            self.phone_number = self._phone_number_from_string()
+            self.phone_number = self.phone_number
         else:
             err = f"Invalid phone number"
             raise ValidationError({"phone_number": [err]})
