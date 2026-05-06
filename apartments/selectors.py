@@ -4,7 +4,7 @@ from common.domain import FilteringPolicy
 from apartments.models import Apartment
 from common.helpers import raise_not_found
 from users.models import User
-from semesters.selectors import semester_within_grace_period
+from tenancy.selectors import tenancy_recent
 
 if TYPE_CHECKING:
     from semesters.models import Semester
@@ -19,7 +19,7 @@ class ApartmentFilterPolicy(FilteringPolicy):
     SUPERUSER = models.Q()
     MANAGER = models.Q()
     CARETAKER = models.Q()
-    TENANT = lambda user: models.Q(rentable=True) | models.Q(tenancy__user_id=user.pk, tenancy__semester_id__in=[semester_within_grace_period()])
+    TENANT = lambda user: models.Q(rentable=True) | models.Q(pk=getattr(tenancy_recent(user), "apartment_id", None))
     REGULAR = models.Q(rentable=True)
 
 
