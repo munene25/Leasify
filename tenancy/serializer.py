@@ -1,6 +1,5 @@
 from rest_framework import serializers
 
-from semesters.serializer import SemesterListSerializer
 from common.fields import PhoneNumberSerializerField
 from users.models import User
 from apartments.models import Apartment
@@ -12,8 +11,9 @@ from semesters.models import Semester
 class TenancyListSerializer(serializers.Serializer):
     tenant_id = serializers.IntegerField(source="pk")
     tenant_name = serializers.CharField()
-    apartment_name = serializers.CharField()
+    apartment = serializers.CharField()
     payment_status = serializers.CharField()
+    semester = serializers.CharField(source="semester.name")
 
 class TenancyCreateSerializer(serializers.Serializer):
     user = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
@@ -24,11 +24,11 @@ class TenancyDetailSerializer(serializers.Serializer):
     tenant_id = serializers.IntegerField(source="pk")
     tenant_name = serializers.CharField()
     phone_number = PhoneNumberSerializerField()
-    apartment_name = serializers.CharField()
+    apartment = serializers.CharField()
     payment_status = serializers.CharField()
     balance = serializers.DecimalField(max_digits=10, decimal_places=2)
     admission_date = serializers.DateTimeField(source="created_at")
-    semester = SemesterListSerializer()
+    semester = serializers.CharField(source="semester.name")
 
 class TenancyUpdateSerializer(serializers.Serializer):
     semester = serializers.PrimaryKeyRelatedField(queryset=Semester.objects.all())
