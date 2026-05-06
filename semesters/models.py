@@ -3,8 +3,9 @@ from django.db import models
 from rest_framework.exceptions import ValidationError
 from common.models import BaseModel
 from django.utils import timezone
-from datetime import date
+from datetime import date, timedelta, datetime
 
+GRACE_PERIOD = timedelta(weeks=2)
 
 
 class Semester(BaseModel):
