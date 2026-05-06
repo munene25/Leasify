@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING
 from django.db import models
 from common.models import BaseModel
 
+
 if TYPE_CHECKING:
     from tenancy.models import Tenancy
 
