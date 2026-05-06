@@ -1,34 +1,35 @@
+from datetime import date
 from django.core.cache import cache
-from semesters.models import Semester
-from rest_framework.exceptions import NotFound
 from django.utils import timezone
 from django.db.models import QuerySet
+from semesters.models import Semester, GRACE_PERIOD
 from common.helpers import raise_not_found
 
 
 
-def semester_list():
+def semester_within_grace_period() -> list[int]:
+    """
+    This is a really crucial addition to the way booking works.
+    Take for example a user who is a tenant during the first semester.
+    The apartment is taken of listings automatically, but the tenant wants to pay for this apartment again.
+    We need a way to get a way to give grace to the user to allow them to see and pay for their apartment.
+    This selector during the beginning of the first semester, will yield the previous semester.
+    But once grace period is over, it will only show the current semester
+    
+    That said, while filtering apartments based on the semester_id, it will allow the user to continuously 
+    pay for their apartment for up to the length of the grace period even after semester ends.
+    """
+    now = timezone.now().date()
+    extension = (now - GRACE_PERIOD)
+    semesters_within_range = Semester.objects.order_by("-start_date").filter(start_date__lte=now, end_date__gte=extension).values_list("pk", flat=True)
+    return list(semesters_within_range)
+
+def semester_list() -> QuerySet:
     return Semester.objects.all()
 
-def semester_for_update(semester_id: int) -> Semester:
-    """
-    Return a Semester instance filtered by the semester_name else 404
-    """
-    try:
-        return Semester.objects.select_for_update().prefetch_related("tenancy_set").get(pk=semester_id)
-    except Semester.DoesNotExist:
-        raise NotFound({"semester_id": f"Semester {semester_id} not found"})
-
-
-def semester_get_by_id(semester_id)-> Semester:
-    try:
-        return Semester.objects.get(pk=semester_id)
-    except Semester.DoesNotExist:
-        raise NotFound({"semester_id": f"Semester {semester_id} not found"})
-
-def semesters_get_all_from_today()-> QuerySet:
-    return Semester.objects.filter(end_date__gte=timezone.now()).only("id")
-
+@raise_not_found("semester_id", "Semester not found")
+def semester_get(semester_id: int)-> Semester:
+    return Semester.objects.get(pk=semester_id)
 
 @raise_not_found("current_semester", "No current semester has been set for this time period")
 def semester_current() -> Semester:
