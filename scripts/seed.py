@@ -3,9 +3,10 @@ from semesters.selectors import semester_current
 from semesters.models import Semester
 from payments.models import Payment
 from users.models import User
+from apartments.models import Apartment
 from datetime import date
 import random
-from tenancy.services import TenancyService
+from tenancy.services import tenancy_create
 from semesters.services import semester_create
 from apartments.services import apartment_create
 from payments.services import PaymentCreateService
@@ -90,6 +91,7 @@ def run():
     # ============================================= Apartments =============================================
     try:
         call_command("loaddata", "fixtures/test_apartments.json")
+        apartments = Apartment.objects.all()
     except Exception:
 
         no_of_apts = len(ITERATIONS) + 5
@@ -104,17 +106,17 @@ def run():
 
 
     # ============================================= Tenancies =============================================
-    curr_sem = semester_current().pk
+    curr_sem = semester_current()
     tenancies = [
-        TenancyService().create(
-            user_id=i,
-            apartment_id=i,
-            semester_id=curr_sem,
+        tenancy_create(
+            user=users[i],
+            apartment=apartments[i],
+            semester=curr_sem,
         )
         for i in ITERATIONS
     ]
 
-    # Create payments
+    # ============================================= Payments =============================================
     for num in ITERATIONS:
         for _ in range(1, 4):
             try:
