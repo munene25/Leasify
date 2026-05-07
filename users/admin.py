@@ -101,7 +101,7 @@ class UserAdmin(admin.ModelAdmin):
             from users.services import user_set_role, user_remove_role
 
             user, role = form.instance, form.cleaned_data.get("group")
-            if role is "none":
+            if role == "none":
                 user_remove_role(user)
             else:
                 group = Group.objects.get(name=role)
