@@ -11,17 +11,24 @@ if TYPE_CHECKING:
 
 
 class TenancyFilterPolicy(FilteringPolicy):
+    """
+    Superuser, manager and caretaker should be able to view all tenancies.
+    Other users should be able to view tenancies belonging to them.
+    """
+
     SUPERUSER = MANAGER = CARETAKER = Q()
     TENANT = REGULAR = lambda user: Q(user_id=user.pk)
 
 
-BASE_QS = Tenancy.objects.select_related("user", "apartment")
+BASE_QS: QuerySet[Tenancy] = Tenancy.objects.select_related("user", "apartment", "semester")
 
 tenancy_not_found = raise_not_found("tenancy_id", "Tenancy does not exist.")
 
 
 def tenancy_list_for(user: "User", filters: QueryDict | dict[str, Any]) -> QuerySet[Tenancy]:
-
+    """
+    List tenancies based on who is requesting
+    """
     import django_filters
 
     class TenancyFilter(django_filters.FilterSet):
@@ -79,7 +86,18 @@ def tenancy_get_for(user: "User", tenancy_id: int) -> Tenancy:
     return BASE_QS.filter(t_filters).get(pk=tenancy_id)
 
 
+@tenancy_not_found
+def tenancy_get(tenancy_id: int) -> Tenancy:
+    """Get tenant outside of client flows"""
+
+    return BASE_QS.get(pk=tenancy_id)
+
+
 def tenancy_recent(user: "User") -> Tenancy | None:
+    """
+    This selector optimizes the check for getting the most recent tenancy for a user.
+    It could also include the tenancy belonging in the grace period if occurs in the previous semester
+    """
     from semesters.models import GRACE_PERIOD
     from django.utils import timezone
 
@@ -110,6 +128,46 @@ def tenancy_for_semester(semester: "Semester | None" = None) -> QuerySet[Tenancy
     except NotFound:
         # This is in cases where the semester is none
         return Tenancy.objects.none()
+
+
+def tenancy_overview(semester: "Semester | None" = None):
+    """
+    unpaid tenants
+    paid tenants
+    uncleared tenants
+    popular apartment
+    least_popular apartment
+    total rent collected
+    expected rent for active tenancies
+
+    I somehow need some other way of collectively guaging performance
+    uptake from last semester
+    peak semester of all time based on the number of tenancies
+    how rent affects tenancies? is there a trend between this semester and last semester?
+    i think this is abit derivative though and uptake takes care of that
+
+    """
+    from django.db.models import Sum, F, Count, Value, DecimalField, Case, When
+    from decimal import Decimal
+    from semesters.selectors import semester_current
+
+    s = semester or semester_current()
+    tenancies = BASE_QS.all()
+    statuses = (
+        tenancies.annotate(
+            status=Case(
+                When(total_paid__lt=F("lease_rent"), then=Value("not_cleared")),
+                default=Value("cleared"),
+            )
+        )
+        # Group by status
+        .values("status")
+        # then annotate the count on the statuses
+        .annotate(
+            tenants=Count("id"),
+        )
+    )
+    apartment_popularity = tenancies.values("apartment").annotate(tenancies=Count("id"))
 
 
 current_tenant_prefetch = lambda: Prefetch("tenancy_set", tenancy_for_semester(), to_attr="_current_tenant")
