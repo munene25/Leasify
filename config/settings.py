@@ -36,6 +36,7 @@ SECRET_KEY = os.environ.get("SECURITY_KEY", "secret-key")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
+DEV_ENVIRONMENT = True
 
 ALLOWED_HOSTS = [FRONTEND_DOMAIN, "localhost", "127.0.0.1"]
 
@@ -153,22 +154,23 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 ## Caching
-CACHES = {
-    "default": {
-        "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": "redis://localhost:6379/1",
-        "OPTIONS": {
-            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+if not DEV_ENVIRONMENT:
+    CACHES = {
+        "default": {
+            "BACKEND": "django_redis.cache.RedisCache",
+            "LOCATION": "redis://localhost:6379/1",
+            "OPTIONS": {
+                "CLIENT_CLASS": "django_redis.client.DefaultClient",
+            },
         },
-    },
-    "sessions": {
-        "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": "redis://localhost:6379/4",
-        "OPTIONS": {
-            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+        "sessions": {
+            "BACKEND": "django_redis.cache.RedisCache",
+            "LOCATION": "redis://localhost:6379/4",
+            "OPTIONS": {
+                "CLIENT_CLASS": "django_redis.client.DefaultClient",
+            },
         },
-    },
-}
+    }
 
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
@@ -213,6 +215,7 @@ ADMINS = ["edmune25@gmail.com"]  # Logging email alerts in prod
 
 
 ## CELERY
-CELERY_BROKER_URL = ("redis://localhost:6379/3",)
+if not DEV_ENVIRONMENT: CELERY_BROKER_URL = ("redis://localhost:6379/3",)
+    
 CELERY_TASK_IGNORE_RESULT = False
 CELERY_RESULT_EXPIRES = 3600
