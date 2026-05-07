@@ -57,4 +57,11 @@ class TenancyDetailUpdateDestroyView(BaseAPIView):
     def delete(self, request, tenancy_id: int) -> Response:
         check_perms(request.user, "tenancy.delete_tenancy")
         selected = sl.tenancy_get_for(request.user , tenancy_id)
+        sr.tenancy_delete(selected)
         return Response(data={"message": "Tenancy Deleted"}, status=status.HTTP_204_NO_CONTENT)
+
+class TenancyOverviewView(BaseAPIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        pass
