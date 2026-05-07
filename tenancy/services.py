@@ -2,12 +2,9 @@ from decimal import Decimal
 from typing import TypedDict, Unpack, TYPE_CHECKING
 from structlog import get_logger
 from django.db import transaction
-from rest_framework.exceptions import ValidationError
 from tenancy.models import Tenancy
 from tenancy.selectors import tenancy_lock
-from users.services import user_set_role
 from payments.services import PaymentCreateService
-from users.services import user_set_role
 from common.exceptions import SemesterEndedError, ApartmentOccupiedError
 
 logger = get_logger("tenancy.services")
@@ -21,28 +18,24 @@ if TYPE_CHECKING:
 class TenancyUpdate(TypedDict, total=False):
     semester: "Semester"
     apartment: "Apartment"
+    lease_rent: Decimal
 
 def validate_apartment_and_semester(apartment: "Apartment", semester: "Semester") -> None:
     """
-    Only future and current semesters should be available for booking
+    Only future and current semesters should be available for booking.
 
     The apartment rentable flag is a global lock allowing or disallowing tenants to book.
-    Non rentable apartments are already filtered out of tenants and guest querysets.
-    Nontheless we should explicitly check first if the apartment is availalbe for rent.
-    And fallback to occupancy in cases where a manager is assigning an apartment.
-    This is still enforced at the database level with unique constraints.
+    But in this case the selector will figure out which apartment is availbable for the user anyways.
     """
         
     if semester.has_ended:
         raise SemesterEndedError()
-    if not apartment.rentable:
-        raise ValidationError({"apartment_id": "Apartment not available for renting"})
     if apartment.tenancy_set.filter(semester_id=semester.pk).exists():
         raise ApartmentOccupiedError()
     
 
 @transaction.atomic
-def tenancy_create(*, user: "User", apartment: "Apartment", semester: "Semester", total_paid: Decimal = Decimal(0)) -> Tenancy:
+def tenancy_create(*, user: "User", apartment: "Apartment", semester: "Semester", total_paid: Decimal = Decimal(0), lease_rent: Decimal | None = None) -> Tenancy:
     """
     Create a tenancy record for a user, apartment, and semester.
     Add user to tenant group.
@@ -60,24 +53,25 @@ def tenancy_create(*, user: "User", apartment: "Apartment", semester: "Semester"
     :rtype: Tenancy
     """
     from django.contrib.auth.models import Group
+    from users.services import user_set_role
 
     # First validate apartment and semester availablity
     validate_apartment_and_semester(apartment, semester)
-
     # Create tenancy
     tenancy = Tenancy(
         user=user,
         apartment=apartment,
         semester=semester,
-        total_paid=total_paid,
+        lease_rent=lease_rent or apartment.rent,
+        total_paid=total_paid
     )
     tenancy.full_clean()
     tenancy.save()
 
     # Add user to Tenant group
-    
     if not user.groups.filter(name="tenant").exists():
         user_set_role(user=user, role=Group.objects.get(name="tenant"))
+
     logger.info("tenancy_created", tenancy_id=tenancy.pk, tenant_name=user.full_name, semester=str(semester), apartment=str(apartment))
     return tenancy
 
@@ -94,7 +88,7 @@ def tenancy_update(tenancy: Tenancy, **kwargs: Unpack[TenancyUpdate] ) -> Tenanc
     :rtype: Tenancy
     """
 
-    editable_fields = {"semester", "apartment"}
+    editable_fields = {"semester", "apartment", "lease_rent"}
     update_fields = {
         k: v
         for k, v in kwargs.items()
