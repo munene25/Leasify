@@ -96,7 +96,6 @@ CSRF_TRUSTED_ORIGINS = [FRONTEND_URL]
 # ?CSRF_COOKIE_SECURE = True
 
 
-
 ## SESSIONS
 SESSION_COOKIE_SAMESITE = "Lax"
 SESSION_COOKIE_HTTPONLY = True
@@ -154,23 +153,31 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 ## Caching
-if not DEV_ENVIRONMENT:
-    CACHES = {
-        "default": {
-            "BACKEND": "django_redis.cache.RedisCache",
-            "LOCATION": "redis://localhost:6379/1",
-            "OPTIONS": {
-                "CLIENT_CLASS": "django_redis.client.DefaultClient",
-            },
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": "redis://localhost:6379/1",
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
         },
-        "sessions": {
-            "BACKEND": "django_redis.cache.RedisCache",
-            "LOCATION": "redis://localhost:6379/4",
-            "OPTIONS": {
-                "CLIENT_CLASS": "django_redis.client.DefaultClient",
-            },
+    },
+    "redis": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": "redis://localhost:6379/2",
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
         },
-    }
+    },
+    "sessions": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": "redis://localhost:6379/4",
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+        },
+    },
+    "dev": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache", "LOCATION": "memory://"},
+}
+CACHES["default"] = CACHES["dev"] if DEV_ENVIRONMENT else CACHES["default"]
 
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
@@ -215,7 +222,7 @@ ADMINS = ["edmune25@gmail.com"]  # Logging email alerts in prod
 
 
 ## CELERY
-if not DEV_ENVIRONMENT: CELERY_BROKER_URL = ("redis://localhost:6379/3",)
-    
+CELERY_CACHE_BACKEND = "dev" if DEV_ENVIRONMENT else "redis"
+CELERY_TASK_ALWAYS_EAGER = True if DEV_ENVIRONMENT else False
 CELERY_TASK_IGNORE_RESULT = False
 CELERY_RESULT_EXPIRES = 3600
