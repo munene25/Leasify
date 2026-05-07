@@ -15,14 +15,15 @@ from .permissions import setup_roles_and_permissions
 from faker import Faker
 from django.core.management import call_command
 
-
-ITERATIONS = list(range(1, 20))
+ITERATIONS = list(range(20))
 
 f = Faker("en_KE")
+
 
 def dump_data(file_name: str, *app_labels: str):
     with open(file_name, "w") as f:
         call_command("dumpdata", *app_labels, stdout=f, indent=4)
+
 
 def run():
     # ============================================= Roles =============================================
@@ -41,11 +42,12 @@ def run():
             user_account_create(
                 password="Pa55word!",
                 email=f.email(),
-                phone_number=f.numerify("+254-7##-###-###"),
+                phone_number=f.numerify("+2547########"),
                 first_name=f.first_name(),
                 last_name=f.last_name(),
-                notify = False
-            ) for _ in ITERATIONS
+                notify=False,
+            )
+            for _ in ITERATIONS
         ]
         # create super_user
         User.objects.create_superuser(
@@ -54,15 +56,14 @@ def run():
             first_name="Edwin",
             last_name="Munene",
             phone_number="+254-791-573-104",
-        ) # type: ignore
+        )  # type: ignore
         dump_data("fixtures/test_users.json", "users")
-
-
 
     # ============================================= Semesters =============================================
     try:
         call_command("loaddata", "fixtures/test_semesters.json")
     except Exception:
+
         def generate_semesters(start_year=2025, end_year=2029):
             semesters = []
             periods = [
@@ -87,23 +88,22 @@ def run():
         [semester_create(**s) for s in generate_semesters(2025, 2030)]
         dump_data("fixtures/test_semesters.json", "semesters")
 
-
     # ============================================= Apartments =============================================
     try:
         call_command("loaddata", "fixtures/test_apartments.json")
         apartments = Apartment.objects.all()
     except Exception:
 
-        no_of_apts = len(ITERATIONS) + 5
-        aps = [
-            {"block": f"{"OLD" if i%2 == 1 else "NEW"}", "unit_number": i, "rent": Decimal(20000)}
-            for i in range(1, no_of_apts + 1)
+        NO_OF_APTS = 30
+        apartments = [
+            apartment_create(
+                block=random.choice(Apartment.ApartmentChoices.values),
+                unit_number=int(f.building_unit_number()),
+                rent=Decimal(f.numerify("1#000")),
+            )
+            for _ in range(NO_OF_APTS)
         ]
-
-        apartments = [apartment_create(**a) for a in aps]
         dump_data("fixtures/test_apartments.json", "apartments")
-
-
 
     # ============================================= Tenancies =============================================
     curr_sem = semester_current()
@@ -125,9 +125,7 @@ def run():
                     transaction_type="debit",
                     tenancy_id=num,
                     initiator="tenant",
-                    phone_number=users[num].account.phone_number #type: ignore
+                    phone_number=users[num].account.phone_number,  # type: ignore
                 ).create()
             except:
                 pass
-
-    
