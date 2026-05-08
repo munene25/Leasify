@@ -277,13 +277,14 @@ def semester_factory() -> Factory[Semester]:
 @pytest.fixture
 def current_semester() -> Semester:
     from datetime import timedelta
+    from semesters.services import semester_create
     from django.utils import timezone
 
-    middle = timedelta(days=90)
-    now = timezone.now()
+    window = timedelta(days=90)
+    now = timezone.now().date()
     semester = {
-        "start_date": now - middle,
-        "end_date": now + middle,
+        "start_date": now - window,
+        "end_date": now + window,
         "off_season": False,
     }
-    return Semester.objects.create(**semester)
+    return semester_create(**semester)
