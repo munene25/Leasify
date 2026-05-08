@@ -31,5 +31,6 @@ class TenancyDetailSerializer(serializers.Serializer):
     semester = serializers.CharField(source="semester.name")
 
 class TenancyUpdateSerializer(serializers.Serializer):
-    semester = serializers.PrimaryKeyRelatedField(queryset=Semester.objects.all())
+    """I think its better to leave semester editing out of the tenancy once created."""
+    # semester = serializers.PrimaryKeyRelatedField(queryset=Semester.objects.all())
     apartment = serializers.PrimaryKeyRelatedField(queryset=Apartment.objects.all())
