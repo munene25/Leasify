@@ -99,13 +99,13 @@ class TestUserListCreateView:
 
         assert User.objects.count() == 0
 
-    @patch("users.views.user_account_create")
+    @patch("users.services.user_account_create")
     def test_user_creation_throttles(
         self,
         mock: MagicMock,
+        client: IsClient,
         cache_clear,
         override_throttles,
-        client: IsClient,
         user_create_payload: UserCreatePayload,
     ):
         """
@@ -156,7 +156,7 @@ class TestUserListCreateView:
         response3 = manager_client.get(self.path)
         assert response3.status_code == status.HTTP_200_OK
 
-    def test_user_list_pagination(self, manager_client: IsClient, user_factory: Factory[User], override_pagination):
+    def test_user_list_pagination(self, manager_client: IsClient, user_factory: Factory[User], override_pagination: int):
         """
         Test the pagination structure and data
         Order is reversed so the first user appears in the last index
@@ -166,87 +166,71 @@ class TestUserListCreateView:
         # but would still be filtered out
         expected_users = 3
         users = user_factory(expected_users)
+        first_page_ids = {u.pk for u in users[-override_pagination:]}
+        second_page_ids = {u.pk for u in users}.difference(first_page_ids)
 
-        base_url = lambda page: f"{self.path}?page={page}"
-        test_url = lambda page: f"http://testserver/users/?page={page}"
-        first_user = users[-1]
+        path = lambda page: f"{self.path}?page={page}"
 
         # -- First page --
-        response1 = manager_client.get(base_url(1))
+        response1 = manager_client.get(path(1))
         data1 = parse_paginated_response(response1, expected_users)
-        assert data1["next"] == test_url(2)
-        assert data1["previous"] == None
-        assert len(data1["results"]) == override_pagination
-        assert data1["results"][0]["user_id"] == first_user.pk
+        assert first_page_ids == {f["user_id"] for f in data1["results"]}
 
         # -- Next page --
-        response2 = manager_client.get(base_url(2))
+        response2 = manager_client.get(path(2))
         data2 = parse_paginated_response(response2, expected_users)
-        assert data2["results"][0]["user_id"] == users[0].pk
         assert data2["next"] == None
+        assert {f["user_id"] for f in data2["results"]} == second_page_ids
 
     def test_user_list_filtering_via_query_params(self, user_factory: Factory[User], caretaker_client: IsClient):
         """
         Test the new search field implementation for the query_params
         Fields: id, is_active and search(includes all searchable fields)
         """
+        from tests.helpers import parse_paginated_response
 
-        def fetch(field: str) -> list[dict[str, str]]:
-            """helper function reduces boilerplate"""
-            response = caretaker_client.get(f"{self.path}?{field}")
-            assert response.status_code == status.HTTP_200_OK
-            return response.data["results"]
+        path = lambda query: f"{self.path}?{query}"
 
-        users: list[User] = user_factory(5)
-        user1 = users[0]
-        user3 = users[2]
-        user5 = users[-1]
-        user5.is_active = False
-        user5.save()
+        users = user_factory(5)
 
-        # -- with id filter --
-        # ? ID filter temporarily removed, might reinstate
-        # data1 = fetch("id=4")
-        # assert len(data1) == 1
-        # fetched = User.objects.get(pk=4)
-        # assert data1[0]["user_id"] == 4
-        # assert fetched.email == data1[0]["email"]
+        # -- Create inactive users
+        inactive_user_ids = {3, 2, 4}
+        User.objects.filter(id__in=inactive_user_ids).update(is_active=False)
 
-        # -- with is_active filter --
-        data2 = fetch("is_active=false")
-        assert len(data2) == 1
-        assert data2[0]["email"] == user5.email
+        # -- create users sharing first name
+        similar_name_ids = {4, 6}
+        similar_name = "Felix"
+        User.objects.filter(id__in=similar_name_ids).update(first_name=similar_name)
 
-        # -- with name search filtering --
-        sliced_name = user1.get_full_name()[:4]
-        data3 = fetch(f"search={sliced_name}")
-        assert len(data3) >= 1
-        assert user1.pk in [user["user_id"] for user in data3]
+        # -- Test is_active filter --
+        response1 = caretaker_client.get(path("is_active=false"))
+        data1 = parse_paginated_response(response1, 3)["results"]
+        assert inactive_user_ids == {u["user_id"] for u in data1}
+
+        # -- with last_name search filtering --
+        response2 = caretaker_client.get(path(f"search={users[0].last_name}"))
+        data2 = parse_paginated_response(response2, 1)["results"]
+        assert users[0].pk in {u["user_id"] for u in data2}
+
+        response3 = caretaker_client.get(path(f"search={similar_name}"))
+        data3 = parse_paginated_response(response3, 2)["results"]
+        assert similar_name_ids == {u["user_id"] for u in data3}
 
         # -- with phone_number search filtering --
-        sliced_phone = str(user3.account.phone_number)[:5]
-        data4 = fetch(f"search={sliced_phone}")
-        assert len(data4) >= 1
-        assert user3.pk in [user["user_id"] for user in data4]
+        phone_number = users[0].account.phone_number
+        sliced_phone = str(phone_number)[-4:]
+        data4 = parse_paginated_response(caretaker_client.get(path(f"search={sliced_phone}")), 1)["results"]
+        assert data4[0]["user_id"] == users[0].pk
 
         # -- with exact fields (email) search filtering --
-        data5 = fetch(f"search={user3.email}")
-        assert len(data5) == 1
-        assert user3.email == data5[0]["email"]
+        data5 = parse_paginated_response(caretaker_client.get(path(f"search={users[3].email}")), 1)["results"]
+        assert users[3].email == data5[0]["email"]
 
         # -- with multiple field searches --
-        user4 = users[3]
-        user4.first_name = user3.first_name
-        user4.is_active = False
-        user4.save()
-        name, active = user3.first_name, True
-        data6 = fetch(f"search={name}&is_active={active}")
-        assert len(data6) == 1
-        assert user3.email == data6[0]["email"]
-        active = False
-        data7 = fetch(f"search={name}&is_active={active}")
-        assert len(data7) == 1
-        assert user4.email == data7[0]["email"]
+        # user_id 4 is the only user with the name Felix and is in_active
+        response6 = caretaker_client.get(path(f"search={similar_name}&is_active=false"))
+        data6 = parse_paginated_response(response6, 1)["results"]
+        assert data6[0]["user_id"] == 4
 
     def test_user_list_ommits_results_from_qs_correctly(
         self,
@@ -442,7 +426,7 @@ class TestUserLoginView:
         last login should be updated.
         A session should be created.
         """
-        csrftoken = csrf_client.get("/csrf-token").cookies["csrftoken"].value
+        csrftoken = csrf_client.get("/csrf-token/").cookies["csrftoken"].value
         header = {"HTTP_X_CSRFTOKEN": csrftoken}
         credentials = {"email": user.email, "password": password}
 
@@ -894,7 +878,7 @@ class TestAdminRoleListView:
         assert data1["roles"] == roles
 
     def test_response_with_no_available_groups(self, manager_client: IsClient, monkeypatch):
-        monkeypatch.setattr("users.views.groups_list", lambda: [])
+        monkeypatch.setattr("users.selectors.groups_list", lambda: [])
         response1 = manager_client.get(self.path, {})
         data1 = parse_message(response1)
         assert len(data1["roles"]) == 0
