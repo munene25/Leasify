@@ -37,7 +37,7 @@ def semester_create(
     )
     semester.full_clean()
     semester.save()
-    logger.info("semester_created", semester_name=semester.name)
+    logger.info("semester_created", semester_name=semester.name, start_date=semester.start_date, end_date=semester.end_date)
     return semester
 
 
