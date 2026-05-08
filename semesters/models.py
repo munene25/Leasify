@@ -81,5 +81,5 @@ class Semester(BaseModel):
     def has_ended(self):
         """Check if the semester has ended"""
         
-        return bool(timezone.now().date() > self.end_date)
+        return bool(self.end_date < timezone.now().date())
     
