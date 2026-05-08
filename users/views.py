@@ -12,9 +12,7 @@ from common.pagination import get_paginated_response
 from common.throttling import AnonSustained, EmailScopedThrottle
 from users.tokens import token_validate, get_user_from_uidb64
 from users.tasks import send_token_email
-from users import services as sr
-from users import selectors as sl
-from users import serializer as sc
+from users import services as sr, serializer as sc, selectors as sl
 
 logger = get_logger("users.views")
 
