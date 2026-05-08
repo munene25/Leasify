@@ -132,29 +132,20 @@ def tenancy_for_semester(semester: "Semester | None" = None) -> QuerySet[Tenancy
 
 def tenancy_overview(semester: "Semester | None" = None):
     """
-    unpaid tenants
-    paid tenants
-    uncleared tenants
-    popular apartment
-    least_popular apartment
-    total rent collected
-    expected rent for active tenancies
-
-    I somehow need some other way of collectively guaging performance
-    uptake from last semester
-    peak semester of all time based on the number of tenancies
-    how rent affects tenancies? is there a trend between this semester and last semester?
-    i think this is abit derivative though and uptake takes care of that
-
+    This selector provides an overview of the tenancies for a given semester, including:
+    - The number of tenants that are cleared and not cleared.
+    - The most and least popular apartments based on the number of tenancies.
+    - The total expected rent and total collected rent for the semester.
     """
     from django.db.models import Sum, F, Count, Value, DecimalField, Case, When
     from decimal import Decimal
     from semesters.selectors import semester_current
 
     s = semester or semester_current()
+    previous_semester = Semester.objects.filter(end_date__lt=s.start_date).first()
     tenancies = BASE_QS.all()
     statuses = (
-        tenancies.annotate(
+        tenancies.filter(semester_id=s.pk).annotate(
             status=Case(
                 When(total_paid__lt=F("lease_rent"), then=Value("not_cleared")),
                 default=Value("cleared"),
@@ -166,8 +157,18 @@ def tenancy_overview(semester: "Semester | None" = None):
         .annotate(
             tenants=Count("id"),
         )
+    ).all()
+    totals = tenancies.aggregate(
+        total_expected=Sum("lease_rent"),
+        total_collected=Sum("total_paid"),
     )
-    apartment_popularity = tenancies.values("apartment").annotate(tenancies=Count("id"))
-
+    uptake = tenancies.filter(semester=s).count() - tenancies.filter(semester=previous_semester).count()
+    return {
+        "cleared": [s["tenants"] for s in statuses if s["status"] == "cleared"][0],
+        "not_cleared": [s["tenants"] for s in statuses if s["status"] == "not_cleared"][0],
+        "actual_expected": totals["total_expected"] or Decimal(0),
+        "total_collected": totals["total_collected"] or Decimal(0),
+        "uptake_from_previous_semester": uptake,
+    }
 
 current_tenant_prefetch = lambda: Prefetch("tenancy_set", tenancy_for_semester(), to_attr="_current_tenant")
