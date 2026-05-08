@@ -1,9 +1,13 @@
 import pytest
 import random
+from typing import TYPE_CHECKING
 from rest_framework.exceptions import ValidationError
 from apartments.services import apartment_create, apartment_delete, apartment_update, ApartmentUpdateData
 from apartments.models import Apartment
 from decimal import Decimal
+
+if TYPE_CHECKING:
+    from semesters.models import Semester
 
 
 class TestApartmentCreateService:
@@ -124,18 +128,14 @@ class TestApartmentDeleteService:
         apartment_delete(apartment)
         assert Apartment.objects.count() == 0
 
-    def test_apartment_with_tenant_fails(self, user, apartment: Apartment):
+    def test_apartment_with_tenant_fails(self, user, apartment: Apartment, current_semester: "Semester"):
         """
         Should fail to delete and unit should persist
         """
-        from tenancy.models import Tenancy
-        from semesters.models import Semester
-        from datetime import date
+        from tenancy.services import tenancy_create
 
-        # create sem
-        s = Semester.objects.create(start_date=date(2025, 1, 1), end_date=date(2025, 5, 31), off_season=True)
         # create tenant
-        Tenancy.objects.create(user=user, semester=s, apartment=apartment, total_paid=Decimal(0))
+        tenancy_create(user=user, semester=current_semester, apartment=apartment, total_paid=Decimal(0))
 
         with pytest.raises(ValidationError) as exc:
             apartment_delete(apartment)
