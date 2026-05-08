@@ -82,16 +82,20 @@ def apartment_overview(semester: "Semester"):
     )
     total_apartments = apartments.count()
     rentable = apartments.filter(rentable=True).count()
+    popularity = apartments.annotate(tenancies_count=models.Count("tenancy",)).order_by("-tenancies_count")
+
     occupied = apartments.filter(tenancy__semester_id=semester.pk).count()
 
     return {
         "total_apartments": total_apartments,
         "rentable": rentable,
         "occupied": occupied,
+        "least_popular": getattr(popularity.last(), "apartment_name", None),
+        "most_popular": getattr(popularity.first(), "apartment_name", None),
         "average_rent": aggregates["rent__avg"],
         "min_rent": aggregates["rent__min"],
         "max_rent": aggregates["rent__max"],
-        "expected_income": aggregates["rent__sum"],
+        "gross_expected_income": aggregates["rent__sum"],
     }
 
 
