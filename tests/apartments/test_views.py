@@ -173,7 +173,47 @@ class TestApartmentListCreateView:
         filtered = data["results"][0]
         assert filtered["apartment_id"] == apartment.pk
 
-    def test_apartment_pagination(self, apartment_factory: Factory[Apartment], override_pagination: int, caretaker_client: IsClient):
+    @pytest.mark.parametrize(
+        "_client,expected_count",
+        [("super_user_client", 10), ("manager_client", 10), ("caretaker_client", 10), ("tenant_client", 5), ("user_client", 4), ("client", 4)],
+    )
+    def test_apatment_list_based_on_user_roles(
+        self,
+        user_factory: Factory["User"],
+        apartment_factory: Factory[Apartment],
+        current_semester: "Semester",
+        super_user_client: IsClient,
+        caretaker_client: IsClient,
+        manager_client: IsClient,
+        user_client: IsClient,
+        client: IsClient,
+        _client: str,
+        expected_count: int,
+    ):
+        from tenancy.services import tenancy_create
+        from rest_framework.test import APIClient
+
+        user = user_factory()[0]
+        rentable_apartments = apartment_factory(quantity=5, overrides={"rentable": True})
+        unrentable_apartments = apartment_factory(quantity=5, overrides={"rentable": False})
+        tenant = tenancy_create(user=user, semester=current_semester, apartment=rentable_apartments[0])
+        tenant_client = APIClient()
+        tenant_client.force_authenticate(user=user)
+
+        selected_client: IsClient = {
+            "manager_client": manager_client,
+            "super_user_client": super_user_client,
+            "caretaker_client": caretaker_client,
+            "tenant_client": tenant_client,
+            "user_client": user_client,
+            "client": client,
+        }[_client]
+        response = selected_client.get(self.path)
+        parse_paginated_response(response, expected_count)
+
+    def test_apartment_pagination(
+        self, apartment_factory: Factory[Apartment], override_pagination: int, caretaker_client: IsClient
+    ):
         """
         Pages should reflect whats defined in the restframework settings
         """
@@ -207,7 +247,9 @@ class TestApartmentListCreateView:
             ("unit_number", 2, 3),
         ],
     )
-    def test_ordering_of_filtersets(self, field: str, first: int, last: int, apartment_factory: Factory[Apartment], manager_client: IsClient):
+    def test_ordering_of_filtersets(
+        self, field: str, first: int, last: int, apartment_factory: Factory[Apartment], manager_client: IsClient
+    ):
         """Ordering by price or unit_number should possible"""
 
         apartment1 = apartment_factory(overrides={"unit_number": 20, "rent": Decimal(30_000)})[0]
@@ -372,7 +414,7 @@ class TestApartmentOverviewView:
     def path(semester: "Semester"):
         return f"/apartments/overview?semester={semester.pk}"
 
-    def test_overview_works_based_on_semesters(
+    def test_semester_based_apartment_overview(
         self,
         user_factory: Factory["User"],
         semester_factory: Factory["Semester"],
