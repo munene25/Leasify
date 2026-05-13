@@ -54,6 +54,7 @@ def tenancy_create(*, user: "User", apartment: "Apartment", semester: "Semester"
     """
     from django.contrib.auth.models import Group
     from users.services import user_set_role
+    from apartments.services import apartment_update
 
     # First validate apartment and semester availablity
     validate_apartment_and_semester(apartment, semester)
@@ -65,14 +66,15 @@ def tenancy_create(*, user: "User", apartment: "Apartment", semester: "Semester"
         lease_rent=lease_rent or apartment.rent,
         total_paid=total_paid
     )
+
     tenancy.full_clean()
     tenancy.save()
-
     # Add user to Tenant group
     if not user.groups.filter(name="tenant").exists():
         user_set_role(user=user, role=Group.objects.get(name="tenant"))
 
     logger.info("tenancy_created", tenancy_id=tenancy.pk, tenant_name=user.full_name, semester=str(semester), apartment=str(apartment))
+    apartment_update(apartment=apartment, rentable=False)
     return tenancy
 
 @transaction.atomic
