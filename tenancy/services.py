@@ -72,9 +72,9 @@ def tenancy_create(*, user: "User", apartment: "Apartment", semester: "Semester"
     # Add user to Tenant group
     if not user.groups.filter(name="tenant").exists():
         user_set_role(user=user, role=Group.objects.get(name="tenant"))
-
-    logger.info("tenancy_created", tenancy_id=tenancy.pk, tenant_name=user.full_name, semester=str(semester), apartment=str(apartment))
+    # Flag apartment as not rentable
     apartment_update(apartment=apartment, rentable=False)
+    logger.info("tenancy_created", tenancy_id=tenancy.pk, tenant_name=user.full_name, semester=str(semester), apartment=str(apartment))
     return tenancy
 
 @transaction.atomic
