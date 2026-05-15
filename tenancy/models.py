@@ -11,13 +11,14 @@ if TYPE_CHECKING:
     from django.db.models import QuerySet
 
 
-
 GRACE_PERIOD = timedelta(weeks=2)
 DEFAULT_RESERVATION_DURATION = timedelta(days=2)
 MOVING_WINDOW = timedelta(weeks=2)
 MAX_RESERVATIONS_PER_USER = 2
 
-get_default_reservation_expiry_date = lambda: timezone.now().date() + DEFAULT_RESERVATION_DURATION
+def get_default_reservation_expiry_date():
+    return timezone.now().date() + DEFAULT_RESERVATION_DURATION
+
 
 class Tenancy(BaseModel):
     """
@@ -34,13 +35,16 @@ class Tenancy(BaseModel):
         indexes = [
             models.Index(fields=["apartment", "start_date", "end_date"]),
         ]
+        permissions = (
+            ("tenancy_extend_lease", "Allow tenancy lease time to be extended"),
+            ("tenancy_extend_reservation_expiration", "Allow pending tenants to extend their stay"),
+        )
 
     class TenancyStatus(models.TextChoices):
         PENDING = "pending", "Tenant has made a reservation but has not paid yet"
         ACTIVE = "active", "Tenant has paid and the tenancy is active"
         EXPIRED = "expired", "Reservation has expired without payment"
         TERMINATED = "terminated", "Tenancy has been explicitly terminated"
-
 
     user = models.ForeignKey(User, on_delete=models.PROTECT, null=False, blank=False)
     apartment = models.ForeignKey(Apartment, on_delete=models.PROTECT, null=False, blank=False)
@@ -65,7 +69,9 @@ class Tenancy(BaseModel):
         return self.start_date <= now <= self.end_date
 
     @property
-    def duration_months(self,) -> int:
+    def duration_months(
+        self,
+    ) -> int:
         """
         Calculate the duration of the tenancy in months
         This calculation relies on the fact that all tenancies begin on the first day of the month and last day of the month.
@@ -75,7 +81,7 @@ class Tenancy(BaseModel):
         from dateutil.relativedelta import relativedelta
 
         return relativedelta(self.end_date, self.start_date).months + 1
-        
+
     @property
     def has_ended(self) -> bool:
         """Check if the tenancy has ended"""
