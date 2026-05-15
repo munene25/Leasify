@@ -1,14 +1,13 @@
 from decimal import Decimal
-from payments.models import Payment
 from users.models import User
 from apartments.models import Apartment
-from datetime import date, timedelta
+from datetime import timedelta
 import random
 from tenancy.services import tenancy_create
 from apartments.services import apartment_create
 from payments.services import PaymentCreateService
 from users.services import user_account_create
-from .permissions import setup_roles_and_permissions
+from scripts.permissions import setup_roles_and_permissions
 from faker import Faker
 from django.core.management import call_command
 from django.utils import timezone
@@ -75,13 +74,12 @@ def run():
         dump_data("fixtures/test_apartments.json", "apartments")
 
     # ============================================= Tenancies =============================================
-    now = timezone.now().date()
     tenancies = [
         tenancy_create(
             user=users[i],
             apartment=apartments[i],
-            start_date=now - timedelta(days=30),
-            end_date=now + timedelta(days=60),
+            start_date=timezone.now().date(),
+            duration_months=random.randint(1, 3)
         )
         for i in ITERATIONS
     ]
