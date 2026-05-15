@@ -126,7 +126,7 @@ class TestApartmentDeleteService:
         apartment_delete(apartment)
         assert Apartment.objects.count() == 0
 
-    def test_deleting_apartment_with_tenant_fails(self, user, apartment: Apartment, tenancy: Tenancy  ):
+    def test_deleting_apartment_with_tenant_fails(self, user, apartment: Apartment):
         """
         Should fail to delete and unit should persist
         """
