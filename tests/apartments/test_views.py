@@ -7,7 +7,6 @@ from tests.types import IsClient, Factory
 from tests.helpers import parse_error, parse_message, parse_paginated_response
 
 if TYPE_CHECKING:
-    from semesters.models import Semester
     from users.models import User
 
 
