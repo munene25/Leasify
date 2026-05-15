@@ -41,4 +41,4 @@ class TenancyExtendReservationSerializer(serializers.Serializer):
 
 class TenancyTerminateSerializer(serializers.Serializer):
     tenancy = serializers.PrimaryKeyRelatedField(queryset=Tenancy.objects.all())
-    termination_date = serializers.DateField(queryset=Apartment.objects.all())
+    termination_date = serializers.DateField()
