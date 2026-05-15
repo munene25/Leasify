@@ -182,6 +182,28 @@ def tenancy_terminate(tenancy: Tenancy, termination_date: date | None = None) ->
         terminated_at=str(termination_date)
     )
 
+@transaction.atomic
+def tenancy_update_balance(payment: "Payment") -> Tenancy:
+    """
+    Updates the total amount paid for the tenant once payment status changes to completed.
+    At this point, it does not make sense to raise an error if payment amount exceeds rent since payment is already accepted.
+    
+    :param payment: The confirmed payment instance
+    :type payment: Payment
+    :return: the updated tenant object
+    :rtype: Tenancy
+    """
+
+    tenancy = tenancy_lock(payment.tenancy_id)
+    if payment.transaction_type == Payment.TransactionChoices.DEBIT:
+        tenancy.total_paid += payment.amount
+    else:
+        tenancy.total_paid -= payment.amount
+    
+    tenancy.save(update_fields=["total_paid"])
+
+    logger.info("tenant_balance_updated", tenancy_id=tenancy.pk, payment=payment.ref_no, amount_due=int(tenancy.total_due - tenancy.total_paid))
+    return tenancy
 
 def normalize_lease_period(start_date: date, duration_months: int) -> tuple[date, date]:
     """
