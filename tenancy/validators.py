@@ -4,9 +4,7 @@ from rest_framework.exceptions import ValidationError
 from common.exceptions import ApartmentOccupiedError, InvalidPeriodError, MaxReservationsExceededError
 from tenancy.models import Tenancy, GRACE_PERIOD, MAX_RESERVATIONS_PER_USER
 
-def validate_lease_period(
-    apartment_id: int, start_date: date, end_date: date, exclude_tenancy_id: int | None = None
-) -> None:
+def validate_lease_period(*, apartment_id: int, start_date: date, end_date: date, exclude_tenancy_id: int | None = None) -> None:
     """
     Validate that the lease period is valid (start date before end date and not in the past).
     As well as no overlapping tenancy exists at the time.
