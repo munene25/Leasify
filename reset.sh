@@ -3,7 +3,7 @@
 # Exit on error
 set -e
 
-APPS=("apartments" "payments" "semesters" "tenancy" "users")
+APPS=("apartments" "payments" "tenancy" "users")
 
 echo "Cleaning pycache and migrations for project apps..."
 
@@ -29,13 +29,13 @@ fi
 
 # Run Django migrations again
 echo "Making migrations..."
-python3 manage.py makemigrations
+python manage.py makemigrations
 
 echo "Applying migrations..."
-python3 manage.py migrate
+python manage.py migrate
 
 echo "Seeding database from seed.py..."
 # Assumes you have django-extensions installed for runscript
-python3 manage.py runscript seed
+python manage.py runscript seed
 
 echo "Project reset complete!"
