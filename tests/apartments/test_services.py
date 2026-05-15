@@ -1,13 +1,11 @@
 import pytest
 import random
-from typing import TYPE_CHECKING
 from rest_framework.exceptions import ValidationError
-from apartments.services import apartment_create, apartment_delete, apartment_update, ApartmentUpdateData
+from apartments.services import apartment_create, apartment_delete, apartment_update
 from apartments.models import Apartment
 from decimal import Decimal
+from tenancy.models import Tenancy
 
-if TYPE_CHECKING:
-    from semesters.models import Semester
 
 
 class TestApartmentCreateService:
@@ -128,15 +126,14 @@ class TestApartmentDeleteService:
         apartment_delete(apartment)
         assert Apartment.objects.count() == 0
 
-    def test_apartment_with_tenant_fails(self, user, apartment: Apartment, current_semester: "Semester"):
+    def test_deleting_apartment_with_tenant_fails(self, user, apartment: Apartment, tenancy: Tenancy  ):
         """
         Should fail to delete and unit should persist
         """
         from tenancy.services import tenancy_create
+        from django.utils import timezone
 
-        # create tenant
-        tenancy_create(user=user, semester=current_semester, apartment=apartment, total_paid=Decimal(0))
-
+        tenancy_create(user=user, apartment=apartment, start_date=timezone.now().date(), duration_months=2)
         with pytest.raises(ValidationError) as exc:
             apartment_delete(apartment)
 
