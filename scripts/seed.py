@@ -1,19 +1,17 @@
 from decimal import Decimal
-from semesters.selectors import semester_current
-from semesters.models import Semester
 from payments.models import Payment
 from users.models import User
 from apartments.models import Apartment
-from datetime import date
+from datetime import date, timedelta
 import random
 from tenancy.services import tenancy_create
-from semesters.services import semester_create
 from apartments.services import apartment_create
 from payments.services import PaymentCreateService
 from users.services import user_account_create
 from .permissions import setup_roles_and_permissions
 from faker import Faker
 from django.core.management import call_command
+from django.utils import timezone
 
 ITERATIONS = list(range(20))
 
@@ -59,35 +57,6 @@ def run():
         )  # type: ignore
         dump_data("fixtures/test_users.json", "users")
 
-    # ============================================= Semesters =============================================
-    try:
-        call_command("loaddata", "fixtures/test_semesters.json")
-    except Exception:
-
-        def generate_semesters(start_year=2025, end_year=2029):
-            semesters = []
-            periods = [
-                ((1, 1), (4, 30)),
-                ((5, 1), (8, 31)),
-                ((9, 1), (12, 31)),
-            ]
-            for year in range(start_year, end_year + 1):
-                for (sm, sd), (em, ed) in periods:
-                    start = date(year, sm, sd)
-                    off_season = True if sm == 5 else False
-                    end = date(year, em, ed)
-                    semesters.append(
-                        {
-                            "start_date": start,
-                            "end_date": end,
-                            "off_season": off_season,
-                        }
-                    )
-            return semesters
-
-        [semester_create(**s) for s in generate_semesters(2025, 2030)]
-        dump_data("fixtures/test_semesters.json", "semesters")
-
     # ============================================= Apartments =============================================
     try:
         call_command("loaddata", "fixtures/test_apartments.json")
@@ -106,12 +75,13 @@ def run():
         dump_data("fixtures/test_apartments.json", "apartments")
 
     # ============================================= Tenancies =============================================
-    curr_sem = semester_current()
+    now = timezone.now().date()
     tenancies = [
         tenancy_create(
             user=users[i],
             apartment=apartments[i],
-            semester=curr_sem,
+            start_date=now - timedelta(days=30),
+            end_date=now + timedelta(days=60),
         )
         for i in ITERATIONS
     ]
