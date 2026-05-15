@@ -32,7 +32,7 @@ class RoleAssignmentError(APIException):
 
 class InvalidPeriodError(APIException):
     """
-    Raised when a user tries to book an apartment for a semester that's already concluded.
+    Raised when a user tries to book an apartment for a period that's already concluded.
     """
 
     status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
