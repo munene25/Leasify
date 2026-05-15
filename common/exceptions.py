@@ -30,24 +30,31 @@ class RoleAssignmentError(APIException):
     default_detail = "Only one role is allowed per user."
     default_code = "roles_exceeded"
 
-class SemesterEndedError(APIException):
+class InvalidPeriodError(APIException):
     """
     Raised when a user tries to book an apartment for a semester that's already concluded.
     """
 
     status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
-    default_code = "invalid_semester"
-    default_detail = "Semester has already concluded"
+    default_code = "invalid_period"
+    default_detail = "Start date must be before end date and the period must not be in the past."
 
 
 class ApartmentOccupiedError(APIException):
     """
-    Raised when a user tries to book an already booked apartment.
-    This is in cases where the apartment is marked rentable but occupied at the same time.
+    Raised when a user tries to book an apartment that has an overlapping lease.
     """
     status_code = status.HTTP_409_CONFLICT
-    default_detail = "Apartment is already occupied."
+    default_detail = "Apartment is already occupied during this period."
     default_code = "apartment_occupied"
+
+class MaxReservationsExceededError(APIException):
+    """
+    Raised when the number of reservations for an apartment in the past 2 weeks has exceeded the maximum allowed.
+    """
+    status_code = status.HTTP_409_CONFLICT
+    default_detail = "Maximum number of reservations for user has been exceeded. Please try again later."
+    default_code = "max_reservations_exceeded"
 
 class OverpaymentError(APIException):
     """
