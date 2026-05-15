@@ -29,6 +29,5 @@ urlpatterns = [
     path('csrf-token/', get_csrf, name="get_csrf"),
     path('users/', include("users.urls"), name='users'),
     path('apartments/', include("apartments.urls"), name='apartments'),
-    path('semesters/', include("semesters.urls"), name='semesters'),
     path('tenancy/', include("tenancy.urls"), name='tenancy'),
 ]
