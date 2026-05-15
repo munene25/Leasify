@@ -46,7 +46,7 @@ def validate_max_number_of_reservations(user_id: int) -> None:
         user_id=user_id,
         reservation_expiration__gte=start,
         reservation_expiration__lte=now,
-        status=Q(Tenancy.TenancyStatus.PENDING) | Q(Tenancy.TenancyStatus.EXPIRED),
+        status__in=(Tenancy.TenancyStatus.PENDING , Tenancy.TenancyStatus.EXPIRED),
     ).count()
     if recent_reservations > MAX_RESERVATIONS_PER_USER:
         raise MaxReservationsExceededError()
