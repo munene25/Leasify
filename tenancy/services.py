@@ -28,6 +28,7 @@ def tenancy_create(
     apartment: "Apartment",
     start_date: date,
     duration_months: int,
+    total_paid: Decimal = Decimal(0),
     reservation_duration: timedelta = DEFAULT_RESERVATION_DURATION,
     status: Tenancy.TenancyStatus = Tenancy.TenancyStatus.PENDING,
     total_due: Decimal | None = None,
@@ -56,10 +57,10 @@ def tenancy_create(
     apartment = apartment_lock(apartment.pk)
 
     # Normalize start dates to quantize the lease periods into whole months.
-    normalized_start_date, normalized_end_date = normalize_lease_period(start_date, duration_months)
+    normalized_start, normalized_end = normalize_lease_period(start_date, duration_months)
 
     # Validate the lease period and apartment availability before creating the tenancy record.
-    validate_lease_period(apartment.pk, normalized_start_date, normalized_end_date)
+    validate_lease_period(apartment_id=apartment.pk, start_date=normalized_start, end_date=normalized_end)
 
     # calculate total due if not provided.
     total_due = total_due or (apartment.rent * duration_months).quantize(Decimal("0.01"))
@@ -67,9 +68,10 @@ def tenancy_create(
     tenancy = Tenancy(
         user=user,
         apartment=apartment,
-        start_date=normalized_start_date,
-        end_date=normalized_end_date,
+        start_date=normalized_start,
+        end_date=normalized_end,
         total_due=total_due,
+        total_paid=total_paid,
         status=status,
         reservation_expiration=timezone.now().date() + reservation_duration,
     )
@@ -85,8 +87,9 @@ def tenancy_create(
         "tenancy_created",
         tenancy_id=tenancy.pk,
         tenant_name=user.full_name,
-        start_date=normalized_start_date,
-        end_date=normalized_end_date,
+        end_date=normalized_end,
+        start_date=normalized_start,
+        duration_months=duration_months,
         apartment=str(apartment),
         status=tenancy.status,
     )
@@ -137,7 +140,7 @@ def tenancy_update(
     if not update_fields:
         return tenancy
 
-    validate_lease_period(apartment.pk, tenancy.start_date, end_date, exclude_tenancy_id=tenancy.pk)
+    validate_lease_period(apartment_id=apartment.pk, start_date=tenancy.start_date, end_date=end_date, exclude_tenancy_id=tenancy.pk)
     tenancy.full_clean()
     tenancy.save(update_fields=update_fields)
     logger.info("tenancy_updated", tenancy_id=tenancy.pk, apartment=str(apartment), fields=update_fields)
@@ -217,7 +220,7 @@ def normalize_lease_period(start_date: date, duration_months: int) -> tuple[date
     from calendar import monthrange
 
     normalized_start = start_date.replace(day=1)
-    end_date = start_date + timedelta(days=duration_months * 28)
+    end_date = normalized_start + timedelta(days=duration_months * 28)
     end_month_last_day = monthrange(end_date.year, end_date.month)[1]
     normalized_end = end_date.replace(day=end_month_last_day)
     return normalized_start, normalized_end
