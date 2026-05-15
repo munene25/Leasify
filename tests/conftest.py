@@ -10,7 +10,8 @@ from rest_framework.test import APIClient
 from django.core.cache import cache
 from apartments.services import apartment_create
 from apartments.models import Apartment
-from semesters.models import Semester
+from tenancy.models import Tenancy
+from datetime import date, timedelta
 
 
 # ------------------------------------------------------ Globals  ------------------------------------------------------ #
@@ -243,48 +244,43 @@ def apartment(apartment_factory) -> Apartment:
     return apartment_factory(ordered=True, overrides={"block": "NEW", "rent": 20_000, "rentable": True})[0]
 
 
-# ------------------------------------------------ Semesters  ------------------------------------------------
+# ------------------------------------------------ Tenancy  ------------------------------------------------
 @pytest.fixture
-def semester_factory() -> Factory[Semester]:
-    """ Semester generator """
-    def create(start_year: int, end_year: int) -> list[Semester]:
-        from datetime import date
-        from semesters.services import semester_create
+def tenancy_factory(apartment_factory, user_factory) -> Factory[Tenancy]:
+    """Tenancy generator - creates lease-based tenancies"""
+    from tenancy.services import tenancy_create
+    from decimal import Decimal
+    
+    def create(quantity: int = 1, overrides: dict[str, typing.Any] = {}) -> list[Tenancy]:
+        tenancies = []
+        users = user_factory(quantity=quantity)
+        apartments = apartment_factory(quantity=quantity)
+        
+        for i, user in enumerate(users):
+            apartment = apartments[i % len(apartments)]
+            start = overrides.get("start_date", date.today())
+            duration_months = overrides.get("duration_months", 4)
+            reservation_duration = overrides.get("reservation_duration", timedelta(days=2))
+            status = overrides.get("status", Tenancy.TenancyStatus.PENDING)
+            total_due = overrides.get("total_due", None)
+            
+            tenancy = tenancy_create(
+                user=user,
+                apartment=apartment,
+                start_date=start,
+                duration_months=duration_months,
+                status=status,
+                reservation_duration=reservation_duration,
+                total_due=total_due
 
-        semesters = []
-        periods = [
-            ((1, 1), (4, 30)),
-            ((5, 1), (8, 31)),
-            ((9, 1), (12, 31)),
-        ]
-        for year in range(start_year, end_year + 1):
-            for (sm, sd), (em, ed) in periods:
-                start = date(year, sm, sd)
-                off_season = True if sm == 5 else False
-                end = date(year, em, ed)
-                semesters.append(
-                    {
-                        "start_date": start,
-                        "end_date": end,
-                        "off_season": off_season,
-                    }
-                )
-       
-
-        return [semester_create(**s) for s in semesters]
+            )
+            tenancies.append(tenancy)
+        
+        return tenancies
+    
     return create
 
 @pytest.fixture
-def current_semester() -> Semester:
-    from datetime import timedelta
-    from semesters.services import semester_create
-    from django.utils import timezone
-
-    window = timedelta(days=90)
-    now = timezone.now().date()
-    semester = {
-        "start_date": now - window,
-        "end_date": now + window,
-        "off_season": False,
-    }
-    return semester_create(**semester)
+def tenancy(tenancy_factory) -> Tenancy:
+    """Single tenancy fixture"""
+    return tenancy_factory()[0]
