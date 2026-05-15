@@ -11,13 +11,9 @@ class Payment(BaseModel):
         CREDIT = "credit", "Outgoing Payments"
 
     ref_no = models.CharField(max_length=20, unique=True, editable=False)
-    amount = models.DecimalField(
-        decimal_places=2, max_digits=10, blank=False, null=False
-    )
-    transaction_type = models.CharField(
-        null=False, max_length=10, choices=TransactionChoices.choices
-    )
-    tenancy = models.ForeignKey(Tenancy, null=True, on_delete=models.SET_NULL)
+    amount = models.DecimalField(decimal_places=2, max_digits=10, blank=False, null=False)
+    transaction_type = models.CharField(null=False, max_length=10, choices=TransactionChoices.choices)
+    tenancy = models.ForeignKey(Tenancy, null=True, on_delete=models.SET_NULL, related_name="payment_records")
     phone_number = PhoneNumberModelField(null=False, blank=False)
     payee = models.CharField(max_length=30, blank=True)
     tenancy_id: int
@@ -26,12 +22,20 @@ class Payment(BaseModel):
         return f"Ref: {self.ref_no} Amt: {self.amount} Type: ({self.transaction_type})"
 
     @classmethod
-    def get_total_payments_received(cls, semester):
+    def get_total_payments_received(cls, start_date=None, end_date=None):
+        """Get total payments for a specific period"""
+        from django.utils import timezone
+        from datetime import date
+
+        now = timezone.now().date()
+        start = start_date or now
+        end = end_date or now
+
         dr = models.Q(
-            transaction_type=cls.TransactionChoices.DEBIT, tenancy__semester=semester
+            transaction_type=cls.TransactionChoices.DEBIT, tenancy__start_date__lte=end, tenancy__end_date__gte=start
         )
         cr = models.Q(
-            transaction_type=cls.TransactionChoices.CREDIT, tenancy__semester=semester
+            transaction_type=cls.TransactionChoices.CREDIT, tenancy__start_date__lte=end, tenancy__end_date__gte=start
         )
         received = cls.objects.select_related("tenancy").aggregate(
             debit=models.Sum("amount", filter=dr),
@@ -44,13 +48,13 @@ class Payment(BaseModel):
     @classmethod
     def get_payment_history_for_user(cls, tenancy):
         """
-        Get entire payment history associated with a user across semesters.
+        Get entire payment history associated with a user across all tenancies.
         """
         return cls.objects.select_related("tenancy").filter(tenancy__user=tenancy.user)
 
     @classmethod
     def get_payment_history_for_tenancy(cls, tenancy):
         """
-        Get payment history associated with a tenant for a certain semester.
+        Get payment history associated with a specific tenancy.
         """
         return cls.objects.filter(tenancy=tenancy)
