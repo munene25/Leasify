@@ -249,7 +249,6 @@ def apartment(apartment_factory) -> Apartment:
 def tenancy_factory(apartment_factory, user_factory) -> Factory[Tenancy]:
     """Tenancy generator - creates lease-based tenancies"""
     from tenancy.services import tenancy_create
-    from decimal import Decimal
     
     def create(quantity: int = 1, overrides: dict[str, typing.Any] = {}) -> list[Tenancy]:
         tenancies = []
