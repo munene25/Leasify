@@ -39,18 +39,6 @@ class PaymentCreateService:
             err = f"Transaction type '{self.transaction_type}' not valid"
             raise ValidationError({"transaction_type": [err]})
 
-    def set_tenancy_total_paid(self):
-        if isinstance(self.amount, int):
-            self.amount = Decimal(self.amount)
-        if isinstance(self.amount, Decimal):
-            self.tenancy.total_paid = (
-                self.tenancy.total_paid + self.amount
-                if self.transaction_type == Payment.TransactionChoices.DEBIT
-                else self.tenancy.total_paid - self.amount
-            )
-        else:
-            err = f"Invalid amount type"
-            raise ValidationError({"amount": [err]})
 
     def verify_total_paid_subceeds_rent(self):
         if self.tenancy.total_paid > self.tenancy.apartment.rent:
@@ -100,7 +88,6 @@ class PaymentCreateService:
         try:
             self.get_tenancy()
             self.verify_transaction_type()
-            self.set_tenancy_total_paid()
             self.verify_total_paid_subceeds_rent()
             self.get_payee()
             self.get_phone_number()
