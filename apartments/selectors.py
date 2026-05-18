@@ -5,10 +5,7 @@ from apartments.models import Apartment
 from common.helpers import raise_not_found
 from users.models import User
 from tenancy.selectors import tenancy_recent
-
-if TYPE_CHECKING:
-    from semesters.models import Semester
-
+from common.period import DateRange
 # wrapper to raise not found for each id
 apartment_not_found = raise_not_found("apartment_id", "Apartment does not exist")
 
@@ -28,9 +25,9 @@ def get_base_qs() -> models.QuerySet[Apartment]:
     This is defined within a function to avoid prematurely evaluating the current_semester
     In essence it's important to tell at a glance whether the apartment is occupied or not.
     """
-    from tenancy.selectors import current_tenant_prefetch
+    from tenancy.selectors import get_current_tenant_prefetch
 
-    return Apartment.objects.prefetch_related(current_tenant_prefetch())
+    return Apartment.objects.prefetch_related(get_current_tenant_prefetch())
 
 
 def apartment_list_for(*, user: User, filters: dict[str, Any] | None = None):
@@ -67,11 +64,12 @@ def apartment_list_for(*, user: User, filters: dict[str, Any] | None = None):
     return ApartmentFilter(filters, apartments).qs
 
 
-def apartment_overview(semester: "Semester"):
+def apartment_overview(r: DateRange):
     """
     Return an overview of apartments occupancy for the selected semester:
     total, occupied, and vacant counts.
     """
+
 
     apartments = Apartment.objects.all()
     aggregates = apartments.aggregate(
@@ -83,8 +81,7 @@ def apartment_overview(semester: "Semester"):
     total_apartments = apartments.count()
     rentable = apartments.filter(rentable=True).count()
     popularity = apartments.annotate(tenancies_count=models.Count("tenancy",)).order_by("-tenancies_count")
-
-    occupied = apartments.filter(tenancy__semester_id=semester.pk).count()
+    occupied = apartments.filter(tenancy__start_date__lte=r.start_date, tenancy__end_date__gte=r.end_date).count()
 
     return {
         "total_apartments": total_apartments,
@@ -104,3 +101,8 @@ def apartment_get_for(*, user: User, apartment_id: int):
     """Filter the apartment based on the type of user first before fetch"""
     a_filters = ApartmentFilterPolicy.for_user(user)
     return get_base_qs().filter(a_filters).get(pk=apartment_id)
+
+@apartment_not_found
+def apartment_lock(apartment_id: int) -> Apartment:
+    """With all the new changes, it is better to lock the apartment as there are no safeguards enforced at the db"""
+    return Apartment.objects.select_for_update().get(pk=apartment_id)
