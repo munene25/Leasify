@@ -1,13 +1,21 @@
 from typing import Any, TYPE_CHECKING
+from datetime import date
 from django.http.request import QueryDict
 from django.db.models import Q, F, QuerySet, Prefetch
+from rest_framework.exceptions import ValidationError
 from tenancy.models import Tenancy
 from common.helpers import raise_not_found
 from common.domain import FilteringPolicy
+from django.utils import timezone
+from common.period import DateRange
 
 if TYPE_CHECKING:
-    from semesters.models import Semester
     from users.models import User
+
+BASE_QS: QuerySet[Tenancy] = Tenancy.objects.select_related("user", "apartment")
+
+tenancy_not_found = raise_not_found("tenancy_id", "Tenancy does not exist.")
+
 
 
 class TenancyFilterPolicy(FilteringPolicy):
@@ -20,11 +28,6 @@ class TenancyFilterPolicy(FilteringPolicy):
     TENANT = REGULAR = lambda user: Q(user_id=user.pk)
 
 
-BASE_QS: QuerySet[Tenancy] = Tenancy.objects.select_related("user", "apartment", "semester")
-
-tenancy_not_found = raise_not_found("tenancy_id", "Tenancy does not exist.")
-
-
 def tenancy_list_for(user: "User", filters: QueryDict | dict[str, Any]) -> QuerySet[Tenancy]:
     """
     List tenancies based on who is requesting
@@ -34,7 +37,7 @@ def tenancy_list_for(user: "User", filters: QueryDict | dict[str, Any]) -> Query
     class TenancyFilter(django_filters.FilterSet):
         class Meta:
             model = Tenancy
-            fields = ("total_paid",)
+            fields = ("status", )
 
         search = django_filters.CharFilter(method="search_fields")
         cleared = django_filters.BooleanFilter(method="is_cleared")
@@ -56,26 +59,21 @@ def tenancy_list_for(user: "User", filters: QueryDict | dict[str, Any]) -> Query
             return queryset.filter(q)
 
         def filter_period(self, queryset, name, value: str):
-            from semesters.models import Semester
+            """Example filters: period=from=2000-MAY,to=2001-JUN"""
+            from common.helpers import parse_date_range
+            
+            try:
+                range = parse_date_range(value)
+                start = range["start"]
+                stop = range["stop"]
+            except (ValueError, IndexError, KeyError):
+                raise ValidationError("Cannot parse date ranges. Format is 'period=start=YYYY-MMM,stop=YYYY-MMM'")
 
-            # Need to filter based on year, start_month or end_month:
-            start_date, end_date = Semester.get_date_range(value)
-
-            return queryset.filter(semester__end_date__gte=start_date, semester__start_date__lte=end_date)
+            return queryset.filter(end_date__gte=start, semester__start_date__lte=stop)
 
     t_filters = TenancyFilterPolicy.for_user(user)
     tenancies = BASE_QS.select_related("semester").filter(t_filters)
     return TenancyFilter(filters, tenancies).qs
-
-
-@tenancy_not_found
-def tenancy_lock(tenancy_id: int) -> Tenancy:
-    """
-    Fetches the tenancy and related apartment for update.
-    Important: It selects the apartment for update as well for payment computations.
-    """
-
-    return Tenancy.objects.select_related("apartment").select_for_update().get(pk=tenancy_id)
 
 
 @tenancy_not_found
@@ -95,80 +93,59 @@ def tenancy_get(tenancy_id: int) -> Tenancy:
 
 def tenancy_recent(user: "User") -> Tenancy | None:
     """
-    This selector optimizes the check for getting the most recent tenancy for a user.
-    It could also include the tenancy belonging in the grace period if occurs in the previous semester
+    We want to get the most recent tenancy for a user.
+    This could be the user currently inhabiting the house.
+    Or was the previous active tenant of the house within the grace period.
+    This helps availing the current apartment to the active tenant in aparment filters.
     """
-    from semesters.models import GRACE_PERIOD
-    from django.utils import timezone
 
-    now = timezone.now().date()
-    extension = now - GRACE_PERIOD
-    return (
-        Tenancy.objects.select_related("semester")
-        .order_by("-semester__start_date")
-        .filter(user_id=user.pk, semester__start_date__lte=now, semester__end_date__gte=extension)
-        .first()
-    )
+    range = DateRange.with_grace_period(timezone.now().date())
+
+    return tenancy_during(range).order_by("-start_date").filter(user_id=user.pk).first()
 
 
-def tenancy_for_semester(semester: "Semester | None" = None) -> QuerySet[Tenancy]:
+def tenancy_during(range: DateRange) -> QuerySet[Tenancy]:
     """
-    Defaults to current_semester.
-    Filter out the tenants in that semester.
-    If semester does not exists, it will default no tenant
-    It is important to decouple the semester existing or not in order to get the current tenant.
+    Fetch tenancies which intersect a ceratin time
     """
-    from semesters.selectors import semester_current
-    from rest_framework.exceptions import NotFound
 
-    try:
-        # better to use the cached object through current_semester selector
-        sem = semester or semester_current()
-        return Tenancy.objects.select_related("user").filter(semester_id=sem.pk)
-    except NotFound:
-        # This is in cases where the semester is none
-        return Tenancy.objects.none()
+    if not range:
+        now = timezone.now().date()
+        range = DateRange.get_month_date_range(now)
+
+    return BASE_QS.filter(start_date__lte=range.end_date, end_date__gte=range.start_date)
 
 
-def tenancy_overview(semester: "Semester | None" = None):
+def tenancy_overview(r: DateRange):
     """
-    This selector provides an overview of the tenancies for a given semester, including:
+    This selector provides an overview of the tenancies for a given duration, including:
     - The number of tenants that are cleared and not cleared.
-    - The most and least popular apartments based on the number of tenancies.
-    - The total expected rent and total collected rent for the semester.
+    - The total expected rent and total collected rent for the period.
     """
-    from django.db.models import Sum, F, Count, Value, DecimalField, Case, When
+    from django.db.models import Sum, Count
     from decimal import Decimal
-    from semesters.selectors import semester_current
 
-    s = semester or semester_current()
-    previous_semester = Semester.objects.filter(end_date__lt=s.start_date).first()
-    tenancies = BASE_QS.all()
-    statuses = (
-        tenancies.filter(semester_id=s.pk).annotate(
-            status=Case(
-                When(total_paid__lt=F("lease_rent"), then=Value("not_cleared")),
-                default=Value("cleared"),
-            )
-        )
-        # Group by status
-        .values("status")
-        # then annotate the count on the statuses
-        .annotate(
-            tenants=Count("id"),
-        )
-    ).all()
-    totals = tenancies.aggregate(
-        total_expected=Sum("lease_rent"),
-        total_collected=Sum("total_paid"),
+    current_tenancies = tenancy_during(r)
+    duration = r.duration_months
+
+    previous_term = r.shift_months(-duration, -duration)
+
+    statuses = current_tenancies.values("status").annotate(total=Count("id"))
+    status_dict: dict[str, int] = {s["status"]: s["totals"] for s in statuses}
+
+    current_tenancies_count = current_tenancies.count()
+    previous_tenancies_count = tenancy_during(previous_term).count()
+
+    totals = current_tenancies.aggregate(
+        total_expected=Sum("total_due"),
     )
-    uptake = tenancies.filter(semester=s).count() - tenancies.filter(semester=previous_semester).count()
     return {
-        "cleared": [s["tenants"] for s in statuses if s["status"] == "cleared"][0],
-        "not_cleared": [s["tenants"] for s in statuses if s["status"] == "not_cleared"][0],
+        **status_dict,
+        "duration": duration,
         "actual_expected": totals["total_expected"] or Decimal(0),
-        "total_collected": totals["total_collected"] or Decimal(0),
-        "uptake_from_previous_semester": uptake,
+        "uptake": (current_tenancies_count - previous_tenancies_count)/previous_tenancies_count
     }
 
-current_tenant_prefetch = lambda: Prefetch("tenancy_set", tenancy_for_semester(), to_attr="_current_tenant")
+def get_current_tenant_prefetch() -> Prefetch:
+    r = DateRange.for_month(timezone.now().date())
+    return Prefetch("tenancy_set", tenancy_during(r) , to_attr="_current_tenant")
