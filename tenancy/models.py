@@ -1,4 +1,5 @@
 from typing import TYPE_CHECKING
+from decimal import Decimal
 from datetime import timedelta
 from django.db import models
 from django.utils import timezone
@@ -11,10 +12,11 @@ if TYPE_CHECKING:
     from django.db.models import QuerySet
 
 
-GRACE_PERIOD = timedelta(weeks=2)
+GRACE_PERIOD = timedelta(weeks=1)
 DEFAULT_RESERVATION_DURATION = timedelta(days=2)
 MOVING_WINDOW = timedelta(weeks=2)
 MAX_RESERVATIONS_PER_USER = 2
+
 
 def get_default_reservation_expiry_date():
     return timezone.now().date() + DEFAULT_RESERVATION_DURATION
@@ -51,13 +53,12 @@ class Tenancy(BaseModel):
     start_date = models.DateField(null=False, blank=False)
     end_date = models.DateField(null=False, blank=False)
     total_due = models.DecimalField(decimal_places=2, max_digits=10)
-    total_paid = models.DecimalField(decimal_places=2, max_digits=10)
     status = models.CharField(max_length=20, choices=TenancyStatus.choices, default=TenancyStatus.PENDING)
     reservation_expiration = models.DateField(null=False, blank=False, default=get_default_reservation_expiry_date)
 
     user_id: int
     apartment_id: int
-    payment_records: "QuerySet[Payment]"
+    payments: "QuerySet[Payment]"
 
     def __str__(self) -> str:
         return f"user:{self.user_id} - tenancy:{self.pk}"
@@ -69,9 +70,23 @@ class Tenancy(BaseModel):
         return self.start_date <= now <= self.end_date
 
     @property
-    def duration_months(
-        self,
-    ) -> int:
+    def total_paid(self) -> Decimal:
+        """
+        Usually 1 payment per user, easier to calculate.
+        """
+
+        from payments.models import Payment
+
+        amount = Decimal(0)
+        for payment in self.payments.all():
+            amt = payment.amount
+            t_type = payment.transaction_type
+            debit = Payment.TransactionChoices.DEBIT
+            amount = amount + amt if t_type == debit else amount - amt
+        return amount
+
+    @property
+    def duration_months(self) -> int:
         """
         Calculate the duration of the tenancy in months
         This calculation relies on the fact that all tenancies begin on the first day of the month and last day of the month.
