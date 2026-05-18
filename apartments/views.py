@@ -4,9 +4,9 @@ from rest_framework.request import Request
 from rest_framework import serializers
 from rest_framework import status
 from common.views import BaseAPIView
+from common.period import DateRange
 from common.permissions import check_perms
 from common.pagination import get_paginated_response
-from semesters.selectors import semester_current
 from apartments import selectors, services, serializer as sc
 from structlog import get_logger
 
@@ -91,17 +91,23 @@ class ApartmentDetailUpdateDeleteView(BaseAPIView):
 class ApartmentOverviewView(BaseAPIView):
 
     class FilterSerializer(serializers.Serializer):
-        from semesters.models import Semester
-        semester = serializers.PrimaryKeyRelatedField(queryset=Semester.objects.all())
+        start_date = serializers.DateField()
+        end_date = serializers.DateField()
 
     permission_classes = [IsAuthenticated]
     filter_class = FilterSerializer
     
     def get(self, request: Request):
+        from django.utils import timezone
         check_perms(request.user, "apartments.view_overview")
-        query_filter = self.validate_filter(data=request.query_params)
-        semester = query_filter.get("semester") or semester_current()
-        overview = selectors.apartment_overview(semester)
+        filter = self.validate_filter(data=request.query_params)
+        try:
+            s = filter["start_date"]
+            e = filter["end_date"]
+            r = DateRange(s, e)
+        except (KeyError, ValueError):
+            r = DateRange.for_month(timezone.now().date())
+        overview = selectors.apartment_overview(r)
 
         serializer = sc.ApartmentOverviewSerializer(instance=overview)
         return Response(
