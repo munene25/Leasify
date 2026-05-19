@@ -27,8 +27,8 @@ def tenancy_create(
     start_date: date,
     duration_months: int,
     reservation_duration: timedelta = DEFAULT_RESERVATION_DURATION,
-    status: Tenancy.TenancyStatus = Tenancy.TenancyStatus.PENDING,
-    total_due: Decimal | None = None,
+    status: Tenancy.Status = Tenancy.Status.PENDING,
+    rent_snapshot: Decimal | None = None,
 ) -> Tenancy:
     """
     Create a tenancy record for a user, apartment, and lease period.
@@ -43,7 +43,6 @@ def tenancy_create(
     :param total_due: The total amount due for the tenancy. If not provided, it will be calculated based on the apartment rent and lease duration.
     :return: The created tenancy record
     """
-    from django.utils import timezone
 
     # Immediately check if the user has exceeded the maximum number of reservations before doing any further processing.
     validate_max_number_of_reservations(user.pk)
@@ -56,19 +55,16 @@ def tenancy_create(
     r = DateRange.compute_lease_window(start_date, duration_months)
 
     # Validate the lease period and apartment availability before creating the tenancy record.
-    validate_lease_period(apartment_id=apartment.pk, start_date=r.start_date, end_date=r.end_date)
-
-    # calculate total due if not provided.
-    total_due = total_due or (apartment.rent * duration_months).quantize(Decimal("0.01"))
+    validate_lease_period(apartment_id=apartment.pk, date_range=r)
 
     tenancy = Tenancy(
         user=user,
         apartment=apartment,
         start_date=r.start_date,
         end_date=r.end_date,
-        total_due=total_due,
+        rent_snapshot=rent_snapshot or apartment.rent,
         status=status,
-        reservation_expiration=timezone.now().date() + reservation_duration,
+        reservation_expiration=r.start_date + reservation_duration,
     )
 
     tenancy.full_clean()
@@ -104,7 +100,8 @@ def tenancy_update(
     :return: The updated tenancy record
     """
 
-    update_fields = []
+    update_fields: list[str] = []
+    r = DateRange(tenancy.start_date, tenancy.end_date)
     if apartment and apartment != tenancy.apartment:
         apartment_obj = apartment_lock(apartment.pk)
         moving_window = tenancy.start_date + MOVING_WINDOW
@@ -117,19 +114,17 @@ def tenancy_update(
         apartment_obj = tenancy.apartment
 
     if lease_extension_months:
-        r = DateRange(tenancy.start_date, tenancy.end_date)
-        extended = r.shift_months(0, lease_extension_months)
+        r = r.shift_months(0, lease_extension_months)
         # No need to validate preiod validity as the extension can only be positive and we assume the existing end_date is valid.
-        tenancy.end_date = extended.end_date
+        tenancy.end_date = r.end_date
         update_fields.append("end_date")
-    else:
-        end_date = tenancy.end_date
+
 
     # short circuit if there are no changes to be made
     if not update_fields:
         return tenancy
 
-    validate_lease_period(apartment_id=apartment_obj.pk, start_date=tenancy.start_date, end_date=end_date, exclude_tenancy_id=tenancy.pk)
+    validate_lease_period(apartment_id=apartment_obj.pk, date_range=r, exclude_tenancy_id=tenancy.pk)
     tenancy.full_clean()
     tenancy.save(update_fields=update_fields)
     logger.info("tenancy_updated", tenancy_id=tenancy.pk, fields=update_fields)
@@ -156,12 +151,15 @@ def tenancy_extend_reservation(tenancy: Tenancy, reservation_extension: timedelt
 @transaction.atomic
 def tenancy_terminate(tenancy: Tenancy, termination_date: date | None = None) -> None:
     """
-    Delete tenant record and credit all the payments
-    First we need to change it to expired
+    Delete tenant record and credit all the payments.
+    Change to expired and set end date.
+    
+    :param termination_date: The date the tenancy ends, defaults to today's date.
+    :param tenancy: The tenancy instance to terminate.
+    :return: None
     """
-    from django.db.models import Sum, Q
 
-    tenancy.status = Tenancy.TenancyStatus.TERMINATED
+    tenancy.status = Tenancy.Status.TERMINATED
     tenancy.end_date = termination_date or timezone.now().date()
     tenancy.save(update_fields=["status", "end_date"])
 
@@ -170,26 +168,3 @@ def tenancy_terminate(tenancy: Tenancy, termination_date: date | None = None) ->
         tenancy_id=tenancy.pk,
         terminated_at=str(termination_date)
     )
-
-# @transaction.atomic
-# def tenancy_update_balance(payment: "Payment") -> Tenancy:
-#     """
-#     Updates the total amount paid for the tenant once payment status changes to completed.
-#     At this point, it does not make sense to raise an error if payment amount exceeds rent since payment is already accepted.
-    
-#     :param payment: The confirmed payment instance
-#     :type payment: Payment
-#     :return: the updated tenant object
-#     :rtype: Tenancy
-#     """
-
-#     tenancy = tenancy_lock(payment.tenancy_id)
-#     if payment.transaction_type == Payment.TransactionChoices.DEBIT:
-#         tenancy.total_paid += payment.amount
-#     else:
-#         tenancy.total_paid -= payment.amount
-    
-#     tenancy.save(update_fields=["total_paid"])
-
-#     logger.info("tenant_balance_updated", tenancy_id=tenancy.pk, payment=payment.ref_no, amount_due=int(tenancy.total_due - tenancy.total_paid))
-#     return tenancy
