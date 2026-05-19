@@ -1,12 +1,13 @@
 from typing import Any, TYPE_CHECKING
 from django.db import models
 from common.domain import FilteringPolicy
-from apartments.models import Apartment
-from common.helpers import raise_not_found
-from users.models import User
-from tenancy.selectors import tenancy_recent
 from common.period import DateRange
-# wrapper to raise not found for each id
+from common.helpers import raise_not_found
+from apartments.models import Apartment
+
+if TYPE_CHECKING:
+    from users.models import User
+
 apartment_not_found = raise_not_found("apartment_id", "Apartment does not exist")
 
 
@@ -16,8 +17,27 @@ class ApartmentFilterPolicy(FilteringPolicy):
     SUPERUSER = models.Q()
     MANAGER = models.Q()
     CARETAKER = models.Q()
-    TENANT = lambda user: models.Q(rentable=True) | models.Q(pk=getattr(tenancy_recent(user), "apartment_id", None))
-    REGULAR = models.Q(rentable=True)
+    TENANT = lambda user: get_listable_q() | apartment_recent_for(user)
+    REGULAR = lambda user: get_listable_q()
+
+
+def get_listable_q(*args) -> models.Q:
+    """Needed to add *args to allow calling it with user"""
+    from django.utils import timezone
+    from tenancy.models import Tenancy
+
+    r = DateRange.with_grace_period(timezone.now().date())
+    return ~models.Q(
+        tenancy__start_date__lte=r.end_date,
+        tenancy__end_date__gte=r.start_date,
+        tenancy__status__in=[Tenancy.Status.ACTIVE, Tenancy.Status.PENDING],
+    )
+
+def apartment_recent_for(user: "User") -> models.Q:
+    from tenancy.selectors import tenancy_recent
+
+    apartment_id = getattr(tenancy_recent(user), "apartment_id", None)
+    return models.Q(pk=apartment_id)
 
 
 def get_base_qs() -> models.QuerySet[Apartment]:
@@ -30,7 +50,7 @@ def get_base_qs() -> models.QuerySet[Apartment]:
     return Apartment.objects.prefetch_related(get_current_tenant_prefetch())
 
 
-def apartment_list_for(*, user: User, filters: dict[str, Any] | None = None):
+def apartment_list_for(*, user: "User", filters: dict[str, Any] | None = None):
     """
     Fetches apartment list visible for the requesting user.
     filters based on fields: search and rentable.
@@ -53,10 +73,7 @@ def apartment_list_for(*, user: User, filters: dict[str, Any] | None = None):
         def search_fields(self, queryset, name, value):
             query = models.Q(block__icontains=value)
             if value.isdigit():
-                try:
-                    query |= models.Q(unit_number=int(value)) | models.Q(rent=Decimal(value))
-                except ValueError:
-                    pass
+                query |= models.Q(unit_number=int(value)) | models.Q(rent=Decimal(value))
             return queryset.filter(query)
 
     a_filters = ApartmentFilterPolicy.for_user(user)
@@ -70,7 +87,6 @@ def apartment_overview(r: DateRange):
     total, occupied, and vacant counts.
     """
 
-
     apartments = Apartment.objects.all()
     aggregates = apartments.aggregate(
         models.Avg("rent"),
@@ -80,7 +96,11 @@ def apartment_overview(r: DateRange):
     )
     total_apartments = apartments.count()
     rentable = apartments.filter(rentable=True).count()
-    popularity = apartments.annotate(tenancies_count=models.Count("tenancy",)).order_by("-tenancies_count")
+    popularity = apartments.annotate(
+        tenancies_count=models.Count(
+            "tenancy",
+        )
+    ).order_by("-tenancies_count")
     occupied = apartments.filter(tenancy__start_date__lte=r.start_date, tenancy__end_date__gte=r.end_date).count()
 
     return {
@@ -97,10 +117,11 @@ def apartment_overview(r: DateRange):
 
 
 @apartment_not_found
-def apartment_get_for(*, user: User, apartment_id: int):
+def apartment_get_for(*, user: "User", apartment_id: int):
     """Filter the apartment based on the type of user first before fetch"""
     a_filters = ApartmentFilterPolicy.for_user(user)
     return get_base_qs().filter(a_filters).get(pk=apartment_id)
+
 
 @apartment_not_found
 def apartment_lock(apartment_id: int) -> Apartment:
