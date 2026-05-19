@@ -16,7 +16,7 @@ class TenancyListCreateView(BaseAPIView):
     class FilterClass(serializers.Serializer):
         period = serializers.CharField()
         search = serializers.CharField()
-        cleared = serializers.BooleanField()
+        status = serializers.CharField()
 
     permission_classes = [IsAuthenticated]
     serializer_class = sc.TenancyCreateSerializer
@@ -57,7 +57,7 @@ class TenancyDetailUpdateDestroyView(BaseAPIView):
     def delete(self, request, tenancy_id: int) -> Response:
         check_perms(request.user, "tenancy.delete_tenancy")
         selected = sl.tenancy_get_for(request.user , tenancy_id)
-        sr.tenancy_delete(selected)
+        sr.tenancy_terminate(selected)
         return Response(data={"message": "Tenancy Deleted"}, status=status.HTTP_204_NO_CONTENT)
 
 class TenancyOverviewView(BaseAPIView):
