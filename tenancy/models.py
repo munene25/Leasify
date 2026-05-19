@@ -2,7 +2,7 @@ from typing import TYPE_CHECKING
 from decimal import Decimal
 from datetime import timedelta
 from django.db import models
-from django.utils import timezone
+from common.period import today
 from users.models import User
 from common.models import BaseModel
 from apartments.models import Apartment
@@ -15,11 +15,10 @@ if TYPE_CHECKING:
 GRACE_PERIOD = timedelta(weeks=1)
 DEFAULT_RESERVATION_DURATION = timedelta(days=2)
 MOVING_WINDOW = timedelta(weeks=2)
-MAX_RESERVATIONS_PER_USER = 2
-
+MAX_RESERVATIONS_PER_USER = 2 
 
 def get_default_reservation_expiry_date():
-    return timezone.now().date() + DEFAULT_RESERVATION_DURATION
+    return today() + DEFAULT_RESERVATION_DURATION
 
 
 class Tenancy(BaseModel):
@@ -27,7 +26,7 @@ class Tenancy(BaseModel):
     Lease-based tenancy model. Each tenancy represents a user's lease for an apartment
     within a specific time period. Tenancies are no longer tied to semesters.
 
-    We track who rented when the tenancy existed, where the tenant resided and at what agreed amount.
+    We track who rented when the tenancy existed, where the tenant resided and at what agreed rent.
     If rent is increased for an apartment, historical tenancies which relied on the apartment.rent
     fail to portray the correct payment status. This is why we store agreed rent on the tenancy.
     """
@@ -42,7 +41,7 @@ class Tenancy(BaseModel):
             ("tenancy_extend_reservation_expiration", "Allow pending tenants to extend their stay"),
         )
 
-    class TenancyStatus(models.TextChoices):
+    class Status(models.TextChoices):
         PENDING = "pending", "Tenant has made a reservation but has not paid yet"
         ACTIVE = "active", "Tenant has paid and the tenancy is active"
         EXPIRED = "expired", "Reservation has expired without payment"
@@ -52,8 +51,8 @@ class Tenancy(BaseModel):
     apartment = models.ForeignKey(Apartment, on_delete=models.PROTECT, null=False, blank=False)
     start_date = models.DateField(null=False, blank=False)
     end_date = models.DateField(null=False, blank=False)
-    total_due = models.DecimalField(decimal_places=2, max_digits=10)
-    status = models.CharField(max_length=20, choices=TenancyStatus.choices, default=TenancyStatus.PENDING)
+    rent_snapshot = models.DecimalField(decimal_places=2, max_digits=10)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
     reservation_expiration = models.DateField(null=False, blank=False, default=get_default_reservation_expiry_date)
 
     user_id: int
@@ -64,26 +63,24 @@ class Tenancy(BaseModel):
         return f"user:{self.user_id} - tenancy:{self.pk}"
 
     @property
-    def active(self) -> bool:
-        """Check if the tenancy is currently active"""
-        now = timezone.now().date()
-        return self.start_date <= now <= self.end_date
+    def is_current(self) -> bool:
+        """Check if the tenancy is current"""
+        return self.start_date <= today() <= self.end_date
+    
+    @property
+    def total_due(self) -> Decimal:
+        return (self.rent_snapshot * self.duration_months).quantize(Decimal("0.01"))
 
     @property
     def total_paid(self) -> Decimal:
-        """
-        Usually 1 payment per user, easier to calculate.
-        """
-
+        """Calculate the total amount of money due from the tenant based on their duration of stay"""
         from payments.models import Payment
 
-        amount = Decimal(0)
-        for payment in self.payments.all():
-            amt = payment.amount
-            t_type = payment.transaction_type
-            debit = Payment.TransactionChoices.DEBIT
-            amount = amount + amt if t_type == debit else amount - amt
-        return amount
+        totals = self.payments.aggregate(
+            debits=models.Sum("amount", filter=models.Q(transaction_type=Payment.TransactionChoices.DEBIT)),
+            credits=models.Sum("amount", filter=models.Q(transaction_type=Payment.TransactionChoices.CREDIT)),
+        )
+        return (totals["debits"] or Decimal(0)) - (totals["credits"] or Decimal(0))
 
     @property
     def duration_months(self) -> int:
@@ -96,8 +93,3 @@ class Tenancy(BaseModel):
         from dateutil.relativedelta import relativedelta
 
         return relativedelta(self.end_date, self.start_date).months + 1
-
-    @property
-    def has_ended(self) -> bool:
-        """Check if the tenancy has ended"""
-        return self.end_date < timezone.now().date()
