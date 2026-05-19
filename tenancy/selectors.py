@@ -67,7 +67,7 @@ def tenancy_list_for(user: "User", filters: QueryDict | dict[str, Any]) -> Query
             except (ValueError, KeyError):
                 raise ValidationError("Cannot parse date ranges. Format is 'period=start=YYYY-MMM,end=YYYY-MMM'")
 
-            return queryset.filter(end_date__gte=r.start, semester__start_date__lte=r.end)
+            return queryset.filter(end_date__gte=r.start, start_date__lte=r.end)
 
     t_filters = TenancyFilterPolicy.for_user(user)
     tenancies = BASE_QS.select_related("semester").filter(t_filters)
