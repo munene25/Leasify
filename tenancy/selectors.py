@@ -60,16 +60,14 @@ def tenancy_list_for(user: "User", filters: QueryDict | dict[str, Any]) -> Query
 
         def filter_period(self, queryset, name, value: str):
             """Example filters: period=from=2000-MAY,to=2001-JUN"""
-            from common.helpers import parse_date_range
+            from common.period import PartialRange
             
             try:
-                range = parse_date_range(value)
-                start = range["start"]
-                stop = range["stop"]
-            except (ValueError, IndexError, KeyError):
-                raise ValidationError("Cannot parse date ranges. Format is 'period=start=YYYY-MMM,stop=YYYY-MMM'")
+                r = PartialRange.from_string(value)
+            except (ValueError, KeyError):
+                raise ValidationError("Cannot parse date ranges. Format is 'period=start=YYYY-MMM,end=YYYY-MMM'")
 
-            return queryset.filter(end_date__gte=start, semester__start_date__lte=stop)
+            return queryset.filter(end_date__gte=r.start, semester__start_date__lte=r.end)
 
     t_filters = TenancyFilterPolicy.for_user(user)
     tenancies = BASE_QS.select_related("semester").filter(t_filters)
