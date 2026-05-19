@@ -1,5 +1,4 @@
 from typing import Any, TYPE_CHECKING
-from datetime import date
 from django.http.request import QueryDict
 from django.db.models import Q, F, QuerySet, Prefetch
 from rest_framework.exceptions import ValidationError
@@ -104,7 +103,7 @@ def tenancy_recent(user: "User") -> Tenancy | None:
 
 def tenancy_during(range: DateRange) -> QuerySet[Tenancy]:
     """
-    Fetch tenancies which intersect a ceratin time
+    Fetch tenancies which intersect a ceratin time.
     """
 
     if not range:
