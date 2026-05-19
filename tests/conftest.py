@@ -83,7 +83,12 @@ def fake():
 
     return Faker("en_KE")
 
-
+@pytest.fixture
+def today():
+    "Returns today's date"
+    from django.utils import timezone
+    
+    return timezone.now().date()
 # ------------------------------------------------------ Users  ------------------------------------------------------ #
 
 @pytest.fixture
@@ -260,8 +265,8 @@ def tenancy_factory(apartment_factory, user_factory) -> Factory[Tenancy]:
             start = overrides.get("start_date", date.today())
             duration_months = overrides.get("duration_months", 4)
             reservation_duration = overrides.get("reservation_duration", timedelta(days=2))
-            status = overrides.get("status", Tenancy.TenancyStatus.PENDING)
-            total_due = overrides.get("total_due", None)
+            status = overrides.get("status", Tenancy.Status.PENDING)
+            rent_snapshot = overrides.get("rent_snapshot", None)
             
             tenancy = tenancy_create(
                 user=user,
@@ -270,7 +275,7 @@ def tenancy_factory(apartment_factory, user_factory) -> Factory[Tenancy]:
                 duration_months=duration_months,
                 status=status,
                 reservation_duration=reservation_duration,
-                total_due=total_due
+                rent_snapshot=rent_snapshot
 
             )
             tenancies.append(tenancy)
