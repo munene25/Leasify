@@ -1,12 +1,9 @@
 import pytest
 import random
 from rest_framework.exceptions import ValidationError
-from apartments.services import apartment_create, apartment_delete, apartment_update
+from apartments.services import *
 from apartments.models import Apartment
 from decimal import Decimal
-from tenancy.models import Tenancy
-
-
 
 class TestApartmentCreateService:
     data = {
