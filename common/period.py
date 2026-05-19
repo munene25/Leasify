@@ -2,8 +2,6 @@ from dataclasses import dataclass, field
 from datetime import date
 from dateutil.relativedelta import relativedelta
 from calendar import monthrange
-from typing import Self
-
 
 def normalize_dates(*, start: date, end: date) -> tuple[date, date]:
     """Normalize start and end dates to 1st of the month and last day of the month"""
@@ -94,12 +92,10 @@ class PartialRange:
         Parse a period range from string into dates.
         Periods are defined by start and end and accepts either.
         
-        :param range: the range represented in string format e.g. "start=2000-MAY,end=2001-JUN"
+        :param range: the range represented in string format"
         :param sep: the seperator used to seperate the two date ranges
         """
-
-        from calendar import monthrange
-        #Example range: start=2000-MAY,end=2001-JUN
+        #Example range: start=2000-MAY&end=2001-JUN
 
         MONTHS = {
             "JAN": 1, "FEB": 2, "MAR": 3, "APR": 4,
@@ -117,5 +113,6 @@ class PartialRange:
             year = int(year_str)
             month = MONTHS[month_str]
             day = 1 if edge == "start" else monthrange(year, month)[1]
-            setattr(r, edge, date(year, month, day))
+            if edge in {"start", "end"}:
+                setattr(r, edge, date(year, month, day))
         return r
