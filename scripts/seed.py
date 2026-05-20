@@ -65,7 +65,7 @@ def run():
         NO_OF_APTS = 30
         apartments = [
             apartment_create(
-                block=random.choice(Apartment.ApartmentChoices.values),
+                block=random.choice(Apartment.Block.values),
                 unit_number=int(f.building_unit_number()),
                 rent=Decimal(f.numerify("1#000")),
             )
@@ -79,7 +79,7 @@ def run():
             user=users[i],
             apartment=apartments[i],
             start_date=timezone.now().date(),
-            duration_months=random.randint(1, 3)
+            duration_months=random.randint(1, 4),
         )
         for i in ITERATIONS
     ]
