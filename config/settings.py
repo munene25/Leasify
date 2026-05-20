@@ -57,6 +57,7 @@ INSTALLED_APPS = [
     "payments",
     "apartments",
     "tenancy",
+    "billing",
 ]
 
 MIDDLEWARE = [
