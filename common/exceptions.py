@@ -53,7 +53,7 @@ class MaxReservationsExceededError(APIException):
     Raised when the number of reservations for an apartment in the past 2 weeks has exceeded the maximum allowed.
     """
     status_code = status.HTTP_409_CONFLICT
-    default_detail = "Maximum number of reservations for user has been exceeded. Please try again later."
+    default_detail = "Maximum number of reservations for user has been exceeded for the month."
     default_code = "max_reservations_exceeded"
 
 class OverpaymentError(APIException):
