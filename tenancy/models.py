@@ -1,5 +1,3 @@
-from typing import TYPE_CHECKING
-from decimal import Decimal
 from datetime import timedelta
 from django.db import models
 from common.period import today
@@ -7,17 +5,11 @@ from users.models import User
 from common.models import BaseModel
 from apartments.models import Apartment
 
-if TYPE_CHECKING:
-    from payments.models import Payment
-    from django.db.models import QuerySet
-
-
 GRACE_PERIOD = timedelta(weeks=1)
 DEFAULT_RESERVATION_DURATION = timedelta(days=2)
-MOVING_WINDOW = timedelta(weeks=2)
-MAX_RESERVATIONS_PER_USER = 2 
+MAX_RESERVATIONS_PER_USER = 2
 
-def get_default_reservation_expiry_date():
+def default_expiry():
     return today() + DEFAULT_RESERVATION_DURATION
 
 
@@ -33,8 +25,19 @@ class Tenancy(BaseModel):
 
     class Meta:
         ordering = ["-created_at"]
-        indexes = [
-            models.Index(fields=["apartment", "start_date", "end_date"]),
+        constraints = [
+            # only one active/pending tenancy per apartment at a time
+            models.UniqueConstraint(
+                fields=["apartment"],
+                condition=models.Q(status__in=["active", "pending"]),
+                name="unique_active_pending_per_apartment"
+            ),
+            # only one active/pending tenancy per user at a time
+            models.UniqueConstraint(
+                fields=["user"],
+                condition=models.Q(status__in=["active", "pending"]),
+                name="unique_active_pending_per_user"
+            ),
         ]
         permissions = (
             ("tenancy_extend_lease", "Allow tenancy lease time to be extended"),
@@ -44,52 +47,18 @@ class Tenancy(BaseModel):
     class Status(models.TextChoices):
         PENDING = "pending", "Tenant has made a reservation but has not paid yet"
         ACTIVE = "active", "Tenant has paid and the tenancy is active"
-        EXPIRED = "expired", "Reservation has expired without payment"
-        TERMINATED = "terminated", "Tenancy has been explicitly terminated"
+        TERMINATED = "terminated", "Tenancy has been expired"
 
     user = models.ForeignKey(User, on_delete=models.PROTECT, null=False, blank=False)
     apartment = models.ForeignKey(Apartment, on_delete=models.PROTECT, null=False, blank=False)
-    start_date = models.DateField(null=False, blank=False)
-    end_date = models.DateField(null=False, blank=False)
-    rent_snapshot = models.DecimalField(decimal_places=2, max_digits=10)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
-    reservation_expiration = models.DateField(null=False, blank=False, default=get_default_reservation_expiry_date)
+    reservation_expriry = models.DateField(blank=False, null=False, default=default_expiry)
 
     user_id: int
     apartment_id: int
-    payments: "QuerySet[Payment]"
-
+    
     def __str__(self) -> str:
         return f"user:{self.user_id} - tenancy:{self.pk}"
 
-    @property
-    def is_current(self) -> bool:
-        """Check if the tenancy is current"""
-        return self.start_date <= today() <= self.end_date
     
-    @property
-    def total_due(self) -> Decimal:
-        return (self.rent_snapshot * self.duration_months).quantize(Decimal("0.01"))
 
-    @property
-    def total_paid(self) -> Decimal:
-        """Calculate the total amount of money due from the tenant based on their duration of stay"""
-        from payments.models import Payment
-
-        totals = self.payments.aggregate(
-            debits=models.Sum("amount", filter=models.Q(transaction_type=Payment.TransactionChoices.DEBIT)),
-            credits=models.Sum("amount", filter=models.Q(transaction_type=Payment.TransactionChoices.CREDIT)),
-        )
-        return (totals["debits"] or Decimal(0)) - (totals["credits"] or Decimal(0))
-
-    @property
-    def duration_months(self) -> int:
-        """
-        Calculate the duration of the tenancy in months
-        This calculation relies on the fact that all tenancies begin on the first day of the month and last day of the month.
-        Enforced at the service layer when creating tenancies.
-        """
-
-        from dateutil.relativedelta import relativedelta
-
-        return relativedelta(self.end_date, self.start_date).months + 1
