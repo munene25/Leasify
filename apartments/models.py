@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from django.db import models
 from common.models import BaseModel
-from tenancy.selectors import occupied
+
 
 
 if TYPE_CHECKING:
@@ -48,6 +48,7 @@ class Apartment(BaseModel):
     
     @property
     def current_tenant(self) -> Tenancy | None:
+        from tenancy.selectors import occupied
         """
         Return the current tenant if they exist.
         """
