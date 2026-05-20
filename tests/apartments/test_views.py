@@ -174,7 +174,14 @@ class TestApartmentListCreateView:
 
     @pytest.mark.parametrize(
         "_client,expected_count",
-        [("super_user_client", 10), ("manager_client", 10), ("caretaker_client", 10), ("tenant_client", 5), ("user_client", 4), ("client", 4)],
+        [
+            ("super_user_client", 10),
+            ("manager_client", 10),
+            ("caretaker_client", 10),
+            ("tenant_client", 5),
+            ("user_client", 4),
+            ("client", 4),
+        ],
     )
     def test_apatment_list_based_on_user_roles(
         self,
@@ -265,7 +272,7 @@ class TestApartmentListCreateView:
 
 class TestApartmentDetailUpdateDeleteView:
 
-    patch_data = {"block": Apartment.ApartmentChoices.OLD, "unit_number": 4, "rentable": False, "rent": 30_000}
+    patch_data = {"block": Apartment.Block.OLD, "unit_number": 4, "rentable": False, "rent": 30_000}
 
     @staticmethod
     def path(apt):

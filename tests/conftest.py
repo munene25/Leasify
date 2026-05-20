@@ -13,8 +13,8 @@ from apartments.models import Apartment
 from tenancy.models import Tenancy
 from datetime import date, timedelta
 
-
 # ------------------------------------------------------ Globals  ------------------------------------------------------ #
+
 
 @pytest.fixture(scope="session")
 def django_db_setup(django_db_setup, django_db_blocker):
@@ -83,13 +83,17 @@ def fake():
 
     return Faker("en_KE")
 
+
 @pytest.fixture
 def today():
     "Returns today's date"
     from django.utils import timezone
-    
+
     return timezone.now().date()
+
+
 # ------------------------------------------------------ Users  ------------------------------------------------------ #
+
 
 @pytest.fixture
 def user_factory(fake, phone_no) -> Factory[User]:
@@ -187,6 +191,7 @@ def client() -> APIClient:
 def csrf_client() -> APIClient:
     return APIClient(enforce_csrf_checks=True)
 
+
 @pytest.fixture
 def user_client(user) -> APIClient:
     client = APIClient()
@@ -224,6 +229,7 @@ def super_user_client(super_user) -> APIClient:
 
 # ------------------------------------------------ Apartments  ------------------------------------------------
 
+
 @pytest.fixture
 def apartment_factory(fake) -> Factory[Apartment]:
     """Returns a callable for generating apartments"""
@@ -235,14 +241,16 @@ def apartment_factory(fake) -> Factory[Apartment]:
         apartments: list[Apartment] = []
         for i in range(quantity):
             apt = apartment_create(
-                block=overrides.get("block", random.choice(Apartment.ApartmentChoices.values)),
-                unit_number=(i+1) if ordered else overrides.get("unit_number", int(fake.building_number())),
+                block=overrides.get("block", random.choice(Apartment.Block.values)),
+                unit_number=(i + 1) if ordered else overrides.get("unit_number", int(fake.building_number())),
                 rent=overrides.get("rent", Decimal(fake.numerify("1#000"))),
-                rentable=overrides.get("rentable", random.choice((True, False)))
+                rentable=overrides.get("rentable", random.choice((True, False))),
             )
             apartments.append(apt)
         return apartments
+
     return create
+
 
 @pytest.fixture
 def apartment(apartment_factory) -> Apartment:
@@ -254,12 +262,12 @@ def apartment(apartment_factory) -> Apartment:
 def tenancy_factory(apartment_factory, user_factory) -> Factory[Tenancy]:
     """Tenancy generator - creates lease-based tenancies"""
     from tenancy.services import tenancy_create
-    
+
     def create(quantity: int = 1, overrides: dict[str, typing.Any] = {}) -> list[Tenancy]:
         tenancies = []
         users = user_factory(quantity=quantity)
         apartments = apartment_factory(quantity=quantity)
-        
+
         for i, user in enumerate(users):
             apartment = apartments[i % len(apartments)]
             start = overrides.get("start_date", date.today())
@@ -267,7 +275,7 @@ def tenancy_factory(apartment_factory, user_factory) -> Factory[Tenancy]:
             reservation_duration = overrides.get("reservation_duration", timedelta(days=2))
             status = overrides.get("status", Tenancy.Status.PENDING)
             rent_snapshot = overrides.get("rent_snapshot", None)
-            
+
             tenancy = tenancy_create(
                 user=user,
                 apartment=apartment,
@@ -275,14 +283,14 @@ def tenancy_factory(apartment_factory, user_factory) -> Factory[Tenancy]:
                 duration_months=duration_months,
                 status=status,
                 reservation_duration=reservation_duration,
-                rent_snapshot=rent_snapshot
-
+                rent_snapshot=rent_snapshot,
             )
             tenancies.append(tenancy)
-        
+
         return tenancies
-    
+
     return create
+
 
 @pytest.fixture
 def tenancy(tenancy_factory) -> Tenancy:
