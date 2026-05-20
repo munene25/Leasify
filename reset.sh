@@ -3,7 +3,7 @@
 # Exit on error
 set -e
 
-APPS=("apartments" "payments" "tenancy" "users")
+APPS=("apartments" "payments" "tenancy" "users" "billing")
 
 echo "Cleaning pycache and migrations for project apps..."
 
