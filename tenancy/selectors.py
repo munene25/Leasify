@@ -89,5 +89,5 @@ def tenancy_get(tenancy_id: int) -> Tenancy:
 
 
 
-def current_tenant() -> Prefetch[Tenancy]:
+def current_tenant() -> Prefetch:
     return Prefetch("tenancy_set", Tenancy.objects.filter(status__in=[Tenancy.Status.ACTIVE]) , to_attr="_active_tenants")
