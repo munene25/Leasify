@@ -11,14 +11,14 @@ class ApartmentListSerializer(serializers.Serializer):
 
 
 class ApartmentCreateSerializer(serializers.Serializer):
-    block = serializers.ChoiceField(choices=Apartment.ApartmentChoices.values)
+    block = serializers.ChoiceField(choices=Apartment.Block.values)
     unit_number = serializers.IntegerField()
     rent = serializers.DecimalField(max_digits=10, decimal_places=2)
     rentable = serializers.BooleanField(required=False, default=True)
 
 
 class ApartmentUpdateSerializer(serializers.Serializer):
-    block = serializers.ChoiceField(choices=Apartment.ApartmentChoices.values)
+    block = serializers.ChoiceField(choices=Apartment.Block.values)
     unit_number = serializers.IntegerField()
     rent = serializers.DecimalField(max_digits=10, decimal_places=2)
     rentable = serializers.BooleanField()
