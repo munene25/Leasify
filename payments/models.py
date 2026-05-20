@@ -1,5 +1,5 @@
 from django.db import models
-from tenancy.models import Tenancy
+from billing.models import BillingPeriod
 from decimal import Decimal
 from common.models import BaseModel
 from common.fields import PhoneNumberModelField
@@ -10,10 +10,10 @@ class Payment(BaseModel):
         DEBIT = "debit", "Incoming Payments"
         CREDIT = "credit", "Outgoing Payments"
 
+    billing_period = models.ForeignKey(BillingPeriod, null=True, on_delete=models.SET_NULL, related_name="payments")
     ref_no = models.CharField(max_length=20, unique=True, editable=False)
     amount = models.DecimalField(decimal_places=2, max_digits=10, blank=False, null=False)
     transaction_type = models.CharField(null=False, max_length=10, choices=TransactionChoices.choices)
-    tenancy = models.ForeignKey(Tenancy, null=True, on_delete=models.SET_NULL, related_name="payments")
     phone_number = PhoneNumberModelField(null=False, blank=False)
     payee = models.CharField(max_length=30, blank=True)
     tenancy_id: int
