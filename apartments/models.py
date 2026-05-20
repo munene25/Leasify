@@ -2,6 +2,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from django.db import models
 from common.models import BaseModel
+from tenancy.selectors import occupied
 
 
 if TYPE_CHECKING:
@@ -21,11 +22,11 @@ class Apartment(BaseModel):
             ("view_overview", "Can view the apartments overview status for the semester"),
         )
     
-    class ApartmentChoices(models.TextChoices):
+    class Block(models.TextChoices):
         NEW = "NEW", "New Block"
         OLD = "OLD", "Old Block"
 
-    block = models.CharField(max_length=10, choices=ApartmentChoices.choices, blank=False, null=False)
+    block = models.CharField(max_length=10, choices=Block.choices, blank=False, null=False)
     unit_number = models.PositiveSmallIntegerField(blank=False, null=False)
     rent = models.DecimalField(decimal_places=2, max_digits=10, blank=False, null=False)
     rentable = models.BooleanField(
@@ -48,15 +49,17 @@ class Apartment(BaseModel):
     @property
     def current_tenant(self) -> Tenancy | None:
         """
-        ! REQUIRES CURRENT_TENANT_PREFETCH
         Return the current tenant if they exist.
         """
-        return next(iter(self._current_tenant), None)
+        current = getattr(self, "_current_tenant", None)
+
+        if not current:
+            return self.tenancy_set.filter(status__in=occupied).first()
+        return next(iter(current), None)
     
     @property
     def is_occupied(self) -> bool:
         """
-        ! REQUIRES CURRENT_TENANT_PREFETCH
         Whether or not the apartment is currently occupied.
         """
         return bool(self.current_tenant)
