@@ -4,6 +4,8 @@ from common.domain import FilteringPolicy
 from common.period import DateRange
 from common.helpers import raise_not_found
 from apartments.models import Apartment
+from tenancy.selectors import current_tenant, occupied
+from tenancy.models import Tenancy
 
 if TYPE_CHECKING:
     from users.models import User
@@ -17,27 +19,18 @@ class ApartmentFilterPolicy(FilteringPolicy):
     SUPERUSER = models.Q()
     MANAGER = models.Q()
     CARETAKER = models.Q()
-    TENANT = lambda user: get_listable_q() | apartment_recent_for(user)
-    REGULAR = lambda user: get_listable_q()
+    TENANT = lambda user: ~models.Q(tenancy__status_in=occupied) | models.Q(pk=apartment_recent_for(user))
+    REGULAR = ~models.Q(tenancy__status_in=occupied)
 
 
-def get_listable_q(*args) -> models.Q:
-    """Needed to add *args to allow calling it with user"""
-    from django.utils import timezone
-    from tenancy.models import Tenancy
+def apartment_recent_for(user: "User") -> models.Subquery:
 
-    r = DateRange.with_grace_period(timezone.now().date())
-    return ~models.Q(
-        tenancy__start_date__lte=r.end_date,
-        tenancy__end_date__gte=r.start_date,
-        tenancy__status__in=[Tenancy.Status.ACTIVE, Tenancy.Status.PENDING],
+    return models.Subquery(
+        Tenancy.objects.filter(
+            user_id=user.pk,
+            status__in=occupied
+        ).values("aparment_id")[:1]
     )
-
-def apartment_recent_for(user: "User") -> models.Q:
-    from tenancy.selectors import tenancy_recent
-
-    apartment_id = getattr(tenancy_recent(user), "apartment_id", None)
-    return models.Q(pk=apartment_id)
 
 
 def get_base_qs() -> models.QuerySet[Apartment]:
@@ -45,9 +38,8 @@ def get_base_qs() -> models.QuerySet[Apartment]:
     This is defined within a function to avoid prematurely evaluating the current_semester
     In essence it's important to tell at a glance whether the apartment is occupied or not.
     """
-    from tenancy.selectors import get_current_tenant_prefetch
 
-    return Apartment.objects.prefetch_related(get_current_tenant_prefetch())
+    return Apartment.objects.prefetch_related(current_tenant())
 
 
 def apartment_list_for(*, user: "User", filters: dict[str, Any] | None = None):
