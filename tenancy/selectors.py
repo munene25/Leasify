@@ -15,7 +15,7 @@ BASE_QS: QuerySet[Tenancy] = Tenancy.objects.select_related("user", "apartment")
 
 tenancy_not_found = raise_not_found("tenancy_id", "Tenancy does not exist.")
 
-
+occupied = [Tenancy.Status.ACTIVE, Tenancy.Status.PENDING]
 
 class TenancyFilterPolicy(FilteringPolicy):
     """
@@ -88,61 +88,6 @@ def tenancy_get(tenancy_id: int) -> Tenancy:
     return BASE_QS.get(pk=tenancy_id)
 
 
-def tenancy_recent(user: "User") -> Tenancy | None:
-    """
-    We want to get the most recent tenancy for a user.
-    This could be the user currently inhabiting the house.
-    Or was the previous active tenant of the house within the grace period.
-    This helps availing the current apartment to the active tenant in aparment filters.
-    """
 
-    range = DateRange.with_grace_period(timezone.now().date())
-
-    return tenancy_during(range).order_by("-start_date").filter(user_id=user.pk).first()
-
-
-def tenancy_during(range: DateRange) -> QuerySet[Tenancy]:
-    """
-    Fetch tenancies which intersect a ceratin time.
-    """
-
-    if not range:
-        now = timezone.now().date()
-        range = DateRange.get_month_date_range(now)
-
-    return BASE_QS.filter(start_date__lte=range.end_date, end_date__gte=range.start_date)
-
-
-def tenancy_overview(r: DateRange):
-    """
-    This selector provides an overview of the tenancies for a given duration, including:
-    - The number of tenants that are cleared and not cleared.
-    - The total expected rent and total collected rent for the period.
-    """
-    from django.db.models import Sum, Count
-    from decimal import Decimal
-
-    current_tenancies = tenancy_during(r)
-    duration = r.duration_months
-
-    previous_term = r.shift_months(-duration, -duration)
-
-    statuses = current_tenancies.values("status").annotate(total=Count("id"))
-    status_dict: dict[str, int] = {s["status"]: s["totals"] for s in statuses}
-
-    current_tenancies_count = current_tenancies.count()
-    previous_tenancies_count = tenancy_during(previous_term).count()
-
-    totals = current_tenancies.aggregate(
-        total_expected=Sum("total_due"),
-    )
-    return {
-        **status_dict,
-        "duration": duration,
-        "actual_expected": totals["total_expected"] or Decimal(0),
-        "uptake": (current_tenancies_count - previous_tenancies_count)/previous_tenancies_count
-    }
-
-def get_current_tenant_prefetch() -> Prefetch:
-    r = DateRange.for_month(timezone.now().date())
-    return Prefetch("tenancy_set", tenancy_during(r) , to_attr="_current_tenant")
+def current_tenant() -> Prefetch[Tenancy]:
+    return Prefetch("tenancy_set", Tenancy.objects.filter(status__in=[Tenancy.Status.ACTIVE]) , to_attr="_active_tenants")
