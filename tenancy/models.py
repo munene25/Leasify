@@ -1,3 +1,4 @@
+from typing import TYPE_CHECKING
 from datetime import timedelta
 from django.db import models
 from common.period import today
@@ -5,6 +6,9 @@ from users.models import User
 from common.models import BaseModel
 from apartments.models import Apartment
 from tenancy.choices import Status, TerminationReason
+
+if TYPE_CHECKING:
+    from billing.models import BillingPeriod
 
 GRACE_PERIOD = timedelta(weeks=1)
 DEFAULT_RESERVATION_DURATION = timedelta(days=2)
@@ -57,9 +61,27 @@ class Tenancy(BaseModel):
 
     user_id: int
     apartment_id: int
+    billings: models.QuerySet["BillingPeriod"]
     
     def __str__(self) -> str:
         return f"user:{self.user_id} - tenancy:{self.pk}"
 
     
+    @property
+    def is_continuing(self) -> bool:
+        """
+        This is very different from whether they can create a billing period.
+        Better not to bleed Billing period domain logic into tenancy.
+        """
 
+        return self.status in [Status.DEFAULTING, Status.ACTIVE]
+    
+    @property
+    def last_billing(self) -> "BillingPeriod | None":
+        return self.billings.order_by("-start_date").first()
+    
+    @property
+    def last_paid_billing(self) -> "BillingPeriod | None":
+        from billing.choices import BillingStatus
+
+        return self.billings.order_by("-start_date").filter(status=BillingStatus.PAID).first()
