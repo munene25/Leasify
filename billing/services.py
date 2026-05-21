@@ -31,7 +31,7 @@ def billing_period_initialize(*, tenancy: "Tenancy", date_r: DateRange) -> Billi
         tenancy=tenancy,
         start_date=date_r.start_date,
         end_date=date_r.end_date,
-        rent_snapshot=total_due,
+        total_due=total_due,
     )
     bp.full_clean()
     bp.save()
