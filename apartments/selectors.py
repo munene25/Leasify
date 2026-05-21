@@ -4,13 +4,20 @@ from common.domain import FilteringPolicy
 from common.period import DateRange
 from common.helpers import raise_not_found
 from apartments.models import Apartment
-from tenancy.selectors import current_tenant, occupied
+from tenancy.selectors import current_tenant
+from tenancy.choices import Status, active_reserved_defaulting
 from tenancy.models import Tenancy
 
 if TYPE_CHECKING:
     from users.models import User
 
 apartment_not_found = raise_not_found("apartment_id", "Apartment does not exist")
+
+aptartments_listable: models.Q = (
+    models.Q(tenancy__isnull=True)
+    | models.Q(rentable=True) 
+    | models.Q(tenancy__status__in=Status.TERMINATED)
+)
 
 
 class ApartmentFilterPolicy(FilteringPolicy):
@@ -19,17 +26,14 @@ class ApartmentFilterPolicy(FilteringPolicy):
     SUPERUSER = models.Q()
     MANAGER = models.Q()
     CARETAKER = models.Q()
-    TENANT = lambda user: ~models.Q(tenancy__status_in=occupied) | models.Q(pk=apartment_recent_for(user))
-    REGULAR = ~models.Q(tenancy__status_in=occupied)
+    TENANT = lambda user: aptartments_listable | models.Q(pk=apartment_recent_for(user))
+    REGULAR = aptartments_listable
 
 
 def apartment_recent_for(user: "User") -> models.Subquery:
 
     return models.Subquery(
-        Tenancy.objects.filter(
-            user_id=user.pk,
-            status__in=occupied
-        ).values("aparment_id")[:1]
+        Tenancy.objects.filter(user_id=user.pk, status__in=active_reserved_defaulting).values("aparment_id")[:1]
     )
 
 
