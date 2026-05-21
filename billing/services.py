@@ -128,7 +128,7 @@ def billing_period_confirm_payment(billing: BillingPeriod, payment: "Payment") -
     logger.info(
         "billing_period_paid",
         tenancy_id=locked.tenancy_id,
-        payment_id=payment.pk,
+        payment_id=payment.ref_no,
         billing_id=locked.pk,
         billing_period=str(locked),
 
