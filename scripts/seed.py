@@ -1,15 +1,15 @@
 from decimal import Decimal
 from users.models import User
 from apartments.models import Apartment
-from datetime import timedelta
 import random
 from tenancy.services import tenancy_create
 from apartments.services import apartment_create
-from payments.services import PaymentCreateService
+from payments.services import payment_initiate
 from users.services import user_account_create
 from scripts.permissions import setup_roles_and_permissions
 from faker import Faker
 from django.core.management import call_command
+from payments.choices import TransactionType, PaymentInitiator, PaymentStatus
 from django.utils import timezone
 
 ITERATIONS = list(range(20))
@@ -85,15 +85,19 @@ def run():
     ]
 
     # ============================================= Payments =============================================
-    for num in ITERATIONS:
-        for _ in range(1, 4):
-            try:
-                PaymentCreateService(
-                    amount=random.randint(2, 7) * 1000,
-                    transaction_type="debit",
-                    tenancy_id=num,
-                    initiator="tenant",
-                    phone_number=users[num].account.phone_number,  # type: ignore
-                ).create()
-            except:
-                pass
+    from billing.services import billing_period_confirm_payment
+    for t in tenancies:
+        billing = t.last_billing
+        if not billing:
+            raise ValueError("billing not created")
+        p = payment_initiate(
+            billing= billing,
+            transaction_type=TransactionType.DEBIT,
+            status=PaymentStatus.CONFIRMED,
+            initiator=PaymentInitiator.TENANT,
+            phone_number=f.numerify("+2547########"),
+            stk_push=False,
+        )
+        billing_period_confirm_payment(billing, p)
+        
+        
