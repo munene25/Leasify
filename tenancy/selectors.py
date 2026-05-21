@@ -36,7 +36,7 @@ def tenancy_list_for(user: "User", filters: QueryDict | dict[str, Any]) -> Query
     class TenancyFilter(django_filters.FilterSet):
         class Meta:
             model = Tenancy
-            fields = ("status", )
+            fields = ("status",)
 
         search = django_filters.CharFilter(method="search_fields")
         cleared = django_filters.BooleanFilter(method="is_cleared")
@@ -53,7 +53,6 @@ def tenancy_list_for(user: "User", filters: QueryDict | dict[str, Any]) -> Query
                 q |= Q(status__icontains=value)
             return queryset.filter(q)
 
-
     t_filters = TenancyFilterPolicy.for_user(user)
     tenancies = BASE_QS.select_related("semester").filter(t_filters)
     return TenancyFilter(filters, tenancies).qs
@@ -66,6 +65,7 @@ def tenancy_get_for(user: "User", tenancy_id: int) -> Tenancy:
     t_filters = TenancyFilterPolicy.for_user(user)
     return BASE_QS.filter(t_filters).get(pk=tenancy_id)
 
+
 @tenancy_not_found
 def tenancy_lock(tenancy_id: int) -> Tenancy:
     """Lock the current tenancy"""
@@ -77,5 +77,15 @@ def tenancy_get(tenancy_id: int) -> Tenancy:
     """Get tenant outside of client flows"""
     return BASE_QS.get(pk=tenancy_id)
 
+
 def current_tenant() -> Prefetch:
-    return Prefetch("tenancy_set", Tenancy.objects.filter(status__in=active_reserved_defaulting) , to_attr="_active_tenant")
+    return Prefetch("tenancy_set", tenancy_in(active_reserved_defaulting), to_attr="_active_tenant")
+
+
+def tenancy_in(states: list[Status]) -> QuerySet[Tenancy]:
+    """
+    Quickly fetch tenancies in this the states
+    :param states: statuses to filter
+    :return: Tenancy QuerySet filtered by state
+    """
+    return Tenancy.objects.filter(status__in=states)
