@@ -29,13 +29,13 @@ fi
 
 # Run Django migrations again
 echo "Making migrations..."
-python manage.py makemigrations
+python3 manage.py makemigrations
 
 echo "Applying migrations..."
-python manage.py migrate
+python3 manage.py migrate
 
 echo "Seeding database from seed.py..."
 # Assumes you have django-extensions installed for runscript
-python manage.py runscript seed
+python3 manage.py runscript seed
 
 echo "Project reset complete!"
