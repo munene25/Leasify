@@ -67,12 +67,6 @@ def tenancy_get_for(user: "User", tenancy_id: int) -> Tenancy:
 
 
 @tenancy_not_found
-def tenancy_lock(tenancy_id: int) -> Tenancy:
-    """Lock the current tenancy"""
-    return Tenancy.objects.select_for_update().get(pk=tenancy_id)
-
-
-@tenancy_not_found
 def tenancy_get(tenancy_id: int) -> Tenancy:
     """Get tenant outside of client flows"""
     return BASE_QS.get(pk=tenancy_id)
@@ -82,7 +76,7 @@ def current_tenant() -> Prefetch:
     return Prefetch("tenancy_set", tenancy_in(active_reserved_defaulting), to_attr="_active_tenant")
 
 
-def tenancy_in(states: list[Status]) -> QuerySet[Tenancy]:
+def tenancy_in(states: list[TenancyStatus]) -> QuerySet[Tenancy]:
     """
     Quickly fetch tenancies in this the states
     :param states: statuses to filter
