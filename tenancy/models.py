@@ -4,6 +4,7 @@ from common.period import today
 from users.models import User
 from common.models import BaseModel
 from apartments.models import Apartment
+from tenancy.choices import Status, TerminationReason
 
 GRACE_PERIOD = timedelta(weeks=1)
 DEFAULT_RESERVATION_DURATION = timedelta(days=2)
@@ -29,14 +30,16 @@ class Tenancy(BaseModel):
             # only one active/pending tenancy per apartment at a time
             models.UniqueConstraint(
                 fields=["apartment"],
-                condition=models.Q(status__in=["active", "pending"]),
-                name="unique_active_pending_per_apartment"
+                condition=models.Q(status__in=["active", "pending", "defaulting"]),
+                name="unique_active_pending_per_apartment",
+                violation_error_message="Apartment is already occupied"
             ),
             # only one active/pending tenancy per user at a time
             models.UniqueConstraint(
                 fields=["user"],
-                condition=models.Q(status__in=["active", "pending"]),
-                name="unique_active_pending_per_user"
+                condition=models.Q(status__in=["active", "pending", "defaulting"]),
+                name="unique_active_pending_per_user",
+                violation_error_message="User already has already created a tenancy"
             ),
         ]
         permissions = (
@@ -44,15 +47,13 @@ class Tenancy(BaseModel):
             ("tenancy_extend_reservation_expiration", "Allow pending tenants to extend their stay"),
         )
 
-    class Status(models.TextChoices):
-        PENDING = "pending", "Tenant has made a reservation but has not paid yet"
-        ACTIVE = "active", "Tenant has paid and the tenancy is active"
-        TERMINATED = "terminated", "Tenancy has been expired"
 
     user = models.ForeignKey(User, on_delete=models.PROTECT, null=False, blank=False)
     apartment = models.ForeignKey(Apartment, on_delete=models.PROTECT, null=False, blank=False)
-    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.RESERVED)
     reservation_expriry = models.DateField(blank=False, null=False, default=default_expiry)
+    termination_reason = models.CharField(choices=TerminationReason.choices, blank=True, null=True)
+    termination_date = models.DateField(blank=True, null=True)
 
     user_id: int
     apartment_id: int
