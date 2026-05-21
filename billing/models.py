@@ -1,11 +1,11 @@
 from typing import TYPE_CHECKING
-from enum import StrEnum
-from decimal import Decimal
 from django.db import models
 from common.models import BaseModel
 from common.period import DateRange, today
 from datetime import date, timedelta
 from tenancy.models import Tenancy
+from billing.choices import BillingStatus
+from rest_framework.exceptions import ValidationError
 
 MAX_BILLING_PERIOD: int = 4
 
@@ -25,14 +25,12 @@ class BillingPeriod(BaseModel):
             models.Index(fields=("tenancy", "start_date", "end_date")),
         ]
 
-    class BillingStatus(StrEnum):
-        CLEARED = "cleared"
-        PENDING = "pending"
 
     tenancy = models.ForeignKey(Tenancy, on_delete=models.PROTECT, null=False, blank=False, related_name="billings")
     start_date = models.DateField(null=False, blank=False)
     end_date = models.DateField(null=False, blank=False)
-    rent_snapshot = models.DecimalField(decimal_places=2, max_digits=10)
+    status = models.CharField(null=False, blank=False, default=BillingStatus.UNPAID)
+    total_due = models.DecimalField(decimal_places=2, max_digits=10, null=False, blank=False)
 
     payments: "QuerySet[Payment]"
 
@@ -41,31 +39,14 @@ class BillingPeriod(BaseModel):
         """Check if the tenancy is current"""
         return self.start_date <= today() <= self.end_date
 
-    @property
-    def total_due(self) -> Decimal:
-        return (self.rent_snapshot * self.duration_months).quantize(Decimal("0.01"))
 
     @property
     def next_start(self) -> date:
         """All billing periods should be consecutive and ordered"""
+        if not self.status == BillingStatus.PAID:
+            raise ValidationError("Next start can only be computed from paid billing periods")
+
         return self.end_date + timedelta(days=1)
-
-    @property
-    def total_paid(self) -> Decimal:
-        """Calculate the total amount of money due from the tenant based on their duration of stay"""
-        from payments.models import Payment
-
-        totals = self.payments.aggregate(
-            debits=models.Sum("amount", filter=models.Q(transaction_type=Payment.TransactionChoices.DEBIT)),
-            credits=models.Sum("amount", filter=models.Q(transaction_type=Payment.TransactionChoices.CREDIT)),
-        )
-        return (totals["debits"] or Decimal(0)) - (totals["credits"] or Decimal(0))
-
-    @property
-    def is_cleared(self) -> BillingStatus:
-        if self.total_due > self.total_paid:
-            return self.BillingStatus.PENDING
-        return self.BillingStatus.CLEARED
 
     @property
     def duration_months(self) -> int:
