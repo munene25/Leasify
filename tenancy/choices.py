@@ -15,6 +15,7 @@ class Status(TextChoices):
 
 class TerminationReason(TextChoices):
     MANAGERIAL = "managerial", "Managerial decision to terminate"
+    EXPIRED = "expired", "Reservation expired"
     VOLUNTARY = "voluntary", "Voluntary termination"
     NONPAYMENT = "non_payment", "Tenant failed to pay"
 
