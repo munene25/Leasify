@@ -33,6 +33,7 @@ class BillingPeriod(BaseModel):
     total_due = models.DecimalField(decimal_places=2, max_digits=10, null=False, blank=False)
 
     payments: "QuerySet[Payment]"
+    tenancy_id: int
 
     @property
     def is_current(self) -> bool:
@@ -57,3 +58,7 @@ class BillingPeriod(BaseModel):
         """
 
         return DateRange(self.start_date, self.end_date).duration_months
+
+    def __str__(self) -> str:
+        """Outputs it in the form of a string e.g. JUN-2025 to JUL-2025"""
+        return f"{self.start_date.strftime('%b-%Y').upper()} to {self.end_date.strftime('%b-%Y').upper()}"
