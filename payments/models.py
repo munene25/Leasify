@@ -1,6 +1,6 @@
 from django.db import models
 from billing.models import BillingPeriod
-from decimal import Decimal
+import uuid
 from common.models import BaseModel
 from common.fields import PhoneNumberModelField
 from payments.choices import PaymentStatus, TransactionType, PaymentInitiator
@@ -12,9 +12,14 @@ class Payment(BaseModel):
     At confirmation, the payee is filled out.
     ? Maybe get the mpesa confirmation code upon
     """
+    class Meta:
+        indexes = [
+            models.Index(fields=["status"])
+        ]
 
-    billing = models.ForeignKey(BillingPeriod, null=False, blank=False, on_delete=models.SET_NULL, related_name="payments")
-    ref_no = models.UUIDField(primary_key=True, max_length=20, unique=True, null=False, blank=False, editable=False)
+
+    billing = models.ForeignKey(BillingPeriod, null=False, blank=False, on_delete=models.PROTECT, related_name="payments")
+    id = models.UUIDField(primary_key=True, db_index=True, default=uuid.uuid4, editable=False)
     initiator = models.CharField(null=False, blank=False, choices=PaymentInitiator)
     phone_number = PhoneNumberModelField(null=False, blank=False, editable=False)
     amount = models.DecimalField(decimal_places=2, max_digits=10, editable=False, blank=False, null=False)
@@ -25,6 +30,7 @@ class Payment(BaseModel):
 
     billing_id: int
 
-    def __str__(self):
-        return f"Ref: {self.ref_no} Amt: {self.amount} Type: ({self.transaction_type})"
+    @property
+    def ref_no(self) -> str:
+        return f"{self.initiator}-{str(self.pk).upper()}"
 
