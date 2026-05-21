@@ -111,6 +111,8 @@ def billing_period_cancel(billing: BillingPeriod) -> BillingPeriod:
 @transaction.atomic
 def billing_period_confirm_payment(billing: BillingPeriod, payment: "Payment") -> BillingPeriod:
     from payments.choices import PaymentStatus
+    from common.period import today
+    from tenancy.choices import TenancyStatus
 
     locked = BillingPeriod.objects.select_for_update().get(pk=billing.pk)
 
@@ -122,6 +124,11 @@ def billing_period_confirm_payment(billing: BillingPeriod, payment: "Payment") -
     
     if payment.status != PaymentStatus.CONFIRMED:
         raise ValidationError("Required confirmed payment instance to complete request")
+
+    if locked.start_date <= today() <= locked.end_date:
+        # ! Need to move this to tenancy service for auditing via logs.
+        locked.tenancy.status = TenancyStatus.ACTIVE
+        locked.tenancy.save(update_fields=["status"])
 
     locked.status = BillingStatus.PAID
     locked.save(update_fields=["status"])
