@@ -2,15 +2,19 @@ from typing import Any, TYPE_CHECKING
 from payments.models import Payment
 from django.db import transaction
 from rest_framework.exceptions import ValidationError
-
 from payments.choices import TransactionType, PaymentStatus, PaymentInitiator 
+
+from structlog import get_logger
+
+logger = get_logger("payments.services")
 
 if TYPE_CHECKING:
     from billing.models import BillingPeriod
 
 
+
 @transaction.atomic
-def payment_initiate(billing: BillingPeriod, transaction_type: TransactionType, status: PaymentStatus, phone_number: str, initiator: PaymentInitiator, stk_push: bool) -> Payment:
+def payment_initiate(billing: "BillingPeriod", transaction_type: TransactionType, status: PaymentStatus, phone_number: str, initiator: PaymentInitiator, stk_push: bool) -> Payment:
     """
     Initialize a payment. Depending on status can be updated later on callback
     
@@ -35,10 +39,18 @@ def payment_initiate(billing: BillingPeriod, transaction_type: TransactionType, 
         status=status,
         initiator=initiator,
     )
-
     payment.full_clean()
     payment.save()
 
+    logger.info(
+        "payment_initiated",
+        tenancy_id=billing.tenancy_id,
+        billing_period=str(billing),
+        payment_amount=billing.total_due,
+        status=status,
+        phone_number=phone_number,
+        payment_ref=payment.ref_no
+    )
     if not stk_push:
         return payment
     
@@ -76,5 +88,9 @@ def payment_confirm(payment: Payment, payload: dict[str, Any]) -> Payment:
 
     locked.full_clean()
     locked.save()
+    logger.info(
+        "payment_confirmed",
+        payment_ref=payment.ref_no
+    )
     return locked
         
