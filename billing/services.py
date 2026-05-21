@@ -85,7 +85,7 @@ def billing_period_increment(*, tenancy: "Tenancy", duration_months: int) -> Bil
 def billing_period_update(billing: BillingPeriod, status: BillingStatus, payment: "Payment | None") -> BillingPeriod:
     
 
-    locked = BillingPeriod.objects.select_for_update().get(billing.pk)
+    locked = BillingPeriod.objects.select_for_update().get(pk=billing.pk)
 
     if locked.status == BillingStatus.PAID:
         raise ValidationError("Cannot complete request. Billing period cannot be changed once created")
