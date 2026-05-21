@@ -4,6 +4,7 @@ from django.db import transaction
 from rest_framework.exceptions import ValidationError
 from common.period import DateRange
 from billing.models import BillingPeriod, MAX_BILLING_PERIOD
+from billing.selectors import billing_last_paid_for
 
 if TYPE_CHECKING:
     from tenancy.models import Tenancy
@@ -40,26 +41,23 @@ def billing_period_initialize(*, tenancy: "Tenancy", date_r: DateRange) -> Billi
 @transaction.atomic
 def billing_period_increment(*, tenancy: "Tenancy", duration_months: int) -> BillingPeriod:
     """
-    This is especially for ensuring sequetial billing preiods for ongoing tenants
+    This is especially for ensuring sequetial billing preiods for ongoing tenants.
+    This will only ever be concerned with the last paid billing period.
+    This ensures the tenancy stay is sequential.
     """
     if duration_months > MAX_BILLING_PERIOD:
         raise ValidationError("Max Billing period exceeded")
 
-    last = (
-        BillingPeriod.objects
-        .filter(tenant=tenancy)
-        .select_for_update()
-        .order_by("-start_date")
-        .first()
-    )
-    if not last:
-        raise ValidationError("New Tenants are required to initialize their billing periods first")
-
-    # Check if last billing cleared.
-    if not last.is_cleared:
-        raise ValidationError("Previous billing period is not cleared.")
+    # I need to lock at this point to avoid another billing period to be created at the same time.
+    # There are no db constraints of domain logic
+    last_billing = billing_last_paid_for(tenancy.pk, lock=True)
     
-    r = DateRange.compute_lease_window(last.next_start, duration_months)
+    if not last_billing:
+        raise ValidationError("Cannot find a paid billing period")
+    
+  
+    
+    r = DateRange.compute_lease_window(last_billing.next_start, duration_months)
     
     bp = BillingPeriod(
         tenant=tenancy,
