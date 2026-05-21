@@ -273,7 +273,6 @@ def tenancy_factory(apartment_factory, user_factory) -> Factory[Tenancy]:
             start = overrides.get("start_date", date.today())
             duration_months = overrides.get("duration_months", 4)
             reservation_duration = overrides.get("reservation_duration", timedelta(days=2))
-            status = overrides.get("status", Tenancy.Status.PENDING)
             rent_snapshot = overrides.get("rent_snapshot", None)
 
             tenancy = tenancy_create(
@@ -281,9 +280,6 @@ def tenancy_factory(apartment_factory, user_factory) -> Factory[Tenancy]:
                 apartment=apartment,
                 start_date=start,
                 duration_months=duration_months,
-                status=status,
-                reservation_duration=reservation_duration,
-                rent_snapshot=rent_snapshot,
             )
             tenancies.append(tenancy)
 
