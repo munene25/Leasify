@@ -3,58 +3,28 @@ from billing.models import BillingPeriod
 from decimal import Decimal
 from common.models import BaseModel
 from common.fields import PhoneNumberModelField
-
+from payments.choices import PaymentStatus, TransactionType, PaymentInitiator
 
 class Payment(BaseModel):
-    class TransactionChoices(models.TextChoices):
-        DEBIT = "debit", "Incoming Payments"
-        CREDIT = "credit", "Outgoing Payments"
+    """
+    Payment will have 2 states, once initiated and then confirmed
+    At inititaion, phone, ref, amount, transaction_type, billing status and intiator are defined
+    At confirmation, the payee is filled out.
+    ? Maybe get the mpesa confirmation code upon
+    """
 
-    billing_period = models.ForeignKey(BillingPeriod, null=True, on_delete=models.SET_NULL, related_name="payments")
-    ref_no = models.CharField(max_length=20, unique=True, editable=False)
-    amount = models.DecimalField(decimal_places=2, max_digits=10, blank=False, null=False)
-    transaction_type = models.CharField(null=False, max_length=10, choices=TransactionChoices.choices)
-    phone_number = PhoneNumberModelField(null=False, blank=False)
-    payee = models.CharField(max_length=30, blank=True)
-    tenancy_id: int
+    billing = models.ForeignKey(BillingPeriod, null=False, blank=False, on_delete=models.SET_NULL, related_name="payments")
+    ref_no = models.UUIDField(primary_key=True, max_length=20, unique=True, null=False, blank=False, editable=False)
+    initiator = models.CharField(null=False, blank=False, choices=PaymentInitiator)
+    phone_number = PhoneNumberModelField(null=False, blank=False, editable=False)
+    amount = models.DecimalField(decimal_places=2, max_digits=10, editable=False, blank=False, null=False)
+    transaction_type = models.CharField(null=False,blank=False, max_length=10, editable=False, choices=TransactionType.choices)
+   
+    status = models.CharField(null=False, blank=False, choices=PaymentStatus, default=PaymentStatus.PENDING)
+    payee = models.CharField(max_length=30, null=True, blank=True)
+
+    billing_id: int
 
     def __str__(self):
         return f"Ref: {self.ref_no} Amt: {self.amount} Type: ({self.transaction_type})"
 
-    @classmethod
-    def get_total_payments_received(cls, start_date=None, end_date=None):
-        """Get total payments for a specific period"""
-        from django.utils import timezone
-        from datetime import date
-
-        now = timezone.now().date()
-        start = start_date or now
-        end = end_date or now
-
-        dr = models.Q(
-            transaction_type=cls.TransactionChoices.DEBIT, tenancy__start_date__lte=end, tenancy__end_date__gte=start
-        )
-        cr = models.Q(
-            transaction_type=cls.TransactionChoices.CREDIT, tenancy__start_date__lte=end, tenancy__end_date__gte=start
-        )
-        received = cls.objects.select_related("tenancy").aggregate(
-            debit=models.Sum("amount", filter=dr),
-            credit=models.Sum("amount", filter=cr),
-        )
-        debit = received["debit"] or Decimal("0")
-        credit = received["credit"] or Decimal("0")
-        return debit - credit
-
-    @classmethod
-    def get_payment_history_for_user(cls, tenancy):
-        """
-        Get entire payment history associated with a user across all tenancies.
-        """
-        return cls.objects.select_related("tenancy").filter(tenancy__user=tenancy.user)
-
-    @classmethod
-    def get_payment_history_for_tenancy(cls, tenancy):
-        """
-        Get payment history associated with a specific tenancy.
-        """
-        return cls.objects.filter(tenancy=tenancy)
