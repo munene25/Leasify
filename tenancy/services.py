@@ -7,8 +7,8 @@ from common.period import DateRange
 from users.services import user_set_role
 from tenancy.validators import validate_max_monthly_reservations, validate_lease_period
 from tenancy.models import Tenancy
-from tenancy.choices import Status, TerminationReason
-from tenancy.selectors import tenancy_lock, tenancy_in
+from tenancy.choices import TenancyStatus, TerminationReason
+from tenancy.selectors import tenancy_in
 from apartments.selectors import apartment_lock
 from billing.services import billing_period_increment, billing_period_initialize
 from billing.choices import BillingStatus
@@ -50,7 +50,7 @@ def tenancy_create(*, user: "User", apartment: "Apartment", start_date: "date", 
     t = Tenancy(
         user=user,
         apartment=apt,
-        status=Status.RESERVED,
+        status=TenancyStatus.RESERVED,
     )
     t.full_clean()
     t.save()
@@ -82,10 +82,9 @@ def tenancy_renew_lease(tenancy: Tenancy, duration_months: int) -> "BillingPerio
     if tenancy.last_billing.status == BillingStatus.UNPAID:
         raise ValidationError("You have an pending billing period, cancel it to create a new one")
 
-    tenancy = tenancy_lock(tenancy.pk)
+    tenancy = Tenancy.objects.select_for_update().get(tenancy.pk)
 
     return billing_period_increment(tenancy=tenancy, duration_months=duration_months)
-
 
 
 def tenancy_reserved_to_terminated() -> None:
@@ -97,15 +96,16 @@ def tenancy_reserved_to_terminated() -> None:
 
     now = today()
 
-    t = tenancy_in([Status.RESERVED]).filter(
+    t = tenancy_in([TenancyStatus.RESERVED]).filter(
         reservation_expiration__gt=now,
     )
 
     t.update(
-        status=Status.TERMINATED,
+        status=TenancyStatus.TERMINATED,
         termination_date=now,
         termination_reason=TerminationReason.EXPIRED,
     )
+
 
 def tenancy_active_to_defaulting() -> None:
     """
@@ -118,14 +118,10 @@ def tenancy_active_to_defaulting() -> None:
 
     now = today()
 
-    t = tenancy_in([Status.ACTIVE]).exclude(
+    t = tenancy_in([TenancyStatus.ACTIVE]).exclude(
         billingperiod__start_date__lte=now,
         billingperiod__end_date__lte=now,
         billingperiod__status=BillingStatus.PAID,
     )
 
-    t.update(
-        status=Status.DEFAULTING, 
-        termination_date=now, 
-        termination_reason=TerminationReason.NONPAYMENT
-    )
+    t.update(status=TenancyStatus.DEFAULTING, termination_date=now, termination_reason=TerminationReason.NONPAYMENT)
