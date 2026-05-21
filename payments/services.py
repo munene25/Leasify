@@ -1,107 +1,80 @@
-from __future__ import annotations
-import uuid
-from rest_framework.exceptions import ValidationError
-from decimal import Decimal
-from .models import Payment
-from tenancy.selectors import tenancy_get_for
+from typing import Any, TYPE_CHECKING
+from payments.models import Payment
 from django.db import transaction
-from typing import TYPE_CHECKING
+from rest_framework.exceptions import ValidationError
+
+from payments.choices import TransactionType, PaymentStatus, PaymentInitiator 
 
 if TYPE_CHECKING:
-    from tenancy.models import Tenancy
-
-class PaymentCreateService:
-    def __init__(
-        self,
-        *,
-        tenancy_id: int,
-        amount: Decimal | int,
-        initiator: str,
-        transaction_type: str,
-        phone_number: str | None = None,
-        payee: str | None = None,
-        tag: str | None = None,
-    ) -> None:
-        self.tenancy_id = tenancy_id
-        self.amount = amount
-        self.initiator = initiator
-        self.transaction_type = transaction_type
-        self.phone_number = phone_number
-        self.payee = payee
-        self.tag = tag
-
-    def get_tenancy(self):
-        # Need to verify tenant exists
-        self.tenancy: Tenancy = tenancy_get_for(tenancy_id=self.tenancy_id)
-
-    def verify_transaction_type(self):
-        if self.transaction_type not in Payment.TransactionChoices.values:
-            err = f"Transaction type '{self.transaction_type}' not valid"
-            raise ValidationError({"transaction_type": [err]})
+    from billing.models import BillingPeriod
 
 
-    def verify_total_paid_subceeds_rent(self):
-        if self.tenancy.total_paid > self.tenancy.apartment.rent:
-            err = f"Amount paid on apartment cannot exceed the apartment rent"
-            raise ValidationError({"amount": [err]})
+@transaction.atomic
+def payment_initiate(billing: BillingPeriod, transaction_type: TransactionType, status: PaymentStatus, phone_number: str, initiator: PaymentInitiator, stk_push: bool) -> Payment:
+    """
+    Initialize a payment. Depending on status can be updated later on callback
+    
+    :param billing:
+    :param transaction_type:
+    :param status:
+    :param phone_number: phone number to 
+    :param initiator: The short code for who is initiating the request. determined upstream
 
-    def update_tenancy_total_paid(self):
-        self.tenancy.save(update_fields=["total_paid"])
+    """
+    
+    if status == PaymentStatus.FAILED:
+        raise ValidationError("Operation not allowed")
+    
+    #? if initiator is tenant dont allow status confirmed?
 
-    def get_payee(self):
-        if not self.payee:
-            self.payee = self.tenancy.user.get_full_name()
+    payment = Payment(
+        billing=billing,
+        transaction_type=transaction_type,
+        phone_number=phone_number,
+        amount=billing.total_due,
+        status=status,
+        initiator=initiator,
+    )
 
-    def get_phone_number(self):
-        if not self.phone_number:
-            self.phone_number = self.tenancy.user.account.phone_number
-        elif isinstance(self.phone_number, str):
-            self.phone_number = self.phone_number
-        else:
-            err = f"Invalid phone number"
-            raise ValidationError({"phone_number": [err]})
+    payment.full_clean()
+    payment.save()
 
-    def generate_ref_no(self):
-        prefix = self._get_prefix()
-        tag = self.tag or self._generate_tag()
-        apt_id = self.tenancy.apartment_id
-        return f"{prefix}{apt_id:03}-{tag}"
+    if not stk_push:
+        return payment
+    
+    if transaction_type == TransactionType.DEBIT and initiator == PaymentInitiator.TENANT:
+        # initialize stk...
+        raise NotImplemented("This is where the stk push request is initialized")
+    
+    raise ValidationError("You cannot perform an stk push for such a transaction")
 
-    def _get_prefix(self):
-        initiators = ["admin", "system", "tenant"]
-        if self.initiator not in initiators:
-            err = f"Initiator not allowed. Try: {initiators}"
-            raise ValidationError({"initiator": [err]})
-        elif self.initiator == "admin":
-            return "APY"
-        elif self.initiator == "tenant":
-            return "TPY"
-        elif self.initiator == "system":
-            return "SGT"
 
-    def _generate_tag(self):
-        # Might modify later to accomodate admin prefixes to identify which admin
-        return uuid.uuid4().hex[:8].upper()
+@transaction.atomic
+def payment_confirm(payment: Payment, payload: dict[str, Any]) -> Payment:
+    """
+    Assuming with a callback, this is where the validation happens and transaction status is changed
 
-    @transaction.atomic
-    def create(self):
-        try:
-            self.get_tenancy()
-            self.verify_transaction_type()
-            self.verify_total_paid_subceeds_rent()
-            self.get_payee()
-            self.get_phone_number()
+    :param payment: The payment instance to modify.
+    :param payload: The payload in which to validate the status.
+    """
+    # validate payload:
+    locked = Payment.objects.select_for_update().get(pk=payment.pk)
+    if locked.status == PaymentStatus.CONFIRMED:
+        raise ValidationError("Operation not allowed")
+    
+    # mock validation
+    confirmation = payload.get("confirmed", None)
+    
 
-            payment = Payment(
-                ref_no=self.generate_ref_no(),
-                tenancy_id=self.tenancy_id,
-                transaction_type=self.transaction_type,
-                phone_number=self.phone_number,
-                payee=self.payee,
-                amount=self.amount,
-            )
-            payment.save()
-            self.update_tenancy_total_paid()
-            return payment
-        except:
-            raise Exception
+    new_status  = PaymentStatus.CONFIRMED if confirmation else PaymentStatus.FAILED
+
+    if new_status == PaymentStatus.FAILED:
+        # ?Could add a means of adding metadata on why
+        pass
+
+    locked.status = new_status
+
+    locked.full_clean()
+    locked.save()
+    return locked
+        
