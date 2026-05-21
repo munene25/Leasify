@@ -5,7 +5,7 @@ from common.period import today
 from users.models import User
 from common.models import BaseModel
 from apartments.models import Apartment
-from tenancy.choices import Status, TerminationReason
+from tenancy.choices import TenancyStatus, TerminationReason
 
 if TYPE_CHECKING:
     from billing.models import BillingPeriod
@@ -13,6 +13,7 @@ if TYPE_CHECKING:
 GRACE_PERIOD = timedelta(weeks=1)
 DEFAULT_RESERVATION_DURATION = timedelta(days=2)
 MAX_RESERVATIONS_PER_USER = 2
+
 
 def default_expiry():
     return today() + DEFAULT_RESERVATION_DURATION
@@ -36,14 +37,14 @@ class Tenancy(BaseModel):
                 fields=["apartment"],
                 condition=models.Q(status__in=["active", "pending", "defaulting"]),
                 name="unique_active_pending_per_apartment",
-                violation_error_message="Apartment is already occupied"
+                violation_error_message="Apartment is already occupied",
             ),
             # only one active/pending tenancy per user at a time
             models.UniqueConstraint(
                 fields=["user"],
                 condition=models.Q(status__in=["active", "pending", "defaulting"]),
                 name="unique_active_pending_per_user",
-                violation_error_message="User already has already created a tenancy"
+                violation_error_message="User already has already created a tenancy",
             ),
         ]
         permissions = (
@@ -51,10 +52,9 @@ class Tenancy(BaseModel):
             ("tenancy_extend_reservation_expiration", "Allow pending tenants to extend their stay"),
         )
 
-
     user = models.ForeignKey(User, on_delete=models.PROTECT, null=False, blank=False)
     apartment = models.ForeignKey(Apartment, on_delete=models.PROTECT, null=False, blank=False)
-    status = models.CharField(max_length=20, choices=Status.choices, default=Status.RESERVED)
+    status = models.CharField(max_length=20, choices=TenancyStatus.choices, default=TenancyStatus.RESERVED)
     reservation_expriry = models.DateField(blank=False, null=False, default=default_expiry)
     termination_reason = models.CharField(choices=TerminationReason.choices, blank=True, null=True)
     termination_date = models.DateField(blank=True, null=True)
@@ -62,11 +62,10 @@ class Tenancy(BaseModel):
     user_id: int
     apartment_id: int
     billings: models.QuerySet["BillingPeriod"]
-    
+
     def __str__(self) -> str:
         return f"user:{self.user_id} - tenancy:{self.pk}"
 
-    
     @property
     def is_continuing(self) -> bool:
         """
@@ -74,12 +73,12 @@ class Tenancy(BaseModel):
         Better not to bleed Billing period domain logic into tenancy.
         """
 
-        return self.status in [Status.DEFAULTING, Status.ACTIVE]
-    
+        return self.status in [TenancyStatus.DEFAULTING, TenancyStatus.ACTIVE]
+
     @property
     def last_billing(self) -> "BillingPeriod | None":
         return self.billings.order_by("-start_date").first()
-    
+
     @property
     def last_paid_billing(self) -> "BillingPeriod | None":
         from billing.choices import BillingStatus
