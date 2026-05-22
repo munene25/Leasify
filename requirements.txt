@@ -2,6 +2,8 @@ amqp==5.3.1
 asgiref==3.9.1
 billiard==4.2.4
 celery==5.6.2
+certifi==2026.5.20
+charset-normalizer==3.4.7
 click==8.3.1
 click-didyoumean==0.3.1
 click-plugins==1.1.1.2
@@ -19,6 +21,7 @@ drf-standardized-errors==0.15.0
 Faker==40.5.1
 freezegun==1.5.5
 hiredis==3.3.0
+idna==3.16
 iniconfig==2.3.0
 kombu==5.6.2
 mypy==1.18.2
@@ -36,11 +39,13 @@ python-dateutil==2.9.0.post0
 python-dotenv==1.1.1
 python-ipware==3.0.0
 redis==7.1.0
+requests==2.34.2
 six==1.17.0
 sqlparse==0.5.3
 structlog==25.5.0
 typing_extensions==4.15.0
 tzdata==2025.2
 tzlocal==5.3.1
+urllib3==2.7.0
 vine==5.1.0
 wcwidth==0.2.14
