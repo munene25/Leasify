@@ -6,7 +6,7 @@ class TransactionType(TextChoices):
 
 class PaymentStatus(TextChoices):
     PENDING = "pending", "Payment has been initiated but not confirmed"
-    CONFIRMED = "confirmed", "Payment has been confirmed"
+    SUCCESS = "success", "Payment has been confirmed and funds have transferred"
     FAILED = "failed", "Payment could not be completed"
 
 class PaymentInitiator(TextChoices):
