@@ -20,9 +20,11 @@ def get_access_token() -> str:
         return token
 
     res = requests.get(
-        url=cfg["AUTHENTICATE_URL"], 
-        auth=HTTPBasicAuth(cfg["CONSUMER_KEY"], 
-        cfg["CONSUMER_SECRET"])
+        cfg["AUTHENTICATE_URL"], 
+        auth=HTTPBasicAuth(
+            cfg["CONSUMER_KEY"], 
+            cfg["CONSUMER_SECRET"]
+        )
     )
     res.raise_for_status()
 
