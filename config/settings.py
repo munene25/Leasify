@@ -11,7 +11,6 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
-from datetime import timedelta
 from dotenv import load_dotenv
 import os
 from config.logging import DICT_LOG, configure_logging
@@ -110,9 +109,7 @@ CORS_ALLOWED_ORIGINS = [FRONTEND_URL]
 
 ## Rest
 REST_FRAMEWORK = {
-    "DEFAULT_AUTHENTICATION_CLASSES": (
-        "config.auth.SessionAuthentication",
-    ),
+    "DEFAULT_AUTHENTICATION_CLASSES": ("config.auth.SessionAuthentication",),
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 5,
     "EXCEPTION_HANDLER": "drf_standardized_errors.handler.exception_handler",
@@ -226,3 +223,15 @@ CELERY_CACHE_BACKEND = "dev" if DEV_ENVIRONMENT else "redis"
 CELERY_TASK_ALWAYS_EAGER = True if DEV_ENVIRONMENT else False
 CELERY_TASK_IGNORE_RESULT = False
 CELERY_RESULT_EXPIRES = 3600
+
+
+# MPESA
+MPESA_CONFIG = {
+    "AUTHENTICATE_URL": os.environ["MPESA_AUTHENTICATE_URL"],
+    "CONSUMER_KEY": os.environ["MPESA_CONSUMER_KEY"],
+    "CONSUMER_SECRET": os.environ["MPESA_CONSUMER_SECRET"],
+    "EXPRESS_URL": os.environ["MPESA_EXPRESS_URL"],
+    "SHORTCODE": os.environ["MPESA_SHORTCODE"],
+    "PASSKEY": os.environ["MPESA_PASSKEY"],
+    "CALLBACK_URL": os.environ["MPESA_CALLBACK_URL"],
+}
