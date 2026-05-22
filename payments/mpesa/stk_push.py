@@ -23,7 +23,7 @@ def intiate_stk_push(*, phone_number: str, amount: int, account_ref: str, descri
 
     # There is a limit on the length of account ref or description
     if len(account_ref) > 12 or len(description) > 13:
-        raise ValueError("Account ref or desc too long")
+        raise ValueError(f"Account_ref ({account_ref=}) or description ({description=}) too long")
 
     # Compute current time at UTC + 3
     nairobi = ZoneInfo("Africa/Nairobi")
