@@ -4,12 +4,13 @@ from apartments.models import Apartment
 import random
 from tenancy.services import tenancy_create
 from apartments.services import apartment_create
-from payments.services import payment_initiate
+from payments.services import payment_initiate, payment_confirm
+from payments.mpesa import CallbackResponse
 from users.services import user_account_create
 from scripts.permissions import setup_roles_and_permissions
 from faker import Faker
 from django.core.management import call_command
-from payments.choices import TransactionType, PaymentInitiator, PaymentStatus
+from payments.choices import PaymentInitiator
 from django.utils import timezone
 
 ITERATIONS = list(range(20))
@@ -66,7 +67,7 @@ def run():
         apartments = [
             apartment_create(
                 block=random.choice(Apartment.Block.values),
-                unit_number=int(f.building_unit_number()),
+                unit_number=int(f.building_number()),
                 rent=Decimal(f.numerify("1#000")),
             )
             for _ in range(NO_OF_APTS)
@@ -86,18 +87,23 @@ def run():
 
     # ============================================= Payments =============================================
     from billing.services import billing_period_confirm_payment
+
     for t in tenancies:
         billing = t.last_billing
         if not billing:
             raise ValueError("billing not created")
         p = payment_initiate(
-            billing= billing,
-            transaction_type=TransactionType.DEBIT,
-            status=PaymentStatus.CONFIRMED,
+            billing=billing,
             initiator=PaymentInitiator.TENANT,
             phone_number=f.numerify("+2547########"),
             stk_push=False,
         )
-        billing_period_confirm_payment(billing, p)
-        
-        
+        confirmed = payment_confirm(
+            CallbackResponse(
+                checkout_id=p.checkout_id,
+                success=True,
+                result_desc="Payment completed successfuly",
+                receipt_no=f.bothify("????#???#??").upper(),
+            )
+        )
+        billing_period_confirm_payment(billing, confirmed)
