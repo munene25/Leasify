@@ -1,14 +1,14 @@
 from django.db import models
-from billing.models import BillingPeriod
-import uuid
 from common.models import BaseModel
 from common.fields import PhoneNumberModelField
+from billing.models import BillingPeriod
 from payments.choices import PaymentStatus, PaymentInitiator
 
 class Payment(BaseModel):
     """
     Payment will have 2 states, once initiated and then confirmed
     On confirmation, status changes to either FAILED or SUCCESS.
+    It's okay to duplicate the payee even 
     """
     class Meta:
         indexes = [
