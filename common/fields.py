@@ -33,17 +33,15 @@ class NameSerializerField(serializers.CharField):
 
 
 class PhoneNumberValidator(RegexValidator):
-    regex = r"^\+254\d{9}$"
-    message = "Phone number must be in the format +254XXXXXXXXX"
+    regex = r"^254\d{9}$"
+    message = "Phone number must be in the format 254XXXXXXXXX"
 
 def phone_number_parse(value: str) -> str: 
     """Helper function to normalize and format phone numbers."""
-    value = value.replace(" ", "").replace("-", "")
-    if value.startswith("0"):
-        value = "+254" + value[1:]
-    elif value.startswith("254"):
-        value = "+" + value
-    return value
+    val = value.replace(" ", "").replace("-", "").replace("+", "")
+    if val.startswith("0"):
+        val = "254" + val[1:]
+    return val
 
 class PhoneNumberModelField(models.CharField):
     """
@@ -51,10 +49,10 @@ class PhoneNumberModelField(models.CharField):
     """
 
     def __init__(self, **kwargs):
-        kwargs["max_length"] = 13
+        kwargs["max_length"] = 12
         kwargs["validators"] = [PhoneNumberValidator()]
         kwargs["error_messages"] = {
-            "invalid": "Phone number must be in the format +254XXXXXXXXX",
+            "invalid": "Phone number must be in the format 254XXXXXXXXX",
         }
         super().__init__(**kwargs)
 
@@ -68,7 +66,7 @@ class PhoneNumberSerializerField(serializers.CharField):
     """
 
     def __init__(self, **kwargs):
-        kwargs["max_length"] = 13
+        kwargs["max_length"] = 12
         kwargs["validators"] = [PhoneNumberValidator()]
         super().__init__(**kwargs)
 
