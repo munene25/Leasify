@@ -37,7 +37,8 @@ SECRET_KEY = os.environ.get("SECURITY_KEY", "secret-key")
 DEBUG = True
 DEV_ENVIRONMENT = True
 
-ALLOWED_HOSTS = [FRONTEND_DOMAIN, "localhost", "127.0.0.1"]
+# ALLOWED_HOSTS = [FRONTEND_DOMAIN, "localhost", "127.0.0.1"]
+ALLOWED_HOSTS = [FRONTEND_DOMAIN, "localhost", "127.0.0.1", ".ngrok.io"]
 
 
 INSTALLED_APPS = [
