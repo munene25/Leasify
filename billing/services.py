@@ -38,10 +38,9 @@ def billing_period_initialize(*, tenancy: "Tenancy", date_r: DateRange) -> Billi
     logger.info(
         "billing_period_created",
         tenancy_id=tenancy.pk,
-        start_date=date_r.start_date,
-        end_date=date_r.end_date,
+        duration=bp.duration_months,
         billing_id=bp.pk,
-        billing_period=str(bp),
+        billing_period=bp.name,
     )
     return bp
 
@@ -59,7 +58,7 @@ def billing_period_increment(*, tenancy: "Tenancy", duration_months: int) -> Bil
     # I need to lock at this point to avoid another billing period to be created at the same time.
     # There are no db constraints of domain logic
     last_billing = billing_last_paid_for(tenancy.pk, lock=True)
-
+ 
     if not last_billing:
         raise ValidationError("Cannot find a paid billing period")
 
@@ -76,10 +75,9 @@ def billing_period_increment(*, tenancy: "Tenancy", duration_months: int) -> Bil
     logger.info(
         "billing_period_renewed",
         tenancy_id=tenancy.pk,
-        start_date=r.start_date,
-        end_date=r.end_date,
+        duration=bp.duration_months,
         billing_id=bp.pk,
-        billing_period=str(bp),
+        billing_period=bp.name,
     )
     return bp
 
@@ -116,14 +114,11 @@ def billing_period_confirm_payment(billing: BillingPeriod, payment: "Payment") -
 
     locked = BillingPeriod.objects.select_for_update().get(pk=billing.pk)
 
-    if locked.status != BillingStatus.UNPAID:
-        raise ValidationError("Operation cannot be completed")
-
     if locked.pk != payment.billing_id:
         raise ValidationError("Payment is not associated with this billing period")
     
-    if payment.status != PaymentStatus.CONFIRMED:
-        raise ValidationError("Required confirmed payment instance to complete request")
+    if payment.status != PaymentStatus.SUCCESS:
+        raise ValidationError("Required successful payment instance to complete request")
 
     if locked.start_date <= today() <= locked.end_date:
         # ! Need to move this to tenancy service for auditing via logs.
@@ -135,7 +130,7 @@ def billing_period_confirm_payment(billing: BillingPeriod, payment: "Payment") -
     logger.info(
         "billing_period_paid",
         tenancy_id=locked.tenancy_id,
-        payment_id=payment.ref_no,
+        payment_id=payment.pk,
         billing_id=locked.pk,
         billing_period=str(locked),
 
