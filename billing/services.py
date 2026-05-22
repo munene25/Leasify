@@ -65,10 +65,10 @@ def billing_period_increment(*, tenancy: "Tenancy", duration_months: int) -> Bil
     r = DateRange.compute_lease_window(last_billing.next_start, duration_months)
     total_due = (tenancy.apartment.rent * r.duration_months).quantize(Decimal("0.01"))
     bp = BillingPeriod(
-        tenant=tenancy,
+        tenancy=tenancy,
         start_date=r.start_date,
         end_date=r.end_date,
-        rent_snapshot=total_due,
+        total_due=total_due,
     )
     bp.full_clean()
     bp.save()
