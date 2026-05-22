@@ -34,11 +34,10 @@ def payment_initiate(
     
     if stk_push:
         from payments.mpesa.stk_push import intiate_stk_push
-
         r = intiate_stk_push(
             phone_number=phone_number,
             amount=int(billing.total_due),
-            account_ref=str(billing),
+            account_ref=billing.name[:8],
             description="Rent Payment",
         )
         checkout_id = r.checkout_id
