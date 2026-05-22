@@ -3,10 +3,10 @@
     "model": "apartments.apartment",
     "pk": 1,
     "fields": {
-        "created_at": "2026-05-07T13:59:02.499Z",
-        "block": "OLD",
-        "unit_number": 1,
-        "rent": "20000.00",
+        "created_at": "2026-05-22T13:52:33.261Z",
+        "block": "NEW",
+        "unit_number": 22947,
+        "rent": "18000.00",
         "rentable": true
     }
 },
@@ -14,10 +14,10 @@
     "model": "apartments.apartment",
     "pk": 2,
     "fields": {
-        "created_at": "2026-05-07T13:59:02.508Z",
+        "created_at": "2026-05-22T13:52:33.270Z",
         "block": "NEW",
-        "unit_number": 2,
-        "rent": "20000.00",
+        "unit_number": 939,
+        "rent": "13000.00",
         "rentable": true
     }
 },
@@ -25,10 +25,10 @@
     "model": "apartments.apartment",
     "pk": 3,
     "fields": {
-        "created_at": "2026-05-07T13:59:02.516Z",
-        "block": "OLD",
-        "unit_number": 3,
-        "rent": "20000.00",
+        "created_at": "2026-05-22T13:52:33.279Z",
+        "block": "NEW",
+        "unit_number": 276,
+        "rent": "10000.00",
         "rentable": true
     }
 },
@@ -36,10 +36,10 @@
     "model": "apartments.apartment",
     "pk": 4,
     "fields": {
-        "created_at": "2026-05-07T13:59:02.525Z",
-        "block": "NEW",
-        "unit_number": 4,
-        "rent": "20000.00",
+        "created_at": "2026-05-22T13:52:33.287Z",
+        "block": "OLD",
+        "unit_number": 9673,
+        "rent": "19000.00",
         "rentable": true
     }
 },
@@ -47,10 +47,10 @@
     "model": "apartments.apartment",
     "pk": 5,
     "fields": {
-        "created_at": "2026-05-07T13:59:02.533Z",
+        "created_at": "2026-05-22T13:52:33.295Z",
         "block": "OLD",
-        "unit_number": 5,
-        "rent": "20000.00",
+        "unit_number": 8314,
+        "rent": "10000.00",
         "rentable": true
     }
 },
@@ -58,10 +58,10 @@
     "model": "apartments.apartment",
     "pk": 6,
     "fields": {
-        "created_at": "2026-05-07T13:59:02.542Z",
+        "created_at": "2026-05-22T13:52:33.303Z",
         "block": "NEW",
-        "unit_number": 6,
-        "rent": "20000.00",
+        "unit_number": 806,
+        "rent": "11000.00",
         "rentable": true
     }
 },
@@ -69,10 +69,10 @@
     "model": "apartments.apartment",
     "pk": 7,
     "fields": {
-        "created_at": "2026-05-07T13:59:02.550Z",
+        "created_at": "2026-05-22T13:52:33.311Z",
         "block": "OLD",
-        "unit_number": 7,
-        "rent": "20000.00",
+        "unit_number": 83593,
+        "rent": "14000.00",
         "rentable": true
     }
 },
@@ -80,10 +80,10 @@
     "model": "apartments.apartment",
     "pk": 8,
     "fields": {
-        "created_at": "2026-05-07T13:59:02.559Z",
-        "block": "NEW",
-        "unit_number": 8,
-        "rent": "20000.00",
+        "created_at": "2026-05-22T13:52:33.319Z",
+        "block": "OLD",
+        "unit_number": 2238,
+        "rent": "19000.00",
         "rentable": true
     }
 },
@@ -91,10 +91,10 @@
     "model": "apartments.apartment",
     "pk": 9,
     "fields": {
-        "created_at": "2026-05-07T13:59:02.568Z",
+        "created_at": "2026-05-22T13:52:33.329Z",
         "block": "OLD",
-        "unit_number": 9,
-        "rent": "20000.00",
+        "unit_number": 30862,
+        "rent": "16000.00",
         "rentable": true
     }
 },
@@ -102,10 +102,10 @@
     "model": "apartments.apartment",
     "pk": 10,
     "fields": {
-        "created_at": "2026-05-07T13:59:02.576Z",
+        "created_at": "2026-05-22T13:52:33.337Z",
         "block": "NEW",
-        "unit_number": 10,
-        "rent": "20000.00",
+        "unit_number": 592,
+        "rent": "14000.00",
         "rentable": true
     }
 },
@@ -113,10 +113,10 @@
     "model": "apartments.apartment",
     "pk": 11,
     "fields": {
-        "created_at": "2026-05-07T13:59:02.586Z",
-        "block": "OLD",
-        "unit_number": 11,
-        "rent": "20000.00",
+        "created_at": "2026-05-22T13:52:33.346Z",
+        "block": "NEW",
+        "unit_number": 7348,
+        "rent": "13000.00",
         "rentable": true
     }
 },
@@ -124,10 +124,10 @@
     "model": "apartments.apartment",
     "pk": 12,
     "fields": {
-        "created_at": "2026-05-07T13:59:02.595Z",
-        "block": "NEW",
-        "unit_number": 12,
-        "rent": "20000.00",
+        "created_at": "2026-05-22T13:52:33.361Z",
+        "block": "OLD",
+        "unit_number": 2877,
+        "rent": "12000.00",
         "rentable": true
     }
 },
@@ -135,10 +135,10 @@
     "model": "apartments.apartment",
     "pk": 13,
     "fields": {
-        "created_at": "2026-05-07T13:59:02.603Z",
+        "created_at": "2026-05-22T13:52:33.380Z",
         "block": "OLD",
-        "unit_number": 13,
-        "rent": "20000.00",
+        "unit_number": 9617,
+        "rent": "12000.00",
         "rentable": true
     }
 },
@@ -146,10 +146,10 @@
     "model": "apartments.apartment",
     "pk": 14,
     "fields": {
-        "created_at": "2026-05-07T13:59:02.612Z",
-        "block": "NEW",
-        "unit_number": 14,
-        "rent": "20000.00",
+        "created_at": "2026-05-22T13:52:33.395Z",
+        "block": "OLD",
+        "unit_number": 41322,
+        "rent": "16000.00",
         "rentable": true
     }
 },
@@ -157,10 +157,10 @@
     "model": "apartments.apartment",
     "pk": 15,
     "fields": {
-        "created_at": "2026-05-07T13:59:02.627Z",
-        "block": "OLD",
-        "unit_number": 15,
-        "rent": "20000.00",
+        "created_at": "2026-05-22T13:52:33.406Z",
+        "block": "NEW",
+        "unit_number": 8392,
+        "rent": "19000.00",
         "rentable": true
     }
 },
@@ -168,10 +168,10 @@
     "model": "apartments.apartment",
     "pk": 16,
     "fields": {
-        "created_at": "2026-05-07T13:59:02.647Z",
-        "block": "NEW",
-        "unit_number": 16,
-        "rent": "20000.00",
+        "created_at": "2026-05-22T13:52:33.415Z",
+        "block": "OLD",
+        "unit_number": 9145,
+        "rent": "12000.00",
         "rentable": true
     }
 },
@@ -179,10 +179,10 @@
     "model": "apartments.apartment",
     "pk": 17,
     "fields": {
-        "created_at": "2026-05-07T13:59:02.658Z",
-        "block": "OLD",
-        "unit_number": 17,
-        "rent": "20000.00",
+        "created_at": "2026-05-22T13:52:33.424Z",
+        "block": "NEW",
+        "unit_number": 3201,
+        "rent": "14000.00",
         "rentable": true
     }
 },
@@ -190,10 +190,10 @@
     "model": "apartments.apartment",
     "pk": 18,
     "fields": {
-        "created_at": "2026-05-07T13:59:02.667Z",
-        "block": "NEW",
-        "unit_number": 18,
-        "rent": "20000.00",
+        "created_at": "2026-05-22T13:52:33.433Z",
+        "block": "OLD",
+        "unit_number": 1925,
+        "rent": "18000.00",
         "rentable": true
     }
 },
@@ -201,10 +201,10 @@
     "model": "apartments.apartment",
     "pk": 19,
     "fields": {
-        "created_at": "2026-05-07T13:59:02.676Z",
-        "block": "OLD",
-        "unit_number": 19,
-        "rent": "20000.00",
+        "created_at": "2026-05-22T13:52:33.443Z",
+        "block": "NEW",
+        "unit_number": 875,
+        "rent": "15000.00",
         "rentable": true
     }
 },
@@ -212,10 +212,10 @@
     "model": "apartments.apartment",
     "pk": 20,
     "fields": {
-        "created_at": "2026-05-07T13:59:02.685Z",
-        "block": "NEW",
-        "unit_number": 20,
-        "rent": "20000.00",
+        "created_at": "2026-05-22T13:52:33.453Z",
+        "block": "OLD",
+        "unit_number": 988,
+        "rent": "18000.00",
         "rentable": true
     }
 },
@@ -223,10 +223,10 @@
     "model": "apartments.apartment",
     "pk": 21,
     "fields": {
-        "created_at": "2026-05-07T13:59:02.697Z",
-        "block": "OLD",
-        "unit_number": 21,
-        "rent": "20000.00",
+        "created_at": "2026-05-22T13:52:33.463Z",
+        "block": "NEW",
+        "unit_number": 411,
+        "rent": "12000.00",
         "rentable": true
     }
 },
@@ -234,10 +234,10 @@
     "model": "apartments.apartment",
     "pk": 22,
     "fields": {
-        "created_at": "2026-05-07T13:59:02.713Z",
-        "block": "NEW",
-        "unit_number": 22,
-        "rent": "20000.00",
+        "created_at": "2026-05-22T13:52:33.472Z",
+        "block": "OLD",
+        "unit_number": 68282,
+        "rent": "10000.00",
         "rentable": true
     }
 },
@@ -245,10 +245,10 @@
     "model": "apartments.apartment",
     "pk": 23,
     "fields": {
-        "created_at": "2026-05-07T13:59:02.725Z",
+        "created_at": "2026-05-22T13:52:33.481Z",
         "block": "OLD",
-        "unit_number": 23,
-        "rent": "20000.00",
+        "unit_number": 4869,
+        "rent": "10000.00",
         "rentable": true
     }
 },
@@ -256,10 +256,76 @@
     "model": "apartments.apartment",
     "pk": 24,
     "fields": {
-        "created_at": "2026-05-07T13:59:02.733Z",
+        "created_at": "2026-05-22T13:52:33.491Z",
         "block": "NEW",
-        "unit_number": 24,
-        "rent": "20000.00",
+        "unit_number": 90244,
+        "rent": "18000.00",
+        "rentable": true
+    }
+},
+{
+    "model": "apartments.apartment",
+    "pk": 25,
+    "fields": {
+        "created_at": "2026-05-22T13:52:33.500Z",
+        "block": "NEW",
+        "unit_number": 2985,
+        "rent": "10000.00",
+        "rentable": true
+    }
+},
+{
+    "model": "apartments.apartment",
+    "pk": 26,
+    "fields": {
+        "created_at": "2026-05-22T13:52:33.509Z",
+        "block": "OLD",
+        "unit_number": 890,
+        "rent": "12000.00",
+        "rentable": true
+    }
+},
+{
+    "model": "apartments.apartment",
+    "pk": 27,
+    "fields": {
+        "created_at": "2026-05-22T13:52:33.517Z",
+        "block": "OLD",
+        "unit_number": 58000,
+        "rent": "16000.00",
+        "rentable": true
+    }
+},
+{
+    "model": "apartments.apartment",
+    "pk": 28,
+    "fields": {
+        "created_at": "2026-05-22T13:52:33.526Z",
+        "block": "NEW",
+        "unit_number": 29438,
+        "rent": "17000.00",
+        "rentable": true
+    }
+},
+{
+    "model": "apartments.apartment",
+    "pk": 29,
+    "fields": {
+        "created_at": "2026-05-22T13:52:33.536Z",
+        "block": "NEW",
+        "unit_number": 727,
+        "rent": "13000.00",
+        "rentable": true
+    }
+},
+{
+    "model": "apartments.apartment",
+    "pk": 30,
+    "fields": {
+        "created_at": "2026-05-22T13:52:33.544Z",
+        "block": "OLD",
+        "unit_number": 69,
+        "rent": "18000.00",
         "rentable": true
     }
 }

@@ -387,6 +387,42 @@
     }
 },
 {
+    "model": "auth.permission",
+    "pk": 44,
+    "fields": {
+        "name": "Can add billing period",
+        "content_type": 11,
+        "codename": "add_billingperiod"
+    }
+},
+{
+    "model": "auth.permission",
+    "pk": 45,
+    "fields": {
+        "name": "Can change billing period",
+        "content_type": 11,
+        "codename": "change_billingperiod"
+    }
+},
+{
+    "model": "auth.permission",
+    "pk": 46,
+    "fields": {
+        "name": "Can delete billing period",
+        "content_type": 11,
+        "codename": "delete_billingperiod"
+    }
+},
+{
+    "model": "auth.permission",
+    "pk": 47,
+    "fields": {
+        "name": "Can view billing period",
+        "content_type": 11,
+        "codename": "view_billingperiod"
+    }
+},
+{
     "model": "auth.group",
     "pk": 1,
     "fields": {
