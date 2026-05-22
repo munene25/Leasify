@@ -82,7 +82,7 @@ def tenancy_renew_lease(tenancy: Tenancy, duration_months: int) -> "BillingPerio
     if tenancy.last_billing.status == BillingStatus.UNPAID:
         raise ValidationError("You have an pending billing period, cancel it to create a new one")
 
-    tenancy = Tenancy.objects.select_for_update().get(tenancy.pk)
+    tenancy = Tenancy.objects.select_for_update().get(pk=tenancy.pk)
 
     return billing_period_increment(tenancy=tenancy, duration_months=duration_months)
 
