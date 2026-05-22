@@ -16,7 +16,7 @@ def billing_get(billing_id: int) -> BillingPeriod:
 
 
 def billing_last_paid_for(tenancy_id: int, lock: bool = True) -> BillingPeriod | None:
-    billing = BillingPeriod.objects.filter(tenant=tenancy_id, status=BillingStatus.PAID).order_by("-start_date")
+    billing = BillingPeriod.objects.filter(tenancy_id=tenancy_id, status=BillingStatus.PAID).order_by("-start_date")
     if lock:
         return billing.select_for_update().first()
     return billing.first()
