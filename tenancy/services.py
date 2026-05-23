@@ -73,6 +73,7 @@ def tenancy_create(*, user: "User", apartment: "Apartment", start_date: "date", 
 
 def tenancy_renew_lease(tenancy: Tenancy, duration_months: int) -> "BillingPeriod":
     """A tenant wishes to create a new billing period for themselves"""
+    
     from billing.choices import BillingStatus
 
     # Tenant should have an existing billing history and either
