@@ -27,6 +27,7 @@ class Tenancy(BaseModel):
     We track who rented when the tenancy existed, where the tenant resided and at what agreed rent.
     If rent is increased for an apartment, historical tenancies which relied on the apartment.rent
     fail to portray the correct payment status. This is why we store agreed rent on the tenancy.
+    ? Maybe add expired status for expired booking attempts over terminated?
     """
 
     class Meta:
