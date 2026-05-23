@@ -41,13 +41,3 @@ def validate_lease_period(start_date_raw: date) -> None:
     # Filter out bookings made before 21st for next month
     if target_month == next_month and now.day < 21:
         raise ValidationError("Bookings for next month open on the 21st.")
-
-
-def validate_reservation_extension(tenancy: Tenancy, reservation_extension: timedelta) -> None:
-    computed_reservation_expiration = tenancy.reservation_expriry + reservation_extension
-    if tenancy.status != TenancyStatus.RESERVED:
-        raise ValidationError("Only reserved tenancies can have their reservations extended.")
-    if reservation_extension > timedelta(days=21):
-        raise ValidationError("Reservation extension cannot be longer than 3 weeks.")
-    # if computed_reservation_expiration >= tenancy.end_date:
-    #     raise ValidationError("Reservation extension cannot extend beyond the lease end date.")
