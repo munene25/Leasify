@@ -9,7 +9,7 @@ from tenancy.choices import *
 if TYPE_CHECKING:
     from users.models import User
 
-BASE_QS: QuerySet[Tenancy] = Tenancy.objects.select_related("user", "apartment")
+BASE_QS = Tenancy.objects.select_related("user", "apartment")
 
 tenancy_not_found = raise_not_found("tenancy_id", "Tenancy does not exist.")
 
@@ -66,16 +66,6 @@ def tenancy_get_for(user: "User", tenancy_id: int) -> Tenancy:
     return BASE_QS.filter(t_filters).get(pk=tenancy_id)
 
 
-@tenancy_not_found
-def tenancy_get(tenancy_id: int) -> Tenancy:
-    """Get tenant outside of client flows"""
-    return BASE_QS.get(pk=tenancy_id)
-
-
-def current_tenant() -> Prefetch:
-    return Prefetch("tenancy_set", tenancy_in(active_reserved_defaulting), to_attr="_active_tenant")
-
-
 def tenancy_in(states: list[TenancyStatus]) -> QuerySet[Tenancy]:
     """
     Quickly fetch tenancies in this the states
@@ -83,3 +73,5 @@ def tenancy_in(states: list[TenancyStatus]) -> QuerySet[Tenancy]:
     :return: Tenancy QuerySet filtered by state
     """
     return Tenancy.objects.filter(status__in=states)
+
+current_tenant = Prefetch("tenancy_set", tenancy_in(active_reserved_defaulting), to_attr="_active_tenant")
