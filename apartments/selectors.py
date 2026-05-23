@@ -12,10 +12,11 @@ if TYPE_CHECKING:
     from users.models import User
 
 apartment_not_found = raise_not_found("apartment_id", "Apartment does not exist")
+BASE_QS = Apartment.objects.prefetch_related(current_tenant)
 
-aptartments_listable: models.Q = (
-    models.Q(tenancy__isnull=True)
-    | models.Q(rentable=True)
+aptartments_listable = (
+    models.Q(rentable=True)
+    | models.Q(tenancy__isnull=True)
     | models.Q(tenancy__status__in=TenancyStatus.TERMINATED)
 )
 
@@ -26,24 +27,8 @@ class ApartmentFilterPolicy(FilteringPolicy):
     SUPERUSER = models.Q()
     MANAGER = models.Q()
     CARETAKER = models.Q()
-    TENANT = lambda user: aptartments_listable | models.Q(pk=apartment_recent_for(user))
+    TENANT = aptartments_listable
     REGULAR = aptartments_listable
-
-
-def apartment_recent_for(user: "User") -> models.Subquery:
-
-    return models.Subquery(
-        Tenancy.objects.filter(user_id=user.pk, status__in=active_reserved_defaulting).values("aparment_id")[:1]
-    )
-
-
-def get_base_qs() -> models.QuerySet[Apartment]:
-    """
-    This is defined within a function to avoid prematurely evaluating the current_semester
-    In essence it's important to tell at a glance whether the apartment is occupied or not.
-    """
-
-    return Apartment.objects.prefetch_related(current_tenant())
 
 
 def apartment_list_for(*, user: "User", filters: dict[str, Any] | None = None):
@@ -73,7 +58,7 @@ def apartment_list_for(*, user: "User", filters: dict[str, Any] | None = None):
             return queryset.filter(query)
 
     a_filters = ApartmentFilterPolicy.for_user(user)
-    apartments = get_base_qs().filter(a_filters)
+    apartments = BASE_QS.filter(a_filters)
     return ApartmentFilter(filters, apartments).qs
 
 
@@ -116,7 +101,7 @@ def apartment_overview(r: DateRange):
 def apartment_get_for(*, user: "User", apartment_id: int):
     """Filter the apartment based on the type of user first before fetch"""
     a_filters = ApartmentFilterPolicy.for_user(user)
-    return get_base_qs().filter(a_filters).get(pk=apartment_id)
+    return BASE_QS.filter(a_filters).get(pk=apartment_id)
 
 
 @apartment_not_found
