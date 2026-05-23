@@ -1,4 +1,4 @@
-from datetime import timedelta, date
+from datetime import date
 from rest_framework.exceptions import ValidationError
 from common.exceptions import MaxReservationsExceededError
 from tenancy.models import Tenancy, MAX_RESERVATIONS_PER_USER
