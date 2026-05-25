@@ -5,7 +5,7 @@ from django.contrib.auth.models import Group
 from rest_framework.exceptions import ValidationError
 from common.period import DateRange
 from users.services import user_set_role
-from tenancy.validators import validate_max_monthly_reservations, validate_lease_period
+from tenancy import validators as v
 from tenancy.models import Tenancy
 from tenancy.choices import TenancyStatus, TerminationReason
 from tenancy.selectors import tenancy_in
@@ -40,12 +40,15 @@ def tenancy_create(*, user: "User", apartment: "Apartment", start_date: "date", 
     """
 
     # Users can only make a certain number of reservations in a month.
-    validate_max_monthly_reservations(user.pk)
+    v.validate_max_monthly_reservations(user.pk)
 
     # Even though the lease period is tied to the billing period.
     # I need to check that they are not booking too far in advance
-    validate_lease_period(start_date)
-
+    v.validate_lease_period(start_date)
+    
+    if not apartment.rentable:
+        raise ValidationError("Apartment not available for renting")
+    
     apt = apartment_lock(apartment.pk)
     t = Tenancy(
         user=user,
@@ -87,6 +90,18 @@ def tenancy_renew_lease(tenancy: Tenancy, duration_months: int) -> "BillingPerio
 
     return billing_period_increment(tenancy=tenancy, duration_months=duration_months)
 
+@transaction.atomic
+def tenancy_terminate(tenancy: Tenancy):
+    """A service to allow tenants to cancel their leases"""
+
+    tenancy.status = TenancyStatus.TERMINATED
+    last = tenancy.last_billing
+    if last and last.status == BillingStatus.UNPAID:
+        last.status = BillingStatus.CANCELED
+        last.save()
+    tenancy.full_clean()
+    tenancy.save(update_fields=["status"])
+
 
 def tenancy_reserved_to_terminated() -> None:
     """
@@ -98,7 +113,7 @@ def tenancy_reserved_to_terminated() -> None:
     now = today()
 
     t = tenancy_in([TenancyStatus.RESERVED]).filter(
-        reservation_expiration__gt=now,
+        reservation_expiry__gt=now,
     )
 
     t.update(
