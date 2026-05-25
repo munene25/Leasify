@@ -67,7 +67,6 @@ def user_create(*, email: str, first_name: str, last_name: str, password: str) -
     return user
 
 
-@transaction.atomic
 def account_create(*, user: User, phone_number: str | None = None, bio: str | None = None, backup_email: str | None = None) -> Account:
     """
     Creates an account instance linked to a user one-one-field

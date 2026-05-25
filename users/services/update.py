@@ -84,7 +84,7 @@ def user_change_password(*, user: User, new_password: str, password: str | None 
 
     :param user: User model instance
     :type user: User
-    :param new_password: The password to be set if operation is successful
+    :param new_password: The password to be set if operation is successfull
     :type new_password: str
     :param password: The current raw password of the user. Can be none in password recovery flows
     :type password: str | None
@@ -113,7 +113,6 @@ def user_change_password(*, user: User, new_password: str, password: str | None 
     return user
 
 
-@transaction.atomic
 def account_update_mailing_status(account: Account, status: bool) -> Account:
     """
     Changes ability of a user to receive non-critical mail in their inbox.
@@ -130,7 +129,6 @@ def account_update_mailing_status(account: Account, status: bool) -> Account:
     return account
 
 
-@transaction.atomic
 def user_update_active_status(user: User, status: bool) -> User:
     """
     Simplified the delete/deactivate dance: No deletions apart from through the admin.
@@ -145,10 +143,10 @@ def user_update_active_status(user: User, status: bool) -> User:
     user.is_active = status
     status_change = {True: "activated", False: "deactivated"}[status]
     user.save(update_fields=["is_active"])
-    logger.info("users_active_status_updated", target_id=user.pk, status=status)
+    logger.info("users_active_status_updated", target_id=user.pk, status=status_change)
     return user
 
-@transaction.atomic
+
 def user_email_verify(user: User) -> User:
     """
     Simply verifies the user in a transaction,
@@ -166,7 +164,6 @@ def user_email_verify(user: User) -> User:
     return user
 
 
-@transaction.atomic
 def user_email_update(user: User, email: str, password: str) -> User:
     """
     Email updater that limits email changes based on EMAIL_COOLDOWN in model.

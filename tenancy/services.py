@@ -22,7 +22,7 @@ if TYPE_CHECKING:
     from billing.models import BillingPeriod
 
 
-@transaction.atomic()
+@transaction.atomic
 def tenancy_create(*, user: "User", apartment: "Apartment", start_date: "date", duration_months: int) -> Tenancy:
     """
 
@@ -73,20 +73,20 @@ def tenancy_create(*, user: "User", apartment: "Apartment", start_date: "date", 
     billing_period_initialize(tenancy=t, date_r=r)
     return t
 
-
 def tenancy_renew_lease(tenancy: Tenancy, duration_months: int) -> "BillingPeriod":
     """A tenant wishes to create a new billing period for themselves"""
     
     from billing.choices import BillingStatus
 
-    # Tenant should have an existing billing history and either
+    tenancy = Tenancy.objects.select_for_update().get(pk=tenancy.pk)
+
+    # Tenant should have an existing billing history and in status defaulting or active
     if not tenancy.is_continuing or not tenancy.last_billing:
         raise ValidationError("Only continuing tenancies can create a tenancy")
 
     if tenancy.last_billing.status == BillingStatus.UNPAID:
         raise ValidationError("You have an pending billing period, cancel it to create a new one")
 
-    tenancy = Tenancy.objects.select_for_update().get(pk=tenancy.pk)
 
     return billing_period_increment(tenancy=tenancy, duration_months=duration_months)
 
@@ -102,7 +102,7 @@ def tenancy_terminate(tenancy: Tenancy):
     tenancy.full_clean()
     tenancy.save(update_fields=["status"])
 
-
+@transaction.atomic
 def tenancy_reserved_to_terminated() -> None:
     """
     Fetch all tenancies that are reserved, then filter the ones whose expiration date is past due.

@@ -7,7 +7,6 @@ from common.exceptions import RoleAssignmentError
 logger = get_logger("users.services.roles")
 
 
-@transaction.atomic
 def user_set_role(*, user: User, role: Group, replace: bool = False) -> User:
     """
     Responsible for adding a user to a group.
@@ -35,7 +34,7 @@ def user_set_role(*, user: User, role: Group, replace: bool = False) -> User:
     return user
 
 
-@transaction.atomic
+
 def user_remove_role(user: User) -> User:
     """
     Responsible for removing a user from all groups.

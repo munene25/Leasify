@@ -15,7 +15,6 @@ class ApartmentUpdateData(TypedDict, total=False):
     rent: int | Decimal
     rentable: bool
 
-@transaction.atomic
 def apartment_create(*, block: str, unit_number: int, rent: Decimal | int, rentable: bool = True) -> Apartment:
     """
     Create an apartment with the given details.
@@ -47,7 +46,6 @@ def apartment_create(*, block: str, unit_number: int, rent: Decimal | int, renta
     logger.info("apartment_created", apartment_id=apartment.pk, apartment_name=str(apartment))
     return apartment
 
-@transaction.atomic
 def apartment_update(apartment: Apartment, **kwargs: Unpack[ApartmentUpdateData]) -> Apartment:
     """
     Update apartment fields.
@@ -80,6 +78,7 @@ def apartment_update(apartment: Apartment, **kwargs: Unpack[ApartmentUpdateData]
     apartment.save(update_fields=updates)
     logger.info("apartment_updated", apartment_id=apartment.pk, fields=updates)
     return apartment
+
 
 def apartment_delete(apartment: Apartment) -> None:
     """
