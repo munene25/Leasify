@@ -121,23 +121,27 @@ def tenancy_reserved_to_terminated() -> None:
         termination_date=now,
         termination_reason=TerminationReason.EXPIRED,
     )
+    # cancel billing periods
+    # This prevents attempts to pay for the terminated bookings
+    BillingPeriod.objects.filter(
+        tenancy_id__in=t.values_list("pk", flat=True),
+        status=BillingStatus.UNPAID
+    ).update(status=BillingStatus.CANCELED)
 
 
 def tenancy_active_to_defaulting() -> None:
     """
     Fetch all tenancies that are active.
     Filter the ones that have no paid billing period and terminate them.
-    Update termination date and reason
+    They are not being terminated, just status change
     ? Date as param, then task does this?
     """
     from common.period import today
 
     now = today()
 
-    t = tenancy_in([TenancyStatus.ACTIVE]).exclude(
+    tenancy_in([TenancyStatus.ACTIVE]).exclude(
         billingperiod__start_date__lte=now,
         billingperiod__end_date__lte=now,
         billingperiod__status=BillingStatus.PAID,
-    )
-
-    t.update(status=TenancyStatus.DEFAULTING, termination_date=now, termination_reason=TerminationReason.NONPAYMENT)
+    ).update(status=TenancyStatus.DEFAULTING)
