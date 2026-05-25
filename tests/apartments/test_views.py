@@ -1,7 +1,10 @@
 import pytest
 from decimal import Decimal
+from datetime import date
 from typing import Any, TYPE_CHECKING
+from pytest_django import DjangoAssertNumQueries
 from rest_framework import status
+from common.period import DateRange
 from apartments.models import Apartment
 from tests.types import IsClient, Factory
 from tests.helpers import parse_error, parse_message, parse_paginated_response
@@ -179,16 +182,15 @@ class TestApartmentListCreateView:
             ("manager_client", 10),
             ("caretaker_client", 10),
             ("tenant_client", 5),
-            ("user_client", 4),
-            ("client", 4),
+            ("user_client", 5),
+            ("client", 5),
         ],
     )
     def test_apatment_list_based_on_user_roles(
         self,
-        user_factory: Factory["User"],
         apartment_factory: Factory[Apartment],
-        current_semester: "Semester",
         super_user_client: IsClient,
+        tenant_client: IsClient,
         caretaker_client: IsClient,
         manager_client: IsClient,
         user_client: IsClient,
@@ -199,13 +201,8 @@ class TestApartmentListCreateView:
         from tenancy.services import tenancy_create
         from rest_framework.test import APIClient
 
-        user = user_factory()[0]
         rentable_apartments = apartment_factory(quantity=5, overrides={"rentable": True})
         unrentable_apartments = apartment_factory(quantity=5, overrides={"rentable": False})
-        tenant = tenancy_create(user=user, semester=current_semester, apartment=rentable_apartments[0])
-        tenant_client = APIClient()
-        tenant_client.force_authenticate(user=user)
-
         selected_client: IsClient = {
             "manager_client": manager_client,
             "super_user_client": super_user_client,
@@ -281,10 +278,10 @@ class TestApartmentDetailUpdateDeleteView:
     def test_apartment_detail_correctly_serializes_apartment(
         self,
         user: "User",
-        current_semester: "Semester",
+        today: date,
         apartment: Apartment,
         manager_client: IsClient,
-        django_assert_num_queries,
+        django_assert_num_queries: DjangoAssertNumQueries,
     ):
         """
         Checking especially for current tenant
@@ -301,12 +298,12 @@ class TestApartmentDetailUpdateDeleteView:
         assert data1["rentable"] == apartment.rentable
         assert data1["current_tenant"] == None
 
-        tenant = tenancy_create(semester=current_semester, apartment=apartment, user=user)
+        tenant = tenancy_create(user=user, duration_months=1, start_date=today, apartment=apartment)
 
         # Queries:
         # 1. groups -> exclusions
         # 2. apartment -> main qs
-        # 3. tenancy -> current_tenant
+        # 3. tenancy -> _active_tenant prefetch
         with django_assert_num_queries(3):
             response2 = manager_client.get(self.path(apartment))
 
@@ -333,7 +330,7 @@ class TestApartmentDetailUpdateDeleteView:
         apartment: Apartment,
         manager_client: IsClient,
         caretaker_client: IsClient,
-        tenant_client,
+        tenant_client: IsClient,
         user_client: IsClient,
         client: IsClient,
     ):
@@ -393,16 +390,16 @@ class TestApartmentDetailUpdateDeleteView:
         data = parse_message(response, status.HTTP_204_NO_CONTENT)
 
     def test_apartment_deletion_fails_if_it_has_associated_tenancies(
-        self, user: "User", current_semester: "Semester", manager_client: IsClient, apartment: Apartment
+        self, user: "User", today: date, manager_client: IsClient, apartment: Apartment
     ):
         """
         First assign a tenancy to the apartment then try deletion
-        Should fail
+        Should fail and raise an error
         """
         from tenancy.models import Tenancy
         from tenancy.services import tenancy_create
 
-        tenancy_create(user=user, semester=current_semester, apartment=apartment)
+        tenancy_create(user=user, start_date=today, duration_months=1, apartment=apartment)
         assert Tenancy.objects.count() == 1
         response = manager_client.delete(self.path(apartment))
         parse_error(response, status.HTTP_400_BAD_REQUEST, err_type="validation_error")
@@ -417,58 +414,65 @@ class TestApartmentDetailUpdateDeleteView:
 class TestApartmentOverviewView:
 
     @staticmethod
-    def path(semester: "Semester"):
-        return f"/apartments/overview?semester={semester.pk}"
+    def path(r: DateRange):
+        return f"/apartments/overview?start_date={r.start_date}&end_date={r.end_date}"
 
-    def test_semester_based_apartment_overview(
+    def test_filtering_on_apartment_overview(
         self,
         user_factory: Factory["User"],
-        semester_factory: Factory["Semester"],
         apartment_factory: Factory[Apartment],
+        tenancy_factory,
+        tenancy_validators_patch,
         manager_client: IsClient,
     ):
         """should return the correct values"""
 
         from tenancy.services import tenancy_create
-        from datetime import date
+        from tenancy.choices import TenancyStatus
 
         # I need to create semesters that appear in the future to avoid
         # concluded semester check logic interfering with the test
-        next_year = date.today().year + 1
-        semesters = semester_factory(next_year, next_year)
+        r = DateRange.for_month()
 
         users = user_factory(quantity=5)
 
         apartments = [
-            *apartment_factory(quantity=2, overrides={"rent": 12000, "rentable": True}),
-            *apartment_factory(quantity=3, overrides={"rent": 18000, "rentable": False}),
+            *apartment_factory(quantity=4, overrides={"rent": 12000, "rentable": True}),
             *apartment_factory(quantity=1, overrides={"rent": 17000, "rentable": True}),
+            *apartment_factory(quantity=1, overrides={"rent": 18000, "rentable": False}),
         ]
-        sem_one_tenancies = [
-            tenancy_create(apartment=apartments[i], semester=semesters[0], user=users[i])
-            for i, _ in enumerate(range(3))
-        ]
-        sem_two_tenancies = [
-            tenancy_create(apartment=apartments[i], semester=semesters[1], user=users[i])
-            for i, _ in enumerate(range(5))
-        ]
-        # create another tenancy for an apartment to ensure that the popularity count works as expected
-        tenancy_create(apartment=apartments[0], semester=semesters[2], user=users[0])
 
-        response1 = manager_client.get(self.path(semesters[1]))
+        # create another tenancy for an apartment to ensure that the popularity count works as expected
+        # Need to terminate first to create a new one.
+        previous_tenancy = tenancy_factory(
+            users=[users[0]],
+            apartments=[apartments[0]],
+            overrides={"start_date": r.previous_month().start_date, "status": TenancyStatus.TERMINATED},
+        )
+        tenancies = tenancy_factory(users=users, apartments=apartments[:5])
+
+        response1 = manager_client.get(self.path(r))
         data1 = parse_message(response1)
+
         total_rent = sum(apt.rent for apt in apartments)
+        average_rent = Decimal((total_rent / len(apartments))).quantize(Decimal("0.01"))
+        rents = [a.rent for a in apartments]
+        min_rent = min(rents)
+        max_rent = max(rents)
+
         assert data1["total_apartments"] == len(apartments)
-        assert data1["occupied"] == len(sem_two_tenancies)
-        assert data1["rentable"] == 3
-        assert Decimal(data1["average_rent"]) == Decimal((total_rent / len(apartments))).quantize(Decimal("1.00"))
-        assert Decimal(data1["min_rent"]) == Decimal(12000)
+        assert data1["occupied"] == len(tenancies)
+        assert data1["rentable"] == 5
+
+        assert Decimal(data1["gross_expected_income"]) == total_rent
+        assert Decimal(data1["average_rent"]) == average_rent
+        assert Decimal(data1["min_rent"]) == min_rent
+        assert Decimal(data1["max_rent"]) == max_rent
+
         assert data1["most_popular"] == apartments[0].apartment_name
         assert data1["least_popular"] == apartments[-1].apartment_name
-        assert Decimal(data1["max_rent"]) == Decimal(18000)
-        assert Decimal(data1["gross_expected_income"]) == total_rent
 
-        # assert that the current semester will be used
-        response2 = manager_client.get("/apartments/overview/")
+        # assert that the default month range will be used for the filter
+        response2 = manager_client.get("/apartments/overview")
         data2 = parse_message(response2)
-        assert data2["occupied"] == len(sem_one_tenancies)
+        assert data2["occupied"] == len(tenancies)
