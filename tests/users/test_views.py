@@ -288,13 +288,13 @@ class TestAdminUserDetailUpdateDestroyView:
         assert data1["phone_number"] == str(user.account.phone_number)
 
         # -- Test patching data succeds --
-        pld["phone_number"] = "+254720202202"
+        pld["phone_number"] = "254720202202"
         response2 = manager_client.patch(path, pld)
         data2 = parse_message(response2)
         fetched = User.objects.get(pk=user.pk)
         assert fetched.email == data2["email"]
         assert data2["user_id"] == fetched.pk
-        assert data2["phone_number"] == str(fetched.account.phone_number) == pld["phone_number"]
+        assert data2["phone_number"] == fetched.account.phone_number == pld["phone_number"]
         assert data2["first_name"] == fetched.first_name == pld["first_name"]
         assert data2["last_name"] == fetched.last_name == pld["last_name"]
 
@@ -394,7 +394,7 @@ class TestMeView:
         user.refresh_from_db()  # type: ignore
         assert data2.get("user_id", None) is None
         assert data2["first_name"] == updates["first_name"] == user.first_name
-        assert data2["phone_number"] == updates["phone_number"].replace(" ", "") == user.account.phone_number
+        assert data2["phone_number"] == updates["phone_number"].replace(" ", "").replace("+", "") == user.account.phone_number
         assert data2["bio"] == updates["bio"] == user.account.bio
         assert data2["email"] != updates["email"] and data2["email"] == user.email
         assert data2["role"] != updates["role"] and data2["role"] == "regular"
