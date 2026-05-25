@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from django.db import models
 from common.models import BaseModel
-
+from tenancy.choices import active_reserved_defaulting
 
 
 if TYPE_CHECKING:
@@ -48,14 +48,13 @@ class Apartment(BaseModel):
     
     @property
     def current_tenant(self) -> Tenancy | None:
-        from tenancy.selectors import occupied
         """
         Return the current tenant if they exist.
         """
         current = getattr(self, "_current_tenant", None)
 
         if not current:
-            return self.tenancy_set.filter(status__in=occupied).first()
+            return self.tenancy_set.select_related("user").filter(status__in=active_reserved_defaulting).first()
         return next(iter(current), None)
     
     @property
