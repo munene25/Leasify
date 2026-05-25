@@ -98,7 +98,7 @@ class ApartmentOverviewView(BaseAPIView):
     filter_class = FilterSerializer
     
     def get(self, request: Request):
-        from django.utils import timezone
+        
         check_perms(request.user, "apartments.view_overview")
         filter = self.validate_filter(data=request.query_params)
         try:
@@ -106,7 +106,7 @@ class ApartmentOverviewView(BaseAPIView):
             e = filter["end_date"]
             r = DateRange(s, e)
         except (KeyError, ValueError):
-            r = DateRange.for_month(timezone.now().date())
+            r = DateRange.for_month()
         overview = selectors.apartment_overview(r)
 
         serializer = sc.ApartmentOverviewSerializer(instance=overview)
