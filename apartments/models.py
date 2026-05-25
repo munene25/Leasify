@@ -33,7 +33,7 @@ class Apartment(BaseModel):
         default=True, blank=False, help_text="Viewable and available to rent"
     )
     tenancy_set: models.QuerySet[Tenancy]
-    _current_tenant: list[Tenancy]
+    _active_tenant: list[Tenancy]
 
     def __str__(self) -> str:
         return f"{self.block}-{self.unit_number:02}"
@@ -51,7 +51,7 @@ class Apartment(BaseModel):
         """
         Return the current tenant if they exist.
         """
-        current = getattr(self, "_current_tenant", None)
+        current = getattr(self, "_active_tenant", None)
 
         if not current:
             return self.tenancy_set.select_related("user").filter(status__in=active_reserved_defaulting).first()
