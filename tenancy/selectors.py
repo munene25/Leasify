@@ -74,4 +74,4 @@ def tenancy_in(states: list[TenancyStatus]) -> QuerySet[Tenancy]:
     """
     return Tenancy.objects.filter(status__in=states)
 
-current_tenant = Prefetch("tenancy_set", tenancy_in(active_reserved_defaulting), to_attr="_active_tenant")
+current_tenant = Prefetch("tenancy_set", tenancy_in(active_reserved_defaulting).select_related("user"), to_attr="_active_tenant")
