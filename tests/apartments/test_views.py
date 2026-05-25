@@ -422,7 +422,7 @@ class TestApartmentOverviewView:
         user_factory: Factory["User"],
         apartment_factory: Factory[Apartment],
         tenancy_factory,
-        tenancy_validators_patch,
+        tenancy_patch_validators,
         manager_client: IsClient,
     ):
         """should return the correct values"""

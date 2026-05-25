@@ -10,7 +10,7 @@ today = lambda: timezone.now().date()
 
 class TestApartmentList:
 
-    def test_apartment_for_regular_user(self, user_factory, apartment_factory, tenancy_validators_patch):
+    def test_apartment_for_regular_user(self, user_factory, apartment_factory, tenancy_patch_validators):
         """Test how Policy filters based on user"""
         apartments = apartment_factory(5, overrides={"rentable": True})
         users = user_factory(2)
