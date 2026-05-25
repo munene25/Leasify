@@ -3,6 +3,7 @@ from rest_framework.exceptions import ValidationError
 from common.exceptions import MaxReservationsExceededError
 from tenancy.models import Tenancy, MAX_RESERVATIONS_PER_USER
 from tenancy.choices import TenancyStatus
+from django.db.models import Count, Q
 from common.period import DateRange, today
 
 
@@ -14,13 +15,16 @@ def validate_max_monthly_reservations(user_id: int, exceed: int = MAX_RESERVATIO
     :raises ValidationError: If the maximum number of reservations has been exceeded.
     """
     r = DateRange.for_month()
-    recent_reservations = Tenancy.objects.filter(
+    result = Tenancy.objects.filter(
         user_id=user_id,
-        created_at__gte=r.start_date,
-        created_at__lte=r.end_date,
-        status__in=(TenancyStatus.RESERVED, TenancyStatus.TERMINATED),
-    ).count()
-    if recent_reservations > exceed:
+        created_at__date__gte=r.start_date,
+        created_at__date__lte=r.end_date,
+    ).aggregate(
+        reserved=Count("pk", filter=Q(status=TenancyStatus.RESERVED)),
+        terminated=Count("pk", filter=Q(status=TenancyStatus.TERMINATED)),
+    )
+
+    if result["reserved"] >= 1 or result["terminated"] >= 2:
         raise MaxReservationsExceededError()
 
 
