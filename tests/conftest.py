@@ -182,8 +182,8 @@ def password() -> str:
 
 
 @pytest.fixture
-def phone_no(fake) -> typing.Callable[[str | None], str]:
-    return lambda num=None: num or fake.numerify("+2547########")
+def phone_no(fake) -> typing.Callable[[],str]:
+    return lambda: fake.numerify("2547########")
 
 
 # ------------------------------------------------------ API clients  ------------------------------------------------------ #
