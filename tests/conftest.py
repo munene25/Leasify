@@ -15,6 +15,13 @@ from datetime import date, timedelta
 
 # ------------------------------------------------------ Globals  ------------------------------------------------------ #
 
+# # conftest.py
+# import warnings
+
+
+# def pytest_configure(config):
+#     warnings.filterwarnings("error", category=RuntimeWarning)
+
 
 @pytest.fixture(scope="session")
 def django_db_setup(django_db_setup, django_db_blocker):
@@ -259,26 +266,43 @@ def apartment(apartment_factory) -> Apartment:
 
 # ------------------------------------------------ Tenancy  ------------------------------------------------
 @pytest.fixture
-def tenancy_factory(apartment_factory, user_factory) -> Factory[Tenancy]:
+def tenancy_patch_validators(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr("tenancy.validators.validate_lease_period", lambda u: None)
+    monkeypatch.setattr("tenancy.validators.validate_max_monthly_reservations", lambda u: None)
+
+
+@pytest.fixture
+def tenancy_factory(apartment_factory, user_factory, today) -> Factory[Tenancy]:
     """Tenancy generator - creates lease-based tenancies"""
     from tenancy.services import tenancy_create
+    from tenancy.choices import TenancyStatus
 
-    def create(quantity: int = 1, overrides: dict[str, typing.Any] = {}) -> list[Tenancy]:
+    def create(
+        quantity=1,
+        users: list[User] | None = None,
+        apartments: list[Apartment] | None = None,
+        overrides: dict[str, typing.Any] = {},
+    ) -> list[Tenancy]:
         tenancies = []
-        users = user_factory(quantity=quantity)
-        apartments = apartment_factory(quantity=quantity)
+
+        users = users or user_factory(quantity)
+        apartments = apartments or apartment_factory(quantity)
+
+        duration_months = overrides.get("duration_months", 1)
+        start_date: date = overrides.get("start_date", today)
+        status = overrides.get("status", TenancyStatus.ACTIVE)
 
         for i, user in enumerate(users):
-            apartment = apartments[i % len(apartments)]
-            start = overrides.get("start_date", date.today())
-            duration_months = overrides.get("duration_months", 4)
-
             tenancy = tenancy_create(
                 user=user,
-                apartment=apartment,
-                start_date=start,
+                apartment=apartments[i],
+                start_date=start_date,
                 duration_months=duration_months,
             )
+            if status != tenancy.status:
+                tenancy.status = status
+                tenancy.save()
+
             tenancies.append(tenancy)
 
         return tenancies
