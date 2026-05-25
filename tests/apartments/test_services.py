@@ -92,14 +92,13 @@ class TestApartmentUpdateService:
         Apartment should only be updated if fields actually change
         """
 
-        # Should always include the transactions
-        with django_assert_num_queries(2):
+        # O querries since no updates are being made
+        with django_assert_num_queries(0):
             apartment_update(apartment, block=apartment.block, unit_number=apartment.unit_number)
 
-        # 2 transaction querries
         # 1 uniqueness check via full clean
         # 1 update
-        with django_assert_num_queries(4):
+        with django_assert_num_queries(2):
             apartment_update(apartment, **self.data)
 
         apartment.refresh_from_db()  # type: ignore
