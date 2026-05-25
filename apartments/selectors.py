@@ -6,7 +6,6 @@ from common.helpers import raise_not_found
 from apartments.models import Apartment
 from tenancy.selectors import current_tenant
 from tenancy.choices import TenancyStatus, active_reserved_defaulting
-from tenancy.models import Tenancy
 
 if TYPE_CHECKING:
     from users.models import User
@@ -16,7 +15,7 @@ BASE_QS = Apartment.objects.prefetch_related(current_tenant)
 
 aptartments_listable = (
     models.Q(rentable=True)
-    | models.Q(tenancy__isnull=True)
+    & models.Q(tenancy__isnull=True)
     | models.Q(tenancy__status__in=TenancyStatus.TERMINATED)
 )
 
@@ -82,7 +81,7 @@ def apartment_overview(r: DateRange):
             "tenancy",
         )
     ).order_by("-tenancies_count")
-    occupied = apartments.filter(tenancy__start_date__lte=r.start_date, tenancy__end_date__gte=r.end_date).count()
+    occupied = apartments.filter(tenancy__status__in=[TenancyStatus.ACTIVE, TenancyStatus.DEFAULTING]).count()
 
     return {
         "total_apartments": total_apartments,
