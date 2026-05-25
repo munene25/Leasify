@@ -48,15 +48,11 @@ class Tenancy(BaseModel):
                 violation_error_message="User already has already created a tenancy",
             ),
         ]
-        permissions = (
-            ("tenancy_extend_lease", "Allow tenancy lease time to be extended"),
-            ("tenancy_extend_reservation_expiration", "Allow pending tenants to extend their stay"),
-        )
 
     user = models.ForeignKey(User, on_delete=models.PROTECT, null=False, blank=False)
     apartment = models.ForeignKey(Apartment, on_delete=models.PROTECT, null=False, blank=False)
     status = models.CharField(max_length=20, choices=TenancyStatus.choices, default=TenancyStatus.RESERVED)
-    reservation_expriry = models.DateField(blank=False, null=False, default=default_expiry)
+    reservation_expiry = models.DateField(blank=False, null=False, default=default_expiry)
     termination_reason = models.CharField(choices=TerminationReason.choices, blank=True, null=True)
     termination_date = models.DateField(blank=True, null=True)
 
