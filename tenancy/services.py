@@ -3,6 +3,7 @@ from structlog import get_logger
 from django.db import transaction
 from django.contrib.auth.models import Group
 from rest_framework.exceptions import ValidationError
+from common.exceptions import ApartmentUnavailableError
 from common.period import DateRange
 from users.services import user_set_role
 from tenancy import validators as v
@@ -10,7 +11,7 @@ from tenancy.models import Tenancy
 from tenancy.choices import TenancyStatus, TerminationReason
 from tenancy.selectors import tenancy_in
 from apartments.selectors import apartment_lock
-from billing.services import billing_period_increment, billing_period_initialize
+from billing.services import billing_period_create
 from billing.choices import BillingStatus
 
 logger = get_logger("tenancy.services")
@@ -31,11 +32,9 @@ def tenancy_create(*, user: "User", apartment: "Apartment", start_date: "date", 
     Add user to tenant group.
 
     :param user: The tenant user
-    :param apartment: The apartment to be rented
+    :param apartment: The apartment to be rented, should be rentable.
     :param start_date: Lease start date
     :param duration_months: Lease duration in months
-    :param status: The initial status of the tenancy
-    :param total_due: The total amount due for the tenancy. If not provided, it will be calculated based on the apartment rent and lease duration.
     :return: The created tenancy record.
     """
 
@@ -46,21 +45,28 @@ def tenancy_create(*, user: "User", apartment: "Apartment", start_date: "date", 
     # I need to check that they are not booking too far in advance
     v.validate_lease_period(start_date)
     
-    if not apartment.rentable:
-        raise ValidationError("Apartment not available for renting")
-    
+    # We need to lock the apartment to 
     apt = apartment_lock(apartment.pk)
+
+    if not apt.rentable:
+        raise ApartmentUnavailableError()
+    
+    v.validate_db_constraint(user_id=user.pk, apartment_id=apt.pk)
+    
     t = Tenancy(
         user=user,
         apartment=apt,
         status=TenancyStatus.RESERVED,
     )
-    t.full_clean()
+    # Its important to note that we are no longer validating via full clean.
+    # Db constraints still exist but validation happens via validate_db_constraints.
+    # * This is in an effort to reduce number of queries.
     t.save()
 
     # Add user to Tenant group if not already
+    # Replace set to true coz i already know there is no existing tenancy 
     if not user.groups.filter(name="tenant").exists():
-        user_set_role(user=user, role=Group.objects.get(name="tenant"))
+        user_set_role(user=user, role=Group.objects.get(name="tenant"), replace=True)
 
     logger.info(
         "tenancy_created",
@@ -70,36 +76,45 @@ def tenancy_create(*, user: "User", apartment: "Apartment", start_date: "date", 
     )
 
     r = DateRange.compute_lease_window(start_date, duration_months)
-    billing_period_initialize(tenancy=t, date_r=r)
+    billing_period_create(tenancy=t, date_r=r)
     return t
 
-def tenancy_renew_lease(tenancy: Tenancy, duration_months: int) -> "BillingPeriod":
-    """A tenant wishes to create a new billing period for themselves"""
-    
-    from billing.choices import BillingStatus
+def tenancy_lease_extend(tenancy: Tenancy, duration_months: int) -> "BillingPeriod":
+    """
+    A tenant wishes to extend their stay.
+    The start date of the next billing period is computed from the last paid.
+    To ensure no pending periods remain, check if there are unpaid billing periods first.
+    This avoids paying for ghost billing periods.
+    """
+
+    from billing.selectors import billing_last_paid_for
 
     tenancy = Tenancy.objects.select_for_update().get(pk=tenancy.pk)
 
     # Tenant should have an existing billing history and in status defaulting or active
-    if not tenancy.is_continuing or not tenancy.last_billing:
-        raise ValidationError("Only continuing tenancies can create a tenancy")
-
-    if tenancy.last_billing.status == BillingStatus.UNPAID:
+    if not tenancy.is_continuing:
+        raise ValidationError("Only continuing tenancies can extend their stay")
+    
+    if tenancy.has_pending_bills:
         raise ValidationError("You have an pending billing period, cancel it to create a new one")
 
+    
+    last_billing = billing_last_paid_for(tenancy.pk, lock=True)
+ 
+    if not last_billing:
+        raise ValidationError("Cannot find a paid billing period")
+    
+    r = DateRange.compute_lease_window(start_date=last_billing.next_start, duration_months=duration_months)
 
-    return billing_period_increment(tenancy=tenancy, duration_months=duration_months)
+    return billing_period_create(tenancy=tenancy, date_r=r)
 
 @transaction.atomic
 def tenancy_terminate(tenancy: Tenancy):
     """A service to allow tenants to cancel their leases"""
 
     tenancy.status = TenancyStatus.TERMINATED
-    last = tenancy.last_billing
-    if last and last.status == BillingStatus.UNPAID:
-        last.status = BillingStatus.CANCELED
-        last.save()
-    tenancy.full_clean()
+    if tenancy.has_pending_bills:
+        tenancy.objects.filter(status=BillingStatus.UNPAID).update(status=BillingStatus.CANCELED)
     tenancy.save(update_fields=["status"])
 
 @transaction.atomic
