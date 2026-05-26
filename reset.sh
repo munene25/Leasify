@@ -1,41 +1,54 @@
 #!/bin/bash
-
-# Exit on error
 set -e
 
 APPS=("apartments" "payments" "tenancy" "users" "billing")
 
-echo "Cleaning pycache and migrations for project apps..."
+# Default flags
+SKIP_MIGRATIONS=false
+SKIP_DB=false
+SKIP_SEED=false
 
-find . -type d -name "__pycache__" -exec rm -rf {} +
-
-# Loop through each app and clean migrations
-for app in "${APPS[@]}"; do
-    if [ -d "$app/migrations" ]; then
-        echo "Cleaning migrations in $app..."
-        # Deletes all files except __init__.py
-        find "$app/migrations" -type f -name "*.py" ! -name "__init__.py" -delete
-        find "$app/migrations" -type f -name "*.pyc" -delete
-    else
-        echo "⚠️ No migrations folder found in $app."
-    fi
+# Parse flags
+while getopts "mds" flag; do
+    case "$flag" in
+        m) SKIP_MIGRATIONS=true ;;
+        d) SKIP_DB=true ;;
+        s) SKIP_SEED=true ;;
+        *) echo "Usage: $0 [-m skip migrations] [-d skip db] [-s skip seed]"; exit 1 ;;
+    esac
 done
 
-# Remove SQLite DB if it exists
-if [ -f "db.sqlite3" ]; then
-    rm db.sqlite3
-    echo "🗑️ Deleted db.sqlite3"
+echo "Cleaning pycache..."
+find . -type d -name "__pycache__" -exec rm -rf {} +
+
+if [ "$SKIP_MIGRATIONS" = false ]; then
+    for app in "${APPS[@]}"; do
+        if [ -d "$app/migrations" ]; then
+            echo "Cleaning migrations in $app..."
+            find "$app/migrations" -type f -name "*.py" ! -name "__init__.py" -delete
+            find "$app/migrations" -type f -name "*.pyc" -delete
+        else
+            echo "⚠️ No migrations folder found in $app."
+        fi
+    done
 fi
 
-# Run Django migrations again
+if [ "$SKIP_DB" = false ]; then
+    if [ -f "db.sqlite3" ]; then
+        rm db.sqlite3
+        echo "🗑️ Deleted db.sqlite3"
+    fi
+fi
+
 echo "Making migrations..."
 python3 manage.py makemigrations
 
 echo "Applying migrations..."
 python3 manage.py migrate
 
-echo "Seeding database from seed.py..."
-# Assumes you have django-extensions installed for runscript
-python3 manage.py runscript seed
+if [ "$SKIP_SEED" = false ]; then
+    echo "Seeding database..."
+    python3 manage.py runscript seed
+fi
 
 echo "Project reset complete!"
