@@ -46,14 +46,6 @@ class TenancyDetailUpdateDestroyView(BaseAPIView):
         outgoing = sc.TenancyDetailSerializer(instance=tenancy)
         return Response(status=status.HTTP_200_OK, data=outgoing.data)
 
-    def patch(self, request, tenancy_id: int) -> Response:
-        check_perms(request.user, "tenancy.change_tenancy")
-        incoming = self.validate_serializer(data=request.data)
-        selected = sl.tenancy_get_for(request.user, tenancy_id)
-        updated = sr.tenancy_update(selected, **incoming)
-        outgoing = sc.TenancyDetailSerializer(instance=updated)
-        return Response(data=outgoing.data, status=status.HTTP_200_OK)
-
     def delete(self, request, tenancy_id: int) -> Response:
         check_perms(request.user, "tenancy.delete_tenancy")
         selected = sl.tenancy_get_for(request.user , tenancy_id)
