@@ -7,6 +7,7 @@ from common.models import BaseModel
 from apartments.models import Apartment
 from tenancy.choices import TenancyStatus, TerminationReason
 
+
 if TYPE_CHECKING:
     from billing.models import BillingPeriod
 
@@ -33,19 +34,19 @@ class Tenancy(BaseModel):
     class Meta:
         ordering = ["-created_at"]
         constraints = [
-            # only one active/pending tenancy per apartment at a time
+            # only one active/reserved/defaulting tenancy per apartment at a time
             models.UniqueConstraint(
                 fields=["apartment"],
-                condition=models.Q(status__in=["active", "pending", "defaulting"]),
+                condition=models.Q(status__in=["active", "reserved", "defaulting"]),
                 name="unique_active_pending_per_apartment",
-                violation_error_message="Apartment is already occupied",
+                violation_error_message="Apartment already associated with a tenant",
             ),
-            # only one active/pending tenancy per user at a time
+            # only one active/reserved/defaulting tenancy per user at a time
             models.UniqueConstraint(
                 fields=["user"],
-                condition=models.Q(status__in=["active", "pending", "defaulting"]),
+                condition=models.Q(status__in=["active", "reserved", "defaulting"]),
                 name="unique_active_pending_per_user",
-                violation_error_message="User already has already created a tenancy",
+                violation_error_message="User already has a tenancy",
             ),
         ]
 
@@ -73,8 +74,10 @@ class Tenancy(BaseModel):
         return self.status in [TenancyStatus.DEFAULTING, TenancyStatus.ACTIVE]
 
     @property
-    def last_billing(self) -> "BillingPeriod | None":
-        return self.billings.order_by("-start_date").first()
+    def has_pending_bills(self) -> bool:
+        from billing.choices import BillingStatus
+
+        return self.billings.filter(status=BillingStatus.UNPAID).exists()
 
     @property
     def last_paid_billing(self) -> "BillingPeriod | None":
