@@ -66,7 +66,8 @@ def tenancy_create(*, user: "User", apartment: "Apartment", start_date: "date", 
     # Add user to Tenant group if not already
     # Replace set to true coz i already know there is no existing tenancy 
     if not user.groups.filter(name="tenant").exists():
-        user_set_role(user=user, role=Group.objects.get(name="tenant"), replace=True)
+        from users.selectors import get_group
+        user_set_role(user=user, role=get_group(name="tenant"), replace=True)
 
     logger.info(
         "tenancy_created",
