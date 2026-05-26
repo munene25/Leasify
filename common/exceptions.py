@@ -40,13 +40,13 @@ class InvalidPeriodError(APIException):
     default_detail = "Start date must be before end date and the period must not be in the past."
 
 
-class ApartmentOccupiedError(APIException):
+class ApartmentUnavailableError(APIException):
     """
     Raised when a user tries to book an apartment that has an overlapping lease.
     """
     status_code = status.HTTP_409_CONFLICT
-    default_detail = "Apartment is already occupied during this period."
-    default_code = "apartment_occupied"
+    default_detail = "Apartment is not available for renting"
+    default_code = "apartment_unavailable"
 
 class MaxReservationsExceededError(APIException):
     """
