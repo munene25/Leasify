@@ -1,5 +1,5 @@
 from typing import Any
-
+from functools import lru_cache
 from django.db.models import Q
 from django.http import QueryDict
 from django.contrib.auth.models import UserManager
@@ -96,3 +96,10 @@ def groups_list():
     Exists as a User selector as it's highly coupled with the user model
     """
     return Group.objects.all()
+
+
+
+@lru_cache(maxsize=5)
+@raise_not_found("group", "Group does not exist")
+def get_group(name: str) -> Group:
+    return Group.objects.get(name=name)
