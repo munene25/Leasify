@@ -89,7 +89,7 @@ def run():
     from billing.services import billing_period_confirm_payment
 
     for t in tenancies:
-        billing = t.last_billing
+        billing = t.billings.first()
         if not billing:
             raise ValueError("billing not created")
         p = payment_initiate(
