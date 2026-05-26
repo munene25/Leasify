@@ -6,7 +6,7 @@ from django.contrib.auth.models import Group
 from django.contrib.auth.models import BaseUserManager
 from django.http import HttpRequest
 from users.models import User, Account
-
+from users.selectors import get_group
 
 logger = get_logger("users.admin")
 
@@ -104,7 +104,7 @@ class UserAdmin(admin.ModelAdmin):
             if role == "none":
                 user_remove_role(user)
             else:
-                group = Group.objects.get(name=role)
+                group = get_group(role)
                 user_set_role(user=user, role=group, replace=True)
 
         state = {True: "updated", False: "created"}[change]
