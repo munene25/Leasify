@@ -10,7 +10,7 @@ from django.db.models import TextChoices
 
 class TenancyStatus(TextChoices):
     ACTIVE = "active", "Tenant has paid and the tenancy is active"
-    RESERVED = "pending", "Tenant has made a reservation but has not paid yet"
+    RESERVED = "reserved", "Tenant has made a reservation but has not paid yet"
     DEFAULTING = "defaulting", "Active tenant has not yet paid"
     TERMINATED = "terminated", "Tenancy has been expired"
 
