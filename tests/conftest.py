@@ -144,7 +144,8 @@ def get_role() -> typing.Callable[[str], Group]:
     Callable to return a specific group
     Pass in the str value of the group
     """
-    return lambda name: Group.objects.get(name=name)
+    from users.selectors import get_group
+    return lambda name: get_group(name)
 
 
 @pytest.fixture

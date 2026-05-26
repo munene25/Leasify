@@ -244,10 +244,10 @@ class TestUserListCreateView:
         """
         The list qs should ommit certain types of users based on the fetching user priviledges
         """
-        from django.contrib.auth.models import Group
+        from users.selectors import get_group
 
         new_user: User = user_factory()[0]
-        new_user.groups.add(Group.objects.get(name="manager"))
+        new_user.groups.add(get_group(name="manager"))
 
         # Super user should view 3 users excluding themselves
         respnse1 = super_user_client.get(self.path)
