@@ -24,6 +24,14 @@ class BillingPeriod(BaseModel):
         indexes = [
             models.Index(fields=("tenancy", "start_date", "end_date")),
         ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["tenancy"],
+                condition=models.Q(status=BillingStatus.UNPAID),
+                name="unique_unpaid_billing_per_tenancy",
+                violation_error_message="Only one unpaid billing period allowed per tenant",
+            )
+        ]
 
 
     tenancy = models.ForeignKey(Tenancy, on_delete=models.PROTECT, null=False, blank=False, related_name="billings")
