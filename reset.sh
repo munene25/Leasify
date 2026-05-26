@@ -1,4 +1,8 @@
 #!/bin/bash
+# ./reset.sh          # full reset
+# ./reset.sh -m       # skip migration deletion
+# ./reset.sh -d       # skip db deletion
+# ./reset.sh -ms      # skip migrations and seed
 set -e
 
 APPS=("apartments" "payments" "tenancy" "users" "billing")
