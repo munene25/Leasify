@@ -1,5 +1,6 @@
 import pytest
 import typing
+from unittest.mock import MagicMock
 from tests.types import Factory
 from faker import Faker
 from django.core.management import call_command
@@ -266,9 +267,14 @@ def apartment(apartment_factory) -> Apartment:
 
 # ------------------------------------------------ Tenancy  ------------------------------------------------
 @pytest.fixture
-def tenancy_patch_validators(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr("tenancy.validators.validate_lease_period", lambda u: None)
-    monkeypatch.setattr("tenancy.validators.validate_max_monthly_reservations", lambda u: None)
+def tenancy_patch_validators(monkeypatch: pytest.MonkeyPatch) -> dict[str, MagicMock]:
+    user_reservations = MagicMock()
+    lease_period = MagicMock()
+    
+    monkeypatch.setattr("tenancy.validators.validate_max_monthly_reservations", user_reservations)
+    monkeypatch.setattr("tenancy.validators.validate_lease_period", lease_period)
+
+    return {"user_reservations": user_reservations,"lease_period": lease_period}
 
 
 @pytest.fixture
