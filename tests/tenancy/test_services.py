@@ -1,46 +1,36 @@
 import pytest
-from typing import TYPE_CHECKING
-from unittest.mock import MagicMock, patch
-from django.contrib.auth.models import Group
+from unittest.mock import MagicMock
 from pytest_django import DjangoAssertNumQueries
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import ValidationError, NotFound
 from apartments.models import Apartment
-from common.period import DateRange
-from tests.types import Factory
-from users.models import User
-from users.services import user_set_role
-from tenancy import validators as v
+from common.period import DateRange, today as _today
+from tests.types import Factory, TenancyPayload
 from tenancy.models import Tenancy, DEFAULT_RESERVATION_DURATION
 from tenancy.choices import TenancyStatus, TerminationReason
-from tenancy.selectors import tenancy_in
-from apartments.selectors import apartment_lock
 from billing.choices import BillingStatus
+from users.models import User
+from users.selectors import get_group
 from tenancy.services import *
 from billing.models import BillingPeriod
-from users.models import User
-from datetime import date
+from datetime import date, timedelta
 from apartments.models import Apartment
+from datetime import timedelta
 
 
 class TestTenancyCreation:
-    
-    def test_tenancy_creation_succeeds(self, user: User, today: date, apartment: Apartment):
+
+    def test_tenancy_creation_succeeds(self, tenancy_payload: TenancyPayload, today: date):
         """
         This is technically the booking aspect of tenancy creation.
         A prospective tenant intends to stay in apartment x starts at time y for a duration z.
-        At the end of the transaction, there should be a tenancy created in status reserved 
+        At the end of the transaction, there should be a tenancy created in status reserved
         and a billing period status unpaid.
         User is added to tenancy group.
         """
 
-        duration_months = 2
-
-        tenancy = tenancy_create(
-            user=user, 
-            apartment=apartment, 
-            start_date=today, 
-            duration_months=duration_months
-        )
+        user = tenancy_payload["user"]
+        tenancy = tenancy_create(**tenancy_payload)
+        tenancy.refresh_from_db()
 
         assert tenancy == Tenancy.objects.first()
         assert tenancy.status == TenancyStatus.RESERVED
@@ -50,86 +40,75 @@ class TestTenancyCreation:
         last_billing = BillingPeriod.objects.first()
         assert last_billing is not None
         assert last_billing.tenancy == tenancy
-        assert last_billing.duration_months == duration_months
-        
-        assert user.groups.first() == Group.objects.filter(name="tenant").first()
-    
+        assert user.groups.first() == get_group("tenant")
 
-    def test_tenancy_creation_calls_validators(self, user: User, today: date, apartment: Apartment, tenancy_patch_validators: dict[str, MagicMock]):
+    @pytest.mark.parametrize(
+        "duration_months", 
+        [1, 2, 3, 4]
+    )    
+    def test_tenancy_creation_calls_billing_period_with_correct_arguments(self, tenancy_payload: TenancyPayload, duration_months: int, tenancy_patch_validators: dict[str, MagicMock], mock_billing_create: MagicMock):
+        """This is in order to avoid testing billing period in tenancy"""
+
+        tenancy_payload["duration_months"] = duration_months
+        t = tenancy_create(**tenancy_payload)
+
+        date_range = DateRange.for_month().shift_months(0, + (duration_months-1))
+        mock_billing_create.assert_called_once_with(tenancy=t, date_r=date_range)
+
+    def test_tenancy_creation_calls_validators(self, tenancy_payload: TenancyPayload, today: date, tenancy_patch_validators: dict[str, MagicMock]):
         """
         Instead of testing validation logic here, just mock they were called once with the arguments.
         """
 
-        tenancy = tenancy_create(
-            user=user,
-            apartment=apartment,
-            start_date=today,
-            duration_months=1
-        )
+        user = tenancy_payload["user"]
+        tenancy_create(**tenancy_payload)
 
         validate_reservations = tenancy_patch_validators["user_reservations"]
         validate_lease_period = tenancy_patch_validators["lease_period"]
         validate_reservations.assert_called_once_with(user.pk)
         validate_lease_period.assert_called_once_with(today)
-    
-    def test_tenancy_creation_fails_for_non_rentable_apartment(self, user: User, apartment: Apartment, today: date):
+
+    def test_tenancy_creation_fails_for_non_rentable_apartment(self, tenancy_payload: TenancyPayload):
         """
         Set apartment to not rented and expect validation error
         """
-        apartment.rentable = False
-        apartment.save()
+        tenancy_payload["apartment"].rentable = False
+        tenancy_payload["apartment"].save()
         with pytest.raises(ApartmentUnavailableError) as exc:
-            tenancy_create(
-                user=user,
-                apartment=apartment,
-                start_date=today,
-                duration_months=1
-            )
+            tenancy_create(**tenancy_payload)
         assert Tenancy.objects.count() == 0
 
-    def test_model_constraints_fail_on_conflicts(self, user_factory: Factory[User],apartment_factory: Factory[Apartment],today: date, tenancy_patch_validators: dict[str, MagicMock]):
+    def test_model_constraints_fail_on_conflicts(self, user_factory: Factory[User], apartment_factory: Factory[Apartment], today: date, tenancy_patch_validators: dict[str, MagicMock],):
         """
         The same apartment should not exist in states [defaulting, active reserved]
         The same user should not exist in the states [defaulting, active, reserved]
         """
-        apt1, apt2 = apartment_factory(2, overrides={"rentable": True})
-        user1, user2 = user_factory(2)
+        a1, a2 = apartment_factory(2, overrides={"rentable": True})
+        u1, u2 = user_factory(2)
         r = DateRange.for_month(today)
-        
+
         next_month = r.next_month()
         last_month = r.previous_month()
 
         # first create a reservation for user1
-        first_tenancy = tenancy_create(
-            user=user1,
-            apartment=apt1,
-            start_date=today,
-            duration_months=1
-        )
+        first_tenancy = tenancy_create(user=u1, apartment=a1, start_date=today, duration_months=1)
+
         # Full clean raises drf validation errors coerced from BaseModel.
         # Try create a new tenancy with the same user in a new apartment
         with pytest.raises(ValidationError) as exc:
-            tenancy_create(
-                user=user1,
-                apartment=apt2,
-                start_date=next_month.start_date,
-                duration_months=1
-            )
-        assert "This Aparment or User is already associated with a tenancy" in str(exc.value.detail)
+            tenancy_create(user=u1, apartment=a2, start_date=next_month.start_date, duration_months=1)
 
+        assert "This Aparment or User is already associated with a tenancy" in str(exc.value.detail)
 
         # Try create a tenancy with a different user on the same apartment
         with pytest.raises(ValidationError) as exc:
-            tenancy_create(
-                user=user2,
-                apartment=apt1,
-                duration_months=1,
-                start_date=last_month.start_date
-            )
-        assert "This Aparment or User is already associated with a tenancy" in str(exc.value.detail)
-    
+            tenancy_create(user=u2, apartment=a1, duration_months=1, start_date=last_month.start_date)
 
-    def test_tenancy_creation_no_queries(self, today: date, user: User, apartment: Apartment, django_assert_num_queries: DjangoAssertNumQueries):
+        assert "This Aparment or User is already associated with a tenancy" in str(exc.value.detail)
+
+    def test_tenancy_creation_no_queries(
+        self, tenancy_payload: TenancyPayload, django_assert_num_queries: DjangoAssertNumQueries
+    ):
         """
         1. transaction open
         2. monthly reservations for user
@@ -139,22 +118,152 @@ class TestTenancyCreation:
         6. check tenant group exists
         7. get tenant group
         8. add group to tenant
-        9. check constraints via 
+        9. check constraints via
         10. create billing period
         11. transaction close
         """
+        # ! This is cut down to 10 in most cases coz of the lru cache, it ommits getting the tenancy group.
+        with django_assert_num_queries(10):
+            tenancy_create(**tenancy_payload)
 
-        assert user is not None
-        assert apartment is not None
-
-        with django_assert_num_queries(11):
-            tenancy_create(
-                user=user,
-                duration_months=1,
-                apartment=apartment,
-                start_date=today,
-            )
 
 class TestTenancyLeaseExtension:
-    def test_tenancy_lease_extension_successful(self):
-        ...
+    def test_tenancy_lease_extension_successful(self, actual_tenant: Tenancy, today: date):
+        """
+        This can only work if the tenant has actually made a payment and they are active or defaulting.
+        We can just ignore that by making the billing period paid.
+        """
+        actual_tenant.status = TenancyStatus.ACTIVE
+        actual_tenant.save(update_fields=["status"])
+
+        billing = actual_tenant.billings.first()
+        assert billing is not None
+        billing.status = BillingStatus.PAID
+        billing.save(update_fields=["status"])
+
+        # now extending should work
+        tenancy = tenancy_lease_extend(actual_tenant, 1)
+        tenancy.refresh_from_db()
+        assert tenancy == actual_tenant
+        assert tenancy.billings.count() == 2
+
+    @pytest.mark.parametrize(
+        "duration_months",
+        [1, 2, 3, 4]
+    )
+    def test_tenancy_lease_extension_calls_billing_period_with_correct_args(self, monkeypatch: pytest.MonkeyPatch, duration_months: int, actual_tenant: Tenancy, mock_billing_create: MagicMock):
+        """billing period should be called with the new date range computed from """
+        
+        billing = actual_tenant.billings.latest("start_date")
+        billing.status = BillingStatus.PAID
+        billing.save()
+
+        monkeypatch.setattr(Tenancy, "is_continuing", property(lambda self: True))
+        monkeypatch.setattr(Tenancy, "has_pending_bills", property(lambda self: False))
+
+        tenancy_lease_extend(actual_tenant, duration_months)
+        # today is implied
+        r = DateRange.for_month().shift_months(1, duration_months)
+        mock_billing_create.assert_called_once_with(tenancy=actual_tenant, date_r=r)
+
+
+    @pytest.mark.parametrize(
+        "status",
+        [
+            TenancyStatus.RESERVED,
+            TenancyStatus.TERMINATED,
+        ],
+    )
+    def test_lease_extension_fails_for_terminated_or_reserved(self, actual_tenant: Tenancy, status: TenancyStatus):
+        """
+        Change tenancy status and try to extend. Expect error
+        """
+        actual_tenant.status = status
+        actual_tenant.save(update_fields=["status"])
+
+        with pytest.raises(ValidationError) as exc:
+            tenancy_lease_extend(actual_tenant, 1)
+        assert "Only continuing tenants can extend their lease" in str(exc.value.detail)
+
+
+
+    def test_lease_extension_fails_for_unpaid_billings(self, actual_tenant: Tenancy):
+        """Since a new tenant already has a unpaid billing period, we just have to patch their status"""
+        
+        actual_tenant.status = TenancyStatus.ACTIVE
+        actual_tenant.save(update_fields=["status"])
+        
+        with pytest.raises(ValidationError) as exc:
+            tenancy_lease_extend(actual_tenant, 1)
+
+        assert "You have an UNPAID billing period" in str(exc.value.detail)
+
+    
+    def test_edge_case_no_last_paid_billing(self, actual_tenant: Tenancy):
+        """Tenant canceled their one and only billing, should raise a not found"""
+        
+        actual_tenant.status = TenancyStatus.ACTIVE
+        last_billing = actual_tenant.billings.latest("start_date")
+        last_billing.status = BillingStatus.CANCELED
+        actual_tenant.save(update_fields=["status"])
+        last_billing.save(update_fields=["status"])
+
+        with pytest.raises(NotFound) as exc:
+            tenancy_lease_extend(actual_tenant, duration_months=1)
+        assert "No paid billing exists" in str(exc.value.detail)
+    
+
+    def test_lease_extend_no_queries(self, actual_tenant: Tenancy, monkeypatch: pytest.MonkeyPatch, django_assert_num_queries: DjangoAssertNumQueries):
+        """
+        1. transaction start
+        2. lock tenancy
+        3. check pending bills
+        4. get last paid billing
+        5. create billing period
+        6. transaction end
+        """
+        monkeypatch.setattr(Tenancy, "is_continuing", property(lambda self: True))
+        billing = actual_tenant.billings.latest("start_date")
+        billing.status = BillingStatus.PAID
+        billing.save()
+
+        with django_assert_num_queries(6) as queries:
+            tenancy_lease_extend(actual_tenant, 1)
+            print(queries)
+        
+
+class TestTenancyTerminate:
+
+    @pytest.mark.parametrize(
+            "date,reason",
+            [
+                (_today(), TerminationReason.VOLUNTARY),
+                (_today() + timedelta(days=1), TerminationReason.MANAGERIAL),
+                (_today() + timedelta(days=30), TerminationReason.EXPIRED),
+                (None, TerminationReason.NONPAYMENT),
+            ]
+    )
+    def test_tenancy_termination_successful(self, actual_tenant: Tenancy, date: date, reason: TerminationReason, today: date):
+        """
+        Termination_date, termination_reason and status should be updated.
+        Unpaid billing periods are cancelled
+        """
+        t = tenancy_terminate(tenancy=actual_tenant, termination_date=date, termination_reason=reason)
+        t.refresh_from_db()
+        assert t == actual_tenant
+        assert t.status == TenancyStatus.TERMINATED
+        assert t.termination_date == date or today
+        assert t.termination_reason == reason
+
+        billing = t.billings.latest("start_date")
+        assert billing.status == BillingStatus.CANCELED
+ 
+    
+    def test_tenancy_termination_fails_for_backdated_termination_dates(self, actual_tenant: Tenancy, today: date):
+        with pytest.raises(ValidationError) as exc:
+            tenancy_terminate(
+                tenancy=actual_tenant, 
+                termination_reason=TerminationReason.VOLUNTARY, 
+                termination_date=today-timedelta(days=10)
+            )
+        assert "Cannot set termination date before tenant's creation" in str(exc.value.detail)
