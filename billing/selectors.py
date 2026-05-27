@@ -15,8 +15,6 @@ def billing_get(billing_id: int) -> BillingPeriod:
     return BillingPeriod.objects.get(pk=billing_id)
 
 
-def billing_last_paid_for(tenancy_id: int, lock: bool = True) -> BillingPeriod | None:
-    billing = BillingPeriod.objects.filter(tenancy_id=tenancy_id, status=BillingStatus.PAID).order_by("-start_date")
-    if lock:
-        return billing.select_for_update().first()
-    return billing.first()
+@raise_not_found("billing", "No paid billing exists for the tenant")
+def billing_last_paid_for(tenancy_id: int) -> BillingPeriod:
+    return BillingPeriod.objects.filter(tenancy_id=tenancy_id, status=BillingStatus.PAID).latest("start_date")
