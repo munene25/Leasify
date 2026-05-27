@@ -1,7 +1,6 @@
 from typing import TYPE_CHECKING
 from structlog import get_logger
 from django.db import transaction
-from django.contrib.auth.models import Group
 from rest_framework.exceptions import ValidationError
 from common.exceptions import ApartmentUnavailableError
 from common.period import DateRange
@@ -80,84 +79,60 @@ def tenancy_create(*, user: "User", apartment: "Apartment", start_date: "date", 
     billing_period_create(tenancy=t, date_r=r)
     return t
 
-def tenancy_lease_extend(tenancy: Tenancy, duration_months: int) -> "BillingPeriod":
+@transaction.atomic
+def tenancy_lease_extend(tenancy: Tenancy, duration_months: int) -> Tenancy:
     """
-    A tenant wishes to extend their stay.
+    A tenant wants to create a new billing period.
     The start date of the next billing period is computed from the last paid.
-    To ensure no pending periods remain, check if there are unpaid billing periods first.
-    This avoids paying for ghost billing periods.
+
+    :param tenancy: Tenancy object to extend lease for.
+    :param duration_months: Max allowed duration is 4 months validated by billing period.
+    :rerturn: Updated tenancy object
     """
 
-    from billing.selectors import billing_last_paid_for
+    # Background tasks may cause race condition.
+    tenancy = Tenancy.objects.select_related("apartment").select_for_update().get(pk=tenancy.pk)
 
-    tenancy = Tenancy.objects.select_for_update().get(pk=tenancy.pk)
-
-    # Tenant should have an existing billing history and in status defaulting or active
+    # This prevents Terminated or Expired tenancies from extending lease
     if not tenancy.is_continuing:
-        raise ValidationError("Only continuing tenancies can extend their stay")
+        raise ValidationError("Only continuing tenants can extend their lease")
     
+    # This prevents ghost payments.
     if tenancy.has_pending_bills:
-        raise ValidationError("You have an pending billing period, cancel it to create a new one")
-
+        raise ValidationError("You have an UNPAID billing period, cancel it to create a new one")
     
-    last_billing = billing_last_paid_for(tenancy.pk, lock=True)
- 
-    if not last_billing:
-        raise ValidationError("Cannot find a paid billing period")
+    # No need to lock, its immutable.
+    last = tenancy.last_paid_billing
     
-    r = DateRange.compute_lease_window(start_date=last_billing.next_start, duration_months=duration_months)
+    r = DateRange.compute_lease_window(start_date=last.next_start, duration_months=duration_months)
 
-    return billing_period_create(tenancy=tenancy, date_r=r)
+    billing_period_create(tenancy=tenancy, date_r=r)
+    return tenancy 
 
 @transaction.atomic
-def tenancy_terminate(tenancy: Tenancy):
-    """A service to allow tenants to cancel their leases"""
+def tenancy_terminate(*, tenancy: Tenancy, termination_reason: TerminationReason, termination_date: "date | None" = None) -> Tenancy:
+    """
+    Allow tenants to cancel their leases.
+    Cleanup involves terminating their billing periods as well.
+    Opted for this over objects.update since the return is basically 
+    ? Should add a check to ensure termination date cannot preceed creation.
+
+    :param tenancy: Tenant object being terminated.
+    :param termination_reason: The reason they are being terminated, determined upstrem (views).
+    :param termination_date: To allow for slightly backdating tenancies.
+    :return: The Terminated tenancy instance
+    """
+    
+    from common.period import today
+
+    if termination_date and tenancy.created_at.date() > termination_date:
+        raise ValidationError(f"Cannot set termination date before tenant's creation date: {tenancy.created_at.date().strftime("%B %d, %Y")}")
 
     tenancy.status = TenancyStatus.TERMINATED
-    if tenancy.has_pending_bills:
-        tenancy.objects.filter(status=BillingStatus.UNPAID).update(status=BillingStatus.CANCELED)
-    tenancy.save(update_fields=["status"])
-
-@transaction.atomic
-def tenancy_reserved_to_terminated() -> None:
-    """
-    Fetch all tenancies that are reserved, then filter the ones whose expiration date is past due.
-    Terminate then update termination date and reason.
-    """
-    from common.period import today
-
-    now = today()
-
-    t = tenancy_in([TenancyStatus.RESERVED]).filter(
-        reservation_expiry__gt=now,
-    )
-
-    t.update(
-        status=TenancyStatus.TERMINATED,
-        termination_date=now,
-        termination_reason=TerminationReason.EXPIRED,
-    )
-    # cancel billing periods
-    # This prevents attempts to pay for the terminated bookings
-    BillingPeriod.objects.filter(
-        tenancy_id__in=t.values_list("pk", flat=True),
-        status=BillingStatus.UNPAID
-    ).update(status=BillingStatus.CANCELED)
+    tenancy.termination_date = termination_date or today()
+    tenancy.termination_reason = termination_reason 
+    tenancy.save(update_fields=("status", "termination_date", "termination_reason"))
+    tenancy.billings.filter(status=BillingStatus.UNPAID).update(status=BillingStatus.CANCELED)
+    return tenancy
 
 
-def tenancy_active_to_defaulting() -> None:
-    """
-    Fetch all tenancies that are active.
-    Filter the ones that have no paid billing period and terminate them.
-    They are not being terminated, just status change
-    ? Date as param, then task does this?
-    """
-    from common.period import today
-
-    now = today()
-
-    tenancy_in([TenancyStatus.ACTIVE]).exclude(
-        billingperiod__start_date__lte=now,
-        billingperiod__end_date__lte=now,
-        billingperiod__status=BillingStatus.PAID,
-    ).update(status=TenancyStatus.DEFAULTING)
