@@ -279,21 +279,16 @@ def tenancy_patch_validators(monkeypatch: pytest.MonkeyPatch) -> dict[str, Magic
 
 
 @pytest.fixture
-def tenancy_factory(apartment_factory, user_factory, today) -> Factory[Tenancy]:
+def tenancy_factory(apartment_factory: Factory[Apartment], user_factory: Factory[User], today: date) -> Factory[Tenancy]:
     """Tenancy generator - creates lease-based tenancies"""
     from tenancy.services import tenancy_create
     from tenancy.choices import TenancyStatus
 
-    def create(
-        quantity=1,
-        users: list[User] | None = None,
-        apartments: list[Apartment] | None = None,
-        overrides: dict[str, typing.Any] = {},
-    ) -> list[Tenancy]:
+    def create(quantity=1, users: list[User] | None = None, apartments: list[Apartment] | None = None, overrides: dict[str, typing.Any] = {}, ) -> list[Tenancy]:
         tenancies = []
 
         users = users or user_factory(quantity)
-        apartments = apartments or apartment_factory(quantity)
+        apartments = apartments or apartment_factory(quantity, overrides={"rentable": True})
 
         duration_months = overrides.get("duration_months", 1)
         start_date: date = overrides.get("start_date", today)
