@@ -1,6 +1,10 @@
-from typing import Protocol, Any, TypedDict, Mapping, TypeVar, Callable
+from typing import Protocol, Any, TypedDict, Mapping, TypeVar, TYPE_CHECKING
 from typing_extensions import Unpack
 
+if TYPE_CHECKING:
+    from users.models import User
+    from apartments.models import Apartment
+    from datetime import date
 
 
 class UserCreatePayload(TypedDict):
@@ -19,7 +23,11 @@ class UserUpdatePayload(TypedDict, total=False):
     backup_email: str
     phone_number: str
 
-
+class TenancyPayload(TypedDict):
+    user: "User"
+    apartment: "Apartment"
+    start_date: "date"
+    duration_months: int
 
 
 
