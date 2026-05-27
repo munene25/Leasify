@@ -7,7 +7,6 @@ from apartments.services import apartment_create
 from payments.services import payment_initiate, payment_confirm
 from payments.mpesa import CallbackResponse
 from users.services import user_account_create
-from scripts.permissions import setup_roles_and_permissions
 from faker import Faker
 from django.core.management import call_command
 from payments.choices import PaymentInitiator
@@ -28,7 +27,7 @@ def run():
     try:
         call_command("loaddata", "fixtures/roles.json")
     except Exception:
-        setup_roles_and_permissions()
+        call_command("setup_permissions", )
         dump_data("fixtures/roles.json", "auth.Permission", "auth.Group")
 
     # ============================================= Users =============================================
