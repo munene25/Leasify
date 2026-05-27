@@ -161,6 +161,14 @@ class TestDateRange:
         with pytest.raises(ValueError) as exc:
             two_months.previous_month()
 
+    def test_compute_month_shifts_at_end_year(self):
+        """Assert that end year month computations resolve correctly"""
+        t1 = date(2020, 11, 1)
+        curr_month = DateRange.for_month(t1)
+        two_months_later = curr_month.shift_months(0, +2)
+        assert two_months_later.start_date == t1
+        assert two_months_later.end_date.year == t1.year + 1
+
     def test_compute_range_with_grace_period(self):
         """
         Compute the monthly date range with a grace period
