@@ -28,7 +28,8 @@ class Tenancy(BaseModel):
     We track who rented when the tenancy existed, where the tenant resided and at what agreed rent.
     If rent is increased for an apartment, historical tenancies which relied on the apartment.rent
     fail to portray the correct payment status. This is why we store agreed rent on the tenancy.
-    ? Maybe add expired status for expired booking attempts over terminated?
+    ? Maybe add expired status for expired booking attempts over terminated
+    ? Maybe add start date to know the time the tenant has been around
     """
 
     class Meta:
@@ -80,7 +81,14 @@ class Tenancy(BaseModel):
         return self.billings.filter(status=BillingStatus.UNPAID).exists()
 
     @property
-    def last_paid_billing(self) -> "BillingPeriod | None":
-        from billing.choices import BillingStatus
+    def last_paid_billing(self) -> "BillingPeriod":
+        """I use the selector here to avoid checking for not found"""
+        from billing.selectors import billing_last_paid_for
 
-        return self.billings.order_by("-start_date").filter(status=BillingStatus.PAID).first()
+        return billing_last_paid_for(self.pk)
+
+    @property
+    def paid_up_to(self) -> "BillingPeriod | None":
+        """
+        This might be important to get view they are paid up to what date.
+        """
