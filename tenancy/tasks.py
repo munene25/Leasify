@@ -1,85 +1,94 @@
-from django.db import transaction
-from common.period import today
-from tenancy.choices import *
-from tenancy.selectors import tenancy_in
-from billing.choices import BillingStatus
-from billing.models import BillingPeriod
-from celery import shared_task
-from celery.utils.log import get_task_logger
 from structlog import get_logger
-from django.db.models import Q
+from celery import shared_task
+from django.db import transaction
+from django.db.models import QuerySet
+from common.period import today
+from tenancy.choices import TenancyStatus as TS, TerminationReason as TR
+from tenancy.models import Tenancy
+from billing.choices import BillingStatus as BS
+from billing.models import BillingPeriod as Billings
 
-logger = get_logger("tenancy.tasks")
-task_logger = get_task_logger(__name__)
+logger = get_logger("celery.tenancy")
+auto_retry = shared_task(retry_kwargs={'max_retries': 5}, retry_backoff=True)
 
-def tenancy_active_set_defaulting() -> list[int | None]:
+@auto_retry
+def month_start_tasks():
     """
-    Fetch all active tenancies that dont have a paid billing period currently.
-    Set tenancies to defaulting.
+    Run at start of month:
+    * ** They remain seperate for ease of testing. **
+    1. Terminate defaulting tenancies (non-payment)
+    2. Set active tenancies without paid billing to defaulting
     """
-    from common.period import today
-
-    now = today()
-
-    t = tenancy_in([TenancyStatus.ACTIVE]).exclude(
-        billings__start_date__lte=now,
-        billings__end_date__gte=now,
-        billings__status=BillingStatus.PAID,
-    )
     
-    tenancies = list(t.values_list("pk", flat=True))
+    logger.info("month_start_task")
+    try: 
+        defaulting_terminated = defaulting_set_terminated()
+        active_terminated = active_set_defaulting()
 
-    t.update(status=TenancyStatus.DEFAULTING)
-    if tenancies:
-        logger.info(
-            "tenancy_active_set_defauling",
-            tenancies=tenancies
-        )
+    except Exception as e:
+        logger.error("month_start_task_failed", errors=str(e))
+        raise Exception from e
+    
+    logger.info("month_start_task_complete", active=active_terminated, defaulting=defaulting_terminated)
+
+
+@auto_retry
+def reserved_set_terminated() -> list[int | None]:
+    """Terminate tenants who are in status RESERVED and set reason to EXPIRED"""
+
+    logger.info("terminating_reserved")
+    try:
+        qs = Tenancy.objects.filter(status=TS.RESERVED, reservation_expiry__lt=today())
+        tenancies = tenancy_terminate_from(tenants=qs, reason=TR.EXPIRED)
+    except Exception as e:
+        logger.error("terminating_reserved_failed", errors=str(e))
+        raise Exception from e
+    logger.info("terminatin_reserved_successful", terminated=tenancies)
     return tenancies
-
 
 
 @transaction.atomic
-def tenancy_set_terminated_from(*, initial: TenancyStatus, reason: TerminationReason, filters: Q | None = None) -> list[int | None]:
+def tenancy_terminate_from(tenants: QuerySet[Tenancy], reason: TR) -> list[int | None]:
     """
-    This is intended to run as a scheduled task.
-    Fetch all tenancies that are in initial status and terminate them.
-    Terminate then update termination date and reason.
+    Terminate tenancies from queryset
+    :param tenants: A queryset of tenants of which to terminate.
+    :param reason: The termination reason to for termination.
+    :param return: The list of affected tenancies.
     """
-    from common.period import today
-    
-    # ! Fetching value_list after update will always return empty list
-    t = tenancy_in([initial]).filter(filters or Q())
-    tenancies = list(t.values_list("pk", flat=True))
+    if not (t_list := list(tenants.values_list("pk", flat=True))):
+        return []
 
-    t.update(
-        status=TenancyStatus.TERMINATED,
-        termination_date=today(),
-        termination_reason=reason,
+    tenants.update(status=TS.TERMINATED, termination_date=today(), termination_reason=reason)
+
+    # Cancel to prevent attempts to pay for the terminated bookings.
+    unpaid_bills = Billings.objects.filter(tenancy_id__in=t_list, status=BS.UNPAID)
+    unpaid_bills.update(status=BS.CANCELED)
+    return t_list
+
+def active_set_defaulting() -> list[int | None]:
+    """Set tenancies with nopayments for the billing cycle to DEFAULTING"""
+    
+    # Get defaulting
+    qs = Tenancy.objects.filter(status=TS.ACTIVE)
+
+    # Exclude those with paid bills
+    qs = qs.exclude(
+        billings__start_date__lte=today(),
+        billings__end_date__gte=today(),
+        billings__status=BS.PAID
     )
     
-    # Cancel to prevent attempts to pay for the terminated bookings.
-    BillingPeriod.objects.filter(
-        tenancy_id__in=tenancies,
-        status=BillingStatus.UNPAID
-    ).update(status=BillingStatus.CANCELED)
+    if not (t_list := list(qs.values_list("pk", flat=True))):
+        return []
 
-    if tenancies:
-        logger.info(
-            "tenancies_terminated",
-            tenancies=tenancies,
-            reason=reason,
-        )
-    return tenancies
+    qs.update(status=TS.DEFAULTING)
+    return t_list
 
-# @shared_task
-# def terminate_defaulting() -> None:
-#     return tenancy_defaulting_to_terminated()
 
-# @shared_task
-# def default_active() -> None:
-#     return tenancy_active_to_defaulting()
+def defaulting_set_terminated() -> list[int | None]:
+    """Terminate tenants who are in status DEFAULTING and set reason to NONPAYMENT"""
+    
+    qs = Tenancy.objects.filter(status=TS.DEFAULTING)
+    return tenancy_terminate_from(tenants=qs, reason=TR.NONPAYMENT)
 
-# @shared_task
-# def terminate_reserved() -> None:
-#     return tenancy_reserved_to_terminated()
+
