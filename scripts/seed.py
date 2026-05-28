@@ -76,12 +76,12 @@ def run():
     # ============================================= Tenancies =============================================
     tenancies = [
         tenancy_create(
-            user=users[i],
+            user=user,
             apartment=apartments[i],
             start_date=timezone.now().date(),
             duration_months=random.randint(1, 4),
         )
-        for i in ITERATIONS[5:]
+        for i, user in enumerate(users[5:])
     ]
 
     # ============================================= Payments =============================================
