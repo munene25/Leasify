@@ -220,7 +220,7 @@ ADMINS = ["edmune25@gmail.com"]  # Logging email alerts in prod
 
 
 ## CELERY
-CELERY_CACHE_BACKEND = "dev" if DEV_ENVIRONMENT else "redis"
+CELERY_CACHE_BACKEND = "default"
 CELERY_BROKER_URL = CACHES["default"]["LOCATION"]
 CELERY_TASK_ALWAYS_EAGER = True if DEV_ENVIRONMENT else False
 CELERY_TASK_IGNORE_RESULT = False
