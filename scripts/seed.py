@@ -81,7 +81,7 @@ def run():
             start_date=timezone.now().date(),
             duration_months=random.randint(1, 4),
         )
-        for i in ITERATIONS
+        for i in ITERATIONS[5:]
     ]
 
     # ============================================= Payments =============================================
