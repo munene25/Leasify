@@ -38,7 +38,7 @@ def send_template_email(
     template_name: str,
     from_email: str | None = None,
 ) -> None:
-    """Inject additional context to the email renderes and send the email"""
+    """Inject additional context to the email renders and send the email"""
 
     context = {**context, **email_context.as_dict}
     text_content = render_to_string(f"{template_name}.txt", context)
