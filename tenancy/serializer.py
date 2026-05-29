@@ -1,14 +1,13 @@
 from rest_framework import serializers
-from common.fields import PhoneNumberSerializerField
 from users.models import User
 from apartments.models import Apartment
-from tenancy.models import Tenancy
+from tenancy.choices import TerminationReason
 
 
 class TenancyListSerializer(serializers.Serializer):
     tenant_id = serializers.IntegerField(source="pk")
-    tenant_name = serializers.CharField()
-    apartment = serializers.CharField()
+    tenant_name = serializers.CharField(source="user.full_name")
+    apartment_name = serializers.CharField(source="apartment.apartment_name")
     status = serializers.CharField()
     date_joined = serializers.DateField()
 
@@ -20,13 +19,17 @@ class TenancyCreateSerializer(serializers.Serializer):
 
 class TenancyDetailSerializer(serializers.Serializer):
     tenant_id = serializers.IntegerField(source="pk")
-    tenant_name = serializers.CharField()
-    apartment = serializers.CharField()
+    tenant_name = serializers.CharField(source="user.full_name")
+    apartment_name = serializers.CharField(source="apartment.apartment_name")
+    user_id = serializers.IntegerField()
     status = serializers.CharField()
     date_joined = serializers.DateField()
-    phone_number = PhoneNumberSerializerField(source="user.account.phone_number")
     paid_up_to = serializers.DateField()
 
 
 class TenancyLeaseExtensionSerializer(serializers.Serializer):
     duration_months = serializers.IntegerField()
+
+class TenancyTerminateSerializer(serializers.Serializer):
+    termination_reason = serializers.ChoiceField(choices=TerminationReason)
+    
