@@ -9,7 +9,7 @@ from tenancy.tasks import *
 from freezegun import freeze_time
 from django.utils import timezone
 from common.period import today as _today
-
+from django.core.mail import EmailMessage
 
 # define a helper to quickly change status
 def status_to(tenants: list[Tenancy], status: BS) -> None:
@@ -143,3 +143,31 @@ class TestDefaultingSetTerminated:
         assert t.status == TS.TERMINATED
         assert t.termination_reason ==  TR.NONPAYMENT
         assert t.billings.filter(status=BS.UNPAID).count() == 0
+
+class TestNotifyReservedOnExpiry:
+    def test_reserved_on_expiry_queries_correct_list(self, tenancy_factory: Factory[Tenancy], mailoutbox: list[EmailMessage]):
+        """Those whose expiry is tomorrow should be included"""
+
+        tenants = tenancy_factory(3, overrides={"status": TS.RESERVED})
+        day_of_expiry = timezone.now() + DEFAULT_RESERVATION_DURATION - timedelta(1)
+
+        with freeze_time(day_of_expiry):
+            assert set(notify_reserved_on_expiry()) == {t.pk for t in tenants}
+
+    def test_reserved_notify_expiry(self, actual_tenant: Tenancy, mailoutbox: list[EmailMessage]):
+        """We need to check the mail message. Verify apartment_name, tenant_name, max_reservations, payment_url"""
+
+        from tests.helpers import check_links_in_mail
+        tommorrow = today() + timedelta(1)
+        actual_tenant.reservation_expiry = tommorrow
+        actual_tenant.save(update_fields=["reservation_expiry"])
+
+        notify_reserved_on_expiry()
+        assert len(mailoutbox) == 1
+        
+        mail = mailoutbox[0]
+        check_links_in_mail(actual_tenant.user, mail, "payments/initiate")
+        assert "reservation is about to expire" in mail.subject
+        assert actual_tenant.apartment.apartment_name in mail.body
+        assert actual_tenant.user.full_name in mail.body
+        assert str(MAX_RESERVATIONS_PER_USER) in mail.body
