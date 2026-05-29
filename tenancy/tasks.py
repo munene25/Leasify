@@ -3,7 +3,7 @@ from django.db import transaction
 from django.db.models import QuerySet
 from common.period import today
 from tenancy.choices import TenancyStatus as TS, TerminationReason as TR
-from tenancy.models import Tenancy
+from tenancy.models import Tenancy, MAX_RESERVATIONS_PER_USER
 from billing.choices import BillingStatus as BS
 from billing.models import BillingPeriod as Billings
 
@@ -21,6 +21,35 @@ def month_start_tasks() -> dict[str, list]:
     active_terminated = active_set_defaulting()
     
     return {"active_to_terminated": active_terminated, "defaulting": defaulting_terminated}
+
+
+@shared_task(retry_kwargs={'max_retries': 3}, retry_backoff=True)
+def notify_reserved_on_expiry() -> list[int]:
+    from datetime import timedelta
+    from config.emails import send_template_email
+    from users.tokens import build_user_url
+    
+    # Get reserved whose expiry is tomorrow
+    tommorow = today() + timedelta(1)
+    qs = Tenancy.objects.filter(status=TS.RESERVED, reservation_expiry=tommorow)
+
+    subject = "Your reservation is about to expire."
+    affected = []
+    for t in qs.select_related("user").all():
+        context={
+            "tenant_name": t.user.full_name,
+            "apartment_name": t.apartment.apartment_name,
+            "max_reservations": MAX_RESERVATIONS_PER_USER,
+            "payment_url": build_user_url(user=t.user, path="payments/initiate"),
+        }
+        send_template_email(
+            subject=subject,
+            context=context,
+            to=[t.user.email],
+            template_name="emails/expiry_notification"
+        )
+        affected.append(t.pk)
+    return affected
 
 
 @shared_task(retry_kwargs={'max_retries': 3}, retry_backoff=True)
@@ -51,7 +80,7 @@ def tenancy_terminate_from(tenants: QuerySet[Tenancy], reason: TR) -> list[int |
     return t_list
 
 def active_set_defaulting() -> list[int | None]:
-    """Set tenancies with nopayments for the billing cycle to DEFAULTING"""
+    """Set tenancies with no payments for the billing cycle to DEFAULTING"""
     
     # Get defaulting
     qs = Tenancy.objects.filter(status=TS.ACTIVE)
@@ -75,5 +104,4 @@ def defaulting_set_terminated() -> list[int | None]:
     
     qs = Tenancy.objects.filter(status=TS.DEFAULTING)
     return tenancy_terminate_from(tenants=qs, reason=TR.NONPAYMENT)
-
 
