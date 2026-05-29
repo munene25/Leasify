@@ -1,7 +1,4 @@
-from datetime import timedelta, time, datetime
 from django.core.management import BaseCommand
-from django.utils import timezone
-from django.utils.timezone import make_aware
 from django.contrib.auth.models import Group, Permission
 from django.contrib.contenttypes.models import ContentType
 
