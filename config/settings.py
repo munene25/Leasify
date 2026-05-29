@@ -48,11 +48,12 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+
+    "drf_standardized_errors",
+    "django_extensions",
+    "django_structlog",
     "rest_framework",
     "corsheaders",
-    "django_extensions",
-    "drf_standardized_errors",
-    "django_structlog",
     "users",
     "payments",
     "apartments",
@@ -220,11 +221,11 @@ ADMINS = ["edmune25@gmail.com"]  # Logging email alerts in prod
 
 
 ## CELERY
-CELERY_CACHE_BACKEND = "default"
 CELERY_BROKER_URL = CACHES["default"]["LOCATION"]
 CELERY_TASK_ALWAYS_EAGER = True if DEV_ENVIRONMENT else False
-CELERY_TASK_IGNORE_RESULT = False
-CELERY_RESULT_EXPIRES = 3600
+CELERY_IGNORE_RESULT = True
+CELERY_ENABLE_UTC = True
+CELERY_TIMEZONE = 'UTC'
 
 
 # MPESA
@@ -237,3 +238,6 @@ MPESA_CONFIG = {
     "PASSKEY": os.environ["MPESA_PASSKEY"],
     "CALLBACK_URL": os.environ["MPESA_CALLBACK_URL"],
 }
+
+FLOWER_URL = "http://localhost:5555"
+FLOWER_URL_PREFIX = "flower"
