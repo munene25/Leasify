@@ -4,8 +4,7 @@
 <h1>Welcome to {{ app_name }}</h1>
 
 <p>
-    We’re glad you’re here. To get started, please confirm that this email
-    address belongs to you.
+    We're glad you're here. To get started, please confirm that this email address belongs to you.
 </p>
 
 <p style="text-align:center; margin: 24px 0;">
@@ -15,13 +14,12 @@
 </p>
 
 <p>
-    This verification link will expire for security reasons.  
-    If you didn’t create an account, you can safely ignore this email.
+    This verification link will expire for security reasons. 
+    If you didn't create an account, you can safely ignore this email.
 </p>
 
-<p class="small" style="margin-top:16px;">
-    If the button doesn’t work, copy and paste this link into your browser:
-    <br />
-    <a href="{{ verify_url }}">{{ verify_url }}</a>
+<p class="small">
+    If the button doesn't work, copy and paste this link into your browser:<br />
+    <code>{{ verify_url }}</code>
 </p>
 {% endblock %}

@@ -1,0 +1,24 @@
+{% extends "emails/base.html" %}
+
+{% block body %}
+<p>Greetings <b>{{ tenant_name }}</b>,</p>
+
+<p>
+    You recently made a reservation for apartment <b>{{ apartment_name }}</b>. If no payment is made by tomorrow, your reservation will be automatically cancelled.
+</p>
+
+<p class="small">
+    Note: You can only make <b>{{ max_reservations }}</b> reservation(s) per month.
+</p>
+
+<p style="text-align:center; margin:22px 0;">
+    <a href="{{ payment_url }}" class="button btn-primary">
+        Pay Now
+    </a>
+</p>
+
+<p class="small">
+    If the button doesn't work, copy and paste this link into your browser:<br />
+    <code>{{ payment_url }}</code>
+</p>
+{% endblock %}

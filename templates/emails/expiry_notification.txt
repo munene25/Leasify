@@ -1,0 +1,14 @@
+{% extends "emails/base.txt" %}
+
+{% block body %}
+Greetings {{ tenant_name }},
+
+You recently made a reservation for apartment {{ apartment_name }}.
+If no payment is made by tomorrow, your reservation will be automatically cancelled.
+
+Note: You can only make {{ max_reservations }} reservation(s) per month.
+
+Pay now: {{ payment_url }}
+
+If the clicking the link doesn't work, copy and paste this link into your browser.
+{% endblock %}
