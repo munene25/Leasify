@@ -56,6 +56,7 @@ def tenancy_create(*, user: "User", apartment: "Apartment", start_date: "date", 
         user=user,
         apartment=apt,
         status=TenancyStatus.RESERVED,
+        date_joined=start_date,
     )
     # Its important to note that we are no longer validating via full clean.
     # Db constraints still exist but validation happens via validate_db_constraints.
@@ -73,6 +74,7 @@ def tenancy_create(*, user: "User", apartment: "Apartment", start_date: "date", 
         tenancy_id=t.pk,
         tenant_name=user.full_name,
         status=t.status,
+        date_joined=t.date_joined
     )
 
     r = DateRange.compute_lease_window(start_date, duration_months)
