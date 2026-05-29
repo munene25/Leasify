@@ -36,11 +36,10 @@ def tenancy_list_for(user: "User", filters: QueryDict | dict[str, Any]) -> Query
     class TenancyFilter(django_filters.FilterSet):
         class Meta:
             model = Tenancy
-            fields = ("status",)
+            fields = ("status", "date_joined")
 
         search = django_filters.CharFilter(method="search_fields")
-        cleared = django_filters.BooleanFilter(method="is_cleared")
-        period = django_filters.CharFilter(method="filter_period")
+        date_joined = django_filters.DateRangeFilter()
 
         def search_fields(self, queryset, name, value: str):
             q = Q()
@@ -50,11 +49,12 @@ def tenancy_list_for(user: "User", filters: QueryDict | dict[str, Any]) -> Query
                 q |= Q(apartment__block__icontains=value)
                 q |= Q(user__first_name__icontains=value)
                 q |= Q(user__last_name__icontains=value)
-                q |= Q(status__icontains=value)
             return queryset.filter(q)
+        
+            
 
     t_filters = TenancyFilterPolicy.for_user(user)
-    tenancies = BASE_QS.select_related("semester").filter(t_filters)
+    tenancies = BASE_QS.filter(t_filters)
     return TenancyFilter(filters, tenancies).qs
 
 
