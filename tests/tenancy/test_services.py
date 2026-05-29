@@ -35,6 +35,7 @@ class TestTenancyCreation:
         assert tenancy == Tenancy.objects.first()
         assert tenancy.status == TenancyStatus.RESERVED
         assert tenancy.reservation_expiry == today + DEFAULT_RESERVATION_DURATION
+        assert tenancy.date_joined == today
 
         # In tenancy creation we only test that the tenancy was created and linked to the billing period.
         last_billing = BillingPeriod.objects.first()
