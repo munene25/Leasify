@@ -54,6 +54,7 @@ class Tenancy(BaseModel):
     user = models.ForeignKey(User, on_delete=models.PROTECT, null=False, blank=False)
     apartment = models.ForeignKey(Apartment, on_delete=models.PROTECT, null=False, blank=False)
     status = models.CharField(max_length=20, choices=TenancyStatus.choices, default=TenancyStatus.RESERVED)
+    date_joined = models.DateField(blank=False, null=False)
     reservation_expiry = models.DateField(blank=False, null=False, default=default_expiry)
     termination_reason = models.CharField(choices=TerminationReason.choices, blank=True, null=True)
     termination_date = models.DateField(blank=True, null=True)
