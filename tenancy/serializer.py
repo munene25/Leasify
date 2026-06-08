@@ -1,5 +1,5 @@
-from rest_framework import serializers
 from users.models import User
+from rest_framework import serializers
 from apartments.models import Apartment
 from tenancy.choices import TerminationReason
 
@@ -12,7 +12,6 @@ class TenancyListSerializer(serializers.Serializer):
     date_joined = serializers.DateField()
 
 class TenancyCreateSerializer(serializers.Serializer):
-    user = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
     apartment = serializers.PrimaryKeyRelatedField(queryset=Apartment.objects.all())
     start_date = serializers.DateField()
     duration_months = serializers.IntegerField(min_value=1, max_value=4)
