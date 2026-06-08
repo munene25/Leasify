@@ -135,6 +135,13 @@ def tenancy_terminate(*, tenancy: Tenancy, termination_reason: TerminationReason
     tenancy.termination_reason = termination_reason 
     tenancy.save(update_fields=("status", "termination_date", "termination_reason"))
     tenancy.billings.filter(status=BillingStatus.UNPAID).update(status=BillingStatus.CANCELED)
+    logger.info(
+        "tenancy_created",
+        tenancy_id=tenancy.pk,
+        status=tenancy.status,
+        termination_reason=tenancy.termination_reason,
+        termination_date=tenancy.termination_date,
+    )
     return tenancy
 
 
