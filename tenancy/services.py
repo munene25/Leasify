@@ -101,7 +101,7 @@ def tenancy_lease_extend(tenancy: Tenancy, duration_months: int) -> Tenancy:
     
     # This prevents ghost payments.
     if tenancy.has_pending_bills:
-        raise ValidationError("You have an UNPAID billing period, cancel it to create a new one")
+        raise ValidationError("You have an unpaid billing period, cancel it to create a new one")
     
     # No need to lock, its immutable.
     last = tenancy.last_paid_billing
@@ -127,7 +127,7 @@ def tenancy_terminate(*, tenancy: Tenancy, termination_reason: TerminationReason
     
     from common.period import today
 
-    if termination_date and tenancy.created_at.date() > termination_date:
+    if termination_date and termination_date < tenancy.created_at.date() :
         raise ValidationError(f"Cannot set termination date before tenant's creation date: {tenancy.created_at.date().strftime("%B %d, %Y")}")
 
     tenancy.status = TenancyStatus.TERMINATED
