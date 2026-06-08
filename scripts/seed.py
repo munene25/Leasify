@@ -66,7 +66,7 @@ def run():
         apartments = [
             apartment_create(
                 block=random.choice(Apartment.Block.values),
-                unit_number=int(f.building_number()),
+                unit_number=int(f.building_number()[:4]),
                 rent=Decimal(f.numerify("1#000")),
             )
             for _ in range(NO_OF_APTS)
