@@ -2,6 +2,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from common.views import BaseAPIView
 from rest_framework import status, serializers
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from common.permissions import check_perms
 from common.pagination import get_paginated_response
@@ -10,7 +12,6 @@ from tenancy.choices import TenancyStatus as TS, TerminationReason as TR
 
 if TYPE_CHECKING:
     from rest_framework.request import Request
-    from rest_framework.response import Response
 
 
 class TenancyListCreateView(BaseAPIView):
@@ -31,11 +32,12 @@ class TenancyListCreateView(BaseAPIView):
 
     def post(self, request) -> Response:
         incoming = self.validate_serializer(data=request.data)
-        tenancy = sr.tenancy_create(**incoming)
+        tenancy = sr.tenancy_create(user=request.user, **incoming)
         outgoing = sc.TenancyDetailSerializer(instance=tenancy)
-        return Response(data=outgoing.data ,status=status.HTTP_201_CREATED)
+        return Response(data=outgoing.data, status=status.HTTP_201_CREATED)
 
-class TenancyDetailUpdateView(BaseAPIView):
+
+class TenancyDetailView(BaseAPIView):
     serializer_class = sc.TenancyLeaseExtensionSerializer
     permission_classes = [IsAuthenticated]
 
@@ -45,23 +47,10 @@ class TenancyDetailUpdateView(BaseAPIView):
         outgoing = sc.TenancyDetailSerializer(instance=tenancy)
         return Response(status=status.HTTP_200_OK, data=outgoing.data)
 
-    def patch(self, request, tenancy_id: int) -> Response:
-        check_perms(request.user, "tenancy.change_tenancy")
-        incoming = self.validate_serializer(data=request.data)
-        selected = sl.tenancy_get_for(request.user , tenancy_id)
-
-        sr.tenancy_lease_extend(selected, **incoming)
-        return Response(data={"message": "Lease extended"}, status=status.HTTP_204_NO_CONTENT)
-
-
 class TenancyTerminateView(BaseAPIView):
-    permission_classes = [IsAuthenticated]
     serializer_class = sc.TenancyTerminateSerializer
+    permission_classes = [IsAuthenticated]
 
-    def get(self, request):
-
-        return Response(data={"termination_reasons": [TR.MANAGERIAL, TR.NONPAYMENT, TR.VOLUNTARY]})
-    
     def post(self, request, tenancy_id: int):
         check_perms(request.user, "tenancy.change_tenancy")
         selected = sl.tenancy_get_for(request.user , tenancy_id)
@@ -72,7 +61,26 @@ class TenancyTerminateView(BaseAPIView):
             reason = self.validate_serializer(data=request.data)["termination_reason"]
         
         sr.tenancy_terminate(tenancy=selected, termination_reason=reason)
+        return Response(data={"message": "Lease terminated"}, status=status.HTTP_204_NO_CONTENT)
+
+    
+class TenancyLeaseExtensionView(BaseAPIView):
+    serializer_class = sc.TenancyLeaseExtensionSerializer
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, tenancy_id: int):
+        check_perms(request.user, "tenancy.change_tenancy")
+        selected = sl.tenancy_get_for(request.user , tenancy_id)
+        extension_months = self.validate_serializer(data=request.data)["duration_months"]
+        sr.tenancy_lease_extend(tenancy=selected, duration_months=extension_months)
         return Response(data={"message": "Lease extended"}, status=status.HTTP_204_NO_CONTENT)
+    
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def get_tenancy_termination_reasons(request):
+    reasons = [{"key": reason.value, "display": reason.label} for reason in TR]
+    return Response(data=reasons, status=status.HTTP_200_OK)
+
 
 class TenancyOverviewView(BaseAPIView):
     permission_classes = [IsAuthenticated]
