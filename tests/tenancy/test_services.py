@@ -265,6 +265,6 @@ class TestTenancyTerminate:
             tenancy_terminate(
                 tenancy=actual_tenant, 
                 termination_reason=TerminationReason.VOLUNTARY, 
-                termination_date=today-timedelta(days=10)
+                termination_date=today-timedelta(days=1)
             )
         assert "Cannot set termination date before tenant's creation" in str(exc.value.detail)
