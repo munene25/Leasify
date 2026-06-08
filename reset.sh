@@ -45,14 +45,14 @@ if [ "$SKIP_DB" = false ]; then
 fi
 
 echo "Making migrations..."
-python3 manage.py makemigrations
+python manage.py makemigrations
 
 echo "Applying migrations..."
-python3 manage.py migrate
+python manage.py migrate
 
 if [ "$SKIP_SEED" = false ]; then
     echo "Seeding database..."
-    python3 manage.py runscript seed
+    python manage.py runscript seed
 fi
 
 echo "Project reset complete!"
