@@ -33,7 +33,7 @@ class UserListCreateView(BaseAPIView):
     filter_class = FilterSerializer
 
     def get_permissions(self):
-        return [IsAuthenticated()] if self.request.method == "GET" else [AllowAny()]
+        return [IsAuthenticated() if self.request.method == "GET" else AllowAny()]
 
     def get(self, request: Request):
         check_perms(request.user, "users.view_user")
