@@ -16,6 +16,7 @@ def validate_max_monthly_reservations(user_id: int, exceed: int = MAX_RESERVATIO
     We need to protect the system from abuse of tenants spamming bookings.
 
     :param user_id: user to check against
+    :exceed: number of reservations that would be considered exceeding the limit (default is MAX_RESERVATIONS_PER_USER)
     :raises ValidationError: If the maximum number of reservations has been exceeded.
     """
     r = DateRange.for_month()
