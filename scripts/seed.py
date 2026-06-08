@@ -27,7 +27,7 @@ def run():
     try:
         call_command("loaddata", "fixtures/roles.json")
     except Exception:
-        call_command("setup_permissions", )
+        call_command("setup_roles", )
         dump_data("fixtures/roles.json", "auth.Permission", "auth.Group")
 
     # ============================================= Users =============================================
