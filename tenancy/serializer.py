@@ -22,6 +22,7 @@ class TenancyDetailSerializer(serializers.Serializer):
     tenant_name = serializers.CharField(source="user.full_name")
     apartment_name = serializers.CharField(source="apartment.apartment_name")
     status = serializers.CharField()
+    created_at = serializers.DateTimeField()
     date_joined = serializers.DateField()
     paid_up_to = serializers.DateField()
 
