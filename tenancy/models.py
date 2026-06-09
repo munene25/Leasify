@@ -6,9 +6,11 @@ from users.models import User
 from common.models import BaseModel
 from apartments.models import Apartment
 from tenancy.choices import TenancyStatus, TerminationReason
+from functools import cached_property
 
 
 if TYPE_CHECKING:
+    from datetime import date
     from billing.models import BillingPeriod
 
 GRACE_PERIOD = timedelta(weeks=1)
@@ -83,13 +85,14 @@ class Tenancy(BaseModel):
 
     @property
     def last_paid_billing(self) -> "BillingPeriod":
-        """I use the selector here to avoid checking for not found"""
+        """Use the selector here to avoid checking for not found"""
         from billing.selectors import billing_last_paid_for
 
         return billing_last_paid_for(self.pk)
-
-    @property
-    def paid_up_to(self) -> "BillingPeriod | None":
+    
+    @cached_property
+    def paid_up_to(self) -> "date":
         """
         This might be important to get view they are paid up to what date.
         """
+        return self.last_paid_billing.end_date
