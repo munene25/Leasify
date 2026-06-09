@@ -27,10 +27,16 @@ def user_set_role(*, user: User, role: Group, replace: bool = False) -> User:
     :return: The user with the newly added role.
     :rtype: User
     """
-    if replace == False and user.groups.exists():
+    groups = list(user.groups.values_list('pk', flat=True))
+    if role.pk in groups:
+        logger.debug("user_role_already_exists", target_id=user.pk, role=role.name)
+        return user
+
+    if not replace and groups:
         raise RoleAssignmentError()
+
     user.groups.set([role])
-    logger.info(f"user_role_updated", target_id=user.pk, role=role.name)
+    logger.info("user_role_updated", target_id=user.pk, role=role.name)
     return user
 
 
