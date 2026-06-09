@@ -18,9 +18,9 @@ class TenancyCreateSerializer(serializers.Serializer):
 
 class TenancyDetailSerializer(serializers.Serializer):
     tenant_id = serializers.IntegerField(source="pk")
+    user_id = serializers.IntegerField()
     tenant_name = serializers.CharField(source="user.full_name")
     apartment_name = serializers.CharField(source="apartment.apartment_name")
-    user_id = serializers.IntegerField()
     status = serializers.CharField()
     date_joined = serializers.DateField()
     paid_up_to = serializers.DateField()
