@@ -7,7 +7,7 @@ from common.models import BaseModel
 from apartments.models import Apartment
 from tenancy.choices import TenancyStatus, TerminationReason
 from functools import cached_property
-
+from rest_framework.exceptions import NotFound
 
 if TYPE_CHECKING:
     from datetime import date
@@ -91,8 +91,11 @@ class Tenancy(BaseModel):
         return billing_last_paid_for(self.pk)
     
     @cached_property
-    def paid_up_to(self) -> "date":
+    def paid_up_to(self) -> "date | None":
         """
         This might be important to get view they are paid up to what date.
         """
-        return self.last_paid_billing.end_date
+        try:
+            self.last_paid_billing.end_date
+        except NotFound:
+            return None
