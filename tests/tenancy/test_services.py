@@ -143,7 +143,7 @@ class TestTenancyLeaseExtension:
         billing.save(update_fields=["status"])
 
         # now extending should work
-        tenancy = tenancy_lease_extend(actual_tenant, 1)
+        tenancy = tenancy_lease_extend(actual_tenant, 1)[0]
         tenancy.refresh_from_db()
         assert tenancy == actual_tenant
         assert tenancy.billings.count() == 2
@@ -197,7 +197,7 @@ class TestTenancyLeaseExtension:
         with pytest.raises(ValidationError) as exc:
             tenancy_lease_extend(actual_tenant, 1)
 
-        assert "You have an UNPAID billing period" in str(exc.value.detail)
+        assert "You have an unpaid billing period" in str(exc.value.detail)
 
     
     def test_edge_case_no_last_paid_billing(self, actual_tenant: Tenancy):
@@ -228,9 +228,8 @@ class TestTenancyLeaseExtension:
         billing.status = BillingStatus.PAID
         billing.save()
 
-        with django_assert_num_queries(6) as queries:
+        with django_assert_num_queries(6):
             tenancy_lease_extend(actual_tenant, 1)
-            print(queries)
         
 
 class TestTenancyTerminate:
