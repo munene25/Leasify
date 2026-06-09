@@ -102,13 +102,22 @@ class TestApartmentListCreateView:
         assert Decimal(data["rent"]) == apartment.rent
         assert data["is_occupied"] == False
 
+    @pytest.mark.parametrize(
+        "client_fixture,expected",
+        [
+            ("super_user_client", 4),
+            ("manager_client", 4),
+            ("caretaker_client", 4),
+            ("user_client", 2),
+            ("tenant_client", 2),
+            ("client", 2),
+        ],
+    )
     def test_apartment_list_filters_based_on_role(
         self,
-        manager_client: IsClient,
-        caretaker_client: IsClient,
-        user_client: IsClient,
-        tenant_client: IsClient,
-        client: IsClient,
+        client_fixture: str,
+        expected: int,
+        request: pytest.FixtureRequest,
         apartment_factory: Factory[Apartment],
     ):
         """
@@ -116,23 +125,11 @@ class TestApartmentListCreateView:
         Regular clients should only view rentable apartments
         """
 
-        rentable_apartments = apartment_factory(quantity=2, overrides={"rentable": True})
-        non_rentable_apartments = apartment_factory(quantity=2, overrides={"rentable": False})
-
-        res1 = manager_client.get(self.path)
-        parse_paginated_response(res1, 4)
-
-        res2 = caretaker_client.get(self.path)
-        parse_paginated_response(res2, 4)
-
-        res3 = tenant_client.get(self.path)
-        parse_paginated_response(res3, 2)
-
-        res4 = user_client.get(self.path)
-        parse_paginated_response(res4, 2)
-
-        res5 = client.get(self.path)
-        parse_paginated_response(res5, 2)
+        apartment_factory(quantity=2, overrides={"rentable": True})
+        apartment_factory(quantity=2, overrides={"rentable": False})
+        client: IsClient = request.getfixturevalue(client_fixture)
+        res1 = client.get(self.path)
+        parse_paginated_response(res1, expected)
 
     @pytest.mark.parametrize(
         "field,query_param,value,expected",
@@ -189,29 +186,14 @@ class TestApartmentListCreateView:
     def test_apatment_list_based_on_user_roles(
         self,
         apartment_factory: Factory[Apartment],
-        super_user_client: IsClient,
-        tenant_client: IsClient,
-        caretaker_client: IsClient,
-        manager_client: IsClient,
-        user_client: IsClient,
-        client: IsClient,
+        request: pytest.FixtureRequest,
         _client: str,
         expected_count: int,
     ):
-        from tenancy.services import tenancy_create
-        from rest_framework.test import APIClient
-
-        rentable_apartments = apartment_factory(quantity=5, overrides={"rentable": True})
-        unrentable_apartments = apartment_factory(quantity=5, overrides={"rentable": False})
-        selected_client: IsClient = {
-            "manager_client": manager_client,
-            "super_user_client": super_user_client,
-            "caretaker_client": caretaker_client,
-            "tenant_client": tenant_client,
-            "user_client": user_client,
-            "client": client,
-        }[_client]
-        response = selected_client.get(self.path)
+        apartment_factory(quantity=5, overrides={"rentable": True})
+        apartment_factory(quantity=5, overrides={"rentable": False})
+        client = request.getfixturevalue(_client)
+        response = client.get(self.path)
         parse_paginated_response(response, expected_count)
 
     def test_apartment_pagination(
@@ -312,7 +294,7 @@ class TestApartmentDetailUpdateDeleteView:
         assert data2["current_tenant"] == tenant.user.full_name
 
     @pytest.mark.parametrize(
-        "selected,get,patch,delete",
+        "_client,get,patch,delete",
         [
             ("manager_client", status.HTTP_200_OK, status.HTTP_200_OK, status.HTTP_204_NO_CONTENT),
             ("caretaker_client", status.HTTP_200_OK, status.HTTP_200_OK, status.HTTP_403_FORBIDDEN),
@@ -323,24 +305,14 @@ class TestApartmentDetailUpdateDeleteView:
     )
     def test_apartment_detail_update_delete_authorization_and_authentication(
         self,
-        selected: str,
+        _client: str,
+        request: pytest.FixtureRequest,
         get: int,
         patch: int,
         delete: int,
         apartment: Apartment,
-        manager_client: IsClient,
-        caretaker_client: IsClient,
-        tenant_client: IsClient,
-        user_client: IsClient,
-        client: IsClient,
     ):
-        selected_client: IsClient = {
-            "manager_client": manager_client,
-            "caretaker_client": caretaker_client,
-            "tenant_client": tenant_client,
-            "user_client": user_client,
-            "client": client,
-        }[selected]
+        selected_client = request.getfixturevalue(_client)
 
         assert selected_client.get(self.path(apartment)).status_code == get
         assert selected_client.patch(self.path(apartment), self.patch_data).status_code == patch
