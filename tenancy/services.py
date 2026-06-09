@@ -36,6 +36,8 @@ def tenancy_create(*, user: "User", apartment: "Apartment", start_date: "date", 
     :param duration_months: Lease duration in months
     :return: The created tenancy record.
     """
+    from users.selectors import get_group
+
 
     # Users can only make a certain number of reservations in a month.
     v.validate_max_monthly_reservations(user.pk)
@@ -64,16 +66,14 @@ def tenancy_create(*, user: "User", apartment: "Apartment", start_date: "date", 
     t.save()
 
     # Add user to Tenant group if not already
-    # Replace set to true coz i already know there is no existing tenancy 
-    if not user.groups.filter(name="tenant").exists():
-        from users.selectors import get_group
-        user_set_role(user=user, role=get_group(name="tenant"), replace=True)
+    # Reworked the user role assignment to skip reassignment.
+    # *Replace is set to false to prevent overwriting existing roles.
+    user_set_role(user=user, role=get_group(name="tenant"))
 
     logger.info(
         "tenancy_created",
         tenancy_id=t.pk,
         tenant_name=user.full_name,
-        status=t.status,
         date_joined=t.date_joined
     )
 
@@ -82,7 +82,7 @@ def tenancy_create(*, user: "User", apartment: "Apartment", start_date: "date", 
     return t
 
 @transaction.atomic
-def tenancy_lease_extend(tenancy: Tenancy, duration_months: int) -> Tenancy:
+def tenancy_lease_extend(tenancy: Tenancy, duration_months: int) -> tuple[Tenancy, "BillingPeriod"]:
     """
     A tenant wants to create a new billing period.
     The start date of the next billing period is computed from the last paid.
@@ -108,8 +108,8 @@ def tenancy_lease_extend(tenancy: Tenancy, duration_months: int) -> Tenancy:
     
     r = DateRange.compute_lease_window(start_date=last.next_start, duration_months=duration_months)
 
-    billing_period_create(tenancy=tenancy, date_r=r)
-    return tenancy 
+    billing = billing_period_create(tenancy=tenancy, date_r=r)
+    return tenancy, billing
 
 @transaction.atomic
 def tenancy_terminate(*, tenancy: Tenancy, termination_reason: TerminationReason, termination_date: "date | None" = None) -> Tenancy:
@@ -127,18 +127,20 @@ def tenancy_terminate(*, tenancy: Tenancy, termination_reason: TerminationReason
     
     from common.period import today
 
-    if termination_date and termination_date < tenancy.created_at.date() :
-        raise ValidationError(f"Cannot set termination date before tenant's creation date: {tenancy.created_at.date().strftime("%B %d, %Y")}")
+    if termination_date and termination_date < tenancy.created_at.date():
+        created_at = tenancy.created_at.date().strftime("%B %d, %Y")
+        raise ValidationError(f"Cannot set termination date before tenant's creation date: {created_at}")
 
     tenancy.status = TenancyStatus.TERMINATED
     tenancy.termination_date = termination_date or today()
-    tenancy.termination_reason = termination_reason 
+    tenancy.termination_reason = termination_reason
     tenancy.save(update_fields=("status", "termination_date", "termination_reason"))
-    tenancy.billings.filter(status=BillingStatus.UNPAID).update(status=BillingStatus.CANCELED)
+    
+    unpaid_billings = tenancy.billings.filter(status=BillingStatus.UNPAID)
+    unpaid_billings.update(status=BillingStatus.CANCELED)
     logger.info(
-        "tenancy_created",
+        "tenancy_terminated",
         tenancy_id=tenancy.pk,
-        status=tenancy.status,
         termination_reason=tenancy.termination_reason,
         termination_date=tenancy.termination_date,
     )
