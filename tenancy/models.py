@@ -7,6 +7,7 @@ from common.models import BaseModel
 from apartments.models import Apartment
 from tenancy.choices import TenancyStatus, TerminationReason
 from functools import cached_property
+from billing.choices import BillingStatus
 from rest_framework.exceptions import NotFound
 
 if TYPE_CHECKING:
@@ -55,7 +56,7 @@ class Tenancy(BaseModel):
 
     user = models.ForeignKey(User, on_delete=models.PROTECT, null=False, blank=False)
     apartment = models.ForeignKey(Apartment, on_delete=models.PROTECT, null=False, blank=False)
-    status = models.CharField(max_length=20, choices=TenancyStatus.choices, default=TenancyStatus.RESERVED)
+    status = models.CharField(max_length=20, blank=False, null=False, choices=TenancyStatus.choices, default=TenancyStatus.RESERVED)
     date_joined = models.DateField(blank=False, null=False)
     reservation_expiry = models.DateField(blank=False, null=False, default=default_expiry)
     termination_reason = models.CharField(choices=TerminationReason.choices, blank=True, null=True)
@@ -83,19 +84,14 @@ class Tenancy(BaseModel):
 
         return self.billings.filter(status=BillingStatus.UNPAID).exists()
 
-    @property
-    def last_paid_billing(self) -> "BillingPeriod":
-        """Use the selector here to avoid checking for not found"""
-        from billing.selectors import billing_last_paid_for
-
-        return billing_last_paid_for(self.pk)
-    
     @cached_property
+    def last_paid_billing(self) -> "BillingPeriod | None":
+        """Use the selector here to avoid checking for not found"""
+        return self.billings.filter(status=BillingStatus.PAID).order_by("-start_date").first()
+    
+    @property
     def paid_up_to(self) -> "date | None":
         """
         This might be important to get view they are paid up to what date.
         """
-        try:
-            self.last_paid_billing.end_date
-        except NotFound:
-            return None
+        return getattr(self.last_paid_billing, "end_date", None)
