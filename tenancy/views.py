@@ -16,7 +16,8 @@ if TYPE_CHECKING:
 
 class TenancyListCreateView(BaseAPIView):
     class FilterClass(serializers.Serializer):
-        date_joined = serializers.CharField()
+        joined_before = serializers.DateField()
+        joined_after = serializers.DateField()
         search = serializers.CharField()
         status = serializers.CharField()
 
