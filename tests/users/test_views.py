@@ -239,7 +239,7 @@ class TestUserListCreateView:
         caretaker_client: IsClient,
         manager_user: User,
         manager_client: IsClient,
-        super_user_client: IsClient,
+        superuser_client: IsClient,
     ):
         """
         The list qs should ommit certain types of users based on the fetching user priviledges
@@ -250,12 +250,12 @@ class TestUserListCreateView:
         new_user.groups.add(get_group(name="manager"))
 
         # Super user should view 3 users excluding themselves
-        respnse1 = super_user_client.get(self.path)
+        respnse1 = superuser_client.get(self.path)
         data1 = parse_message(respnse1)["results"]
         assert len(data1) == 3
         assert {new_user.pk, caretaker_user.pk, manager_user.pk} == {f["user_id"] for f in data1}
 
-        # Manager user should be able to view other managers, caretakers, ommits super_users
+        # Manager user should be able to view other managers, caretakers, ommits superusers
         # Only caretaker and new_user should appear
         response2 = manager_client.get(self.path)
         data2 = parse_message(response2)["results"]
@@ -335,12 +335,12 @@ class TestAdminUserDetailUpdateDestroyView:
         error5 = parse_error(response5, status_code)[0]
         assert error5["code"] == "permission_denied"
 
-    def test_modifying_priviledged_users_fails(self, manager_client: IsClient, super_user: User):
+    def test_modifying_priviledged_users_fails(self, manager_client: IsClient, superuser: User):
         """
         Priviledged users can't be modified or retrieved
         """
         status_code = status.HTTP_404_NOT_FOUND
-        path = self.path + str(super_user.pk)
+        path = self.path + str(superuser.pk)
 
         response1 = manager_client.get(path)
         error1 = parse_error(response1, status_code)[0]
@@ -394,7 +394,11 @@ class TestMeView:
         user.refresh_from_db()  # type: ignore
         assert data2.get("user_id", None) is None
         assert data2["first_name"] == updates["first_name"] == user.first_name
-        assert data2["phone_number"] == updates["phone_number"].replace(" ", "").replace("+", "") == user.account.phone_number
+        assert (
+            data2["phone_number"]
+            == updates["phone_number"].replace(" ", "").replace("+", "")
+            == user.account.phone_number
+        )
         assert data2["bio"] == updates["bio"] == user.account.bio
         assert data2["email"] != updates["email"] and data2["email"] == user.email
         assert data2["role"] != updates["role"] and data2["role"] == "regular"
@@ -558,7 +562,7 @@ class TestEmailUpdateView:
             frozen.move_to(self.after)
             parse_message(fetch())
             user.refresh_from_db
-            assert user.next_email_change == self.after + EMAIL_COOLDOWN          
+            assert user.next_email_change == self.after + EMAIL_COOLDOWN
 
     def test_email_update_fails(self, user, client: IsClient, user_client: IsClient):
         """
@@ -583,7 +587,7 @@ class TestEmailUpdateView:
             res4 = user_client.post(self.path, self.payload)
             parse_error(res4, status.HTTP_422_UNPROCESSABLE_ENTITY)
             user.refresh_from_db
-            assert user.last_email_change == self.before     
+            assert user.last_email_change == self.before
 
 
 class TestPasswordChangeView:
@@ -592,8 +596,8 @@ class TestPasswordChangeView:
 
     def test_password_change_successfull(
         self,
-        super_user: User,
-        super_user_client: IsClient,
+        superuser: User,
+        superuser_client: IsClient,
         mailoutbox: list[EmailMessage],
         django_capture_on_commit_callbacks,
         override_throttles,
@@ -606,22 +610,22 @@ class TestPasswordChangeView:
         """
 
         session_id1 = (
-            super_user_client.post("/users/login", {"email": super_user.email, "password": "Pa55word!"})
+            superuser_client.post("/users/login", {"email": superuser.email, "password": "Pa55word!"})
             .cookies["sessionid"]
             .value
         )
-        old_password = super_user.password
+        old_password = superuser.password
 
         # -- with correct credentials should evaluate --
         with django_capture_on_commit_callbacks(execute=True):
-            res1 = super_user_client.post(self.path, self.payload)
+            res1 = superuser_client.post(self.path, self.payload)
         session_id2 = res1.cookies["sessionid"].value
         data1 = parse_message(res1)
         assert "successfully updated" in data1["message"]
-        super_user.refresh_from_db()  # type: ignore
-        assert old_password != super_user.password
-        assert not super_user.check_password(self.payload["password"])
-        assert super_user.check_password(self.payload["new_password"])
+        superuser.refresh_from_db()  # type: ignore
+        assert old_password != superuser.password
+        assert not superuser.check_password(self.payload["password"])
+        assert superuser.check_password(self.payload["new_password"])
 
         # -- sessionid should be cycled --
         store = SessionStore()
@@ -631,12 +635,12 @@ class TestPasswordChangeView:
         # -- mail containing password reset link should be sent --
         assert len(mailoutbox) == 1
         mail = mailoutbox[0]
-        assert mail.to == [super_user.email]
+        assert mail.to == [superuser.email]
         assert "password-reset" in mail.body
 
         # -- subsequent password changes should go through --
         password = self.payload["new_password"]
-        res2 = super_user_client.post(self.path, {**self.payload, "password": password})
+        res2 = superuser_client.post(self.path, {**self.payload, "password": password})
         parse_message(res2)
 
     @pytest.mark.parametrize("wrong_pass", ["wrongpassword", ""])
@@ -943,12 +947,12 @@ class TestAdminRoleDetailView:
         error2 = parse_error(response2, status_code)[0]
         assert error2["code"] == "permission_denied"
 
-    def test_modifying_priviledged_users_fails(self, manager_client: IsClient, super_user: User):
+    def test_modifying_priviledged_users_fails(self, manager_client: IsClient, superuser: User):
         """
         Priviledged users can't have their roles modified or retrieved
         """
         status_code = status.HTTP_404_NOT_FOUND
-        path = self.path + str(super_user.pk)
+        path = self.path + str(superuser.pk)
 
         response1 = manager_client.get(path)
         error1 = parse_error(response1, status_code)[0]
