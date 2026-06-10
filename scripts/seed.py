@@ -46,7 +46,7 @@ def run():
             )
             for _ in ITERATIONS
         ]
-        # create super_user
+        # create superuser
         User.objects.create_superuser(
             email="edmune25@gmail.com",
             password="Pa55word!",
