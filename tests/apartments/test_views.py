@@ -105,7 +105,7 @@ class TestApartmentListCreateView:
     @pytest.mark.parametrize(
         "client_fixture,expected",
         [
-            ("super_user_client", 4),
+            ("superuser_client", 4),
             ("manager_client", 4),
             ("caretaker_client", 4),
             ("user_client", 2),
@@ -173,7 +173,7 @@ class TestApartmentListCreateView:
     @pytest.mark.parametrize(
         "_client,expected_count",
         [
-            ("super_user_client", 10),
+            ("superuser_client", 10),
             ("manager_client", 10),
             ("caretaker_client", 10),
             ("tenant_client", 5),
@@ -189,7 +189,7 @@ class TestApartmentListCreateView:
         expected_count: int,
     ):
         apartment_factory(quantity=5, rentable=True)
-        apartment_factory(quantity=5, rentable=True)
+        apartment_factory(quantity=5, rentable=False)
         client = request.getfixturevalue(_client)
         response = client.get(self.path)
         parse_paginated_response(response, expected_count)
