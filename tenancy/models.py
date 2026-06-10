@@ -35,7 +35,7 @@ class Tenancy(BaseModel):
     """
 
     class Meta:
-        ordering = ["-created_at"]
+        ordering = ["-date_joined"]
         constraints = [
             # only one active/reserved/defaulting tenancy per apartment at a time
             models.UniqueConstraint(
