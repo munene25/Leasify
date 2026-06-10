@@ -107,16 +107,16 @@ def today():
 def user_factory(fake, phone_no) -> Factory[User]:
     """Returns a callable for generating users"""
 
-    def create(quantity: int = 1, overrides: dict[str, typing.Any] = {}) -> list[User]:
+    def create(quantity: int = 1, **kwargs: dict[str, str]) -> list[User]:
         users = []
         for _ in range(quantity):
             users.append(
                 user_account_create(
-                    first_name=(overrides.get("fist_name", fake.first_name())),
-                    last_name=overrides.get("last_name", fake.last_name()),
+                    first_name=(kwargs.get("fist_name", fake.first_name())),
+                    last_name=kwargs.get("last_name", fake.last_name()),
                     password="Pa55word!",
-                    email=overrides.get("email", fake.email()),
-                    phone_number=overrides.get("phone_number", phone_no()),
+                    email=kwargs.get("email", fake.email()),
+                    phone_number=kwargs.get("phone_number", phone_no()),
                     notify=False,
                 )
             )
@@ -243,17 +243,17 @@ def super_user_client(super_user) -> APIClient:
 def apartment_factory(fake) -> Factory[Apartment]:
     """Returns a callable for generating apartments"""
 
-    def create(quantity: int = 1, overrides: dict[str, typing.Any] = {}, ordered: bool = False):
+    def create(quantity: int = 1, ordered: bool = False, **kwargs):
         import random
         from decimal import Decimal
 
         apartments: list[Apartment] = []
         for i in range(quantity):
             apt = apartment_create(
-                block=overrides.get("block", random.choice(Apartment.Block.values)),
-                unit_number=(i + 1) if ordered else overrides.get("unit_number", int(fake.building_number())),
-                rent=overrides.get("rent", Decimal(fake.numerify("1#000"))),
-                rentable=overrides.get("rentable", random.choice((True, False))),
+                block=kwargs.get("block", random.choice(Apartment.Block.values)),
+                unit_number=(i + 1) if ordered else kwargs.get("unit_number", int(fake.building_number())),
+                rent=kwargs.get("rent", Decimal(fake.numerify("1#000"))),
+                rentable=kwargs.get("rentable", random.choice((True, False))),
             )
             apartments.append(apt)
         return apartments
@@ -263,7 +263,7 @@ def apartment_factory(fake) -> Factory[Apartment]:
 
 @pytest.fixture
 def apartment(apartment_factory) -> Apartment:
-    return apartment_factory(ordered=True, overrides={"block": "NEW", "rent": 20_000, "rentable": True})[0]
+    return apartment_factory(ordered=True, block="NEW", rent=20_000, rentable=True)[0]
 
 
 # ------------------------------------------------ Tenancy  ------------------------------------------------
@@ -284,15 +284,15 @@ def tenancy_factory(apartment_factory: Factory[Apartment], user_factory: Factory
     from tenancy.services import tenancy_create
     from tenancy.choices import TenancyStatus
 
-    def create(quantity=1, users: list[User] | None = None, apartments: list[Apartment] | None = None, overrides: dict[str, typing.Any] = {}, ) -> list[Tenancy]:
+    def create(quantity=1, users: list[User] | None = None, apartments: list[Apartment] | None = None, **kwargs) -> list[Tenancy]:
         tenancies = []
 
         users = users or user_factory(quantity)
-        apartments = apartments or apartment_factory(quantity, overrides={"rentable": True})
+        apartments = apartments or apartment_factory(quantity=len(users), rentable=True)
 
-        duration_months = overrides.get("duration_months", 1)
-        start_date: date = overrides.get("start_date", today)
-        status = overrides.get("status", TenancyStatus.ACTIVE)
+        duration_months = kwargs.get("duration_months", 1)
+        start_date: date = kwargs.get("start_date", today)
+        status = kwargs.get("status", TenancyStatus.ACTIVE)
 
         for i, user in enumerate(users):
             tenancy = tenancy_create(
