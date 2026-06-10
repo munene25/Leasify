@@ -1,8 +1,9 @@
-from typing import TYPE_CHECKING
-from tenancy.services import tenancy_create
-from unittest.mock import MagicMock
-
 import pytest
+from typing import TYPE_CHECKING
+from rest_framework.test import APIClient
+from unittest.mock import MagicMock
+from tenancy.choices import TenancyStatus as TS
+from billing.choices import BillingStatus as BS
 
 if TYPE_CHECKING:
     from datetime import date
@@ -22,9 +23,21 @@ def tenancy_payload(user: "User", apartment: "Apartment", today: "date") -> "Ten
     }
 
 @pytest.fixture
-def actual_tenant(tenancy_payload) -> "Tenancy":
-    return tenancy_create(**tenancy_payload)
+def tenant_client(active_tenant: "Tenancy") -> APIClient:
+    client = APIClient()
+    client.force_authenticate(user=active_tenant.user)
+    return client
 
+@pytest.fixture
+def reserved_tenant(tenancy_factory) -> "Tenancy":
+    return tenancy_factory(status=TS.RESERVED)[0]
+
+@pytest.fixture
+def active_tenant(tenancy_factory) -> "Tenancy":
+    t = tenancy_factory()[0]
+    t.billings.update(status=BS.PAID)
+    return t
+    
 @pytest.fixture
 def mock_billing_create(monkeypatch) -> MagicMock:
     """Mock billing period create"""
