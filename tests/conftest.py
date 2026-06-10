@@ -112,7 +112,7 @@ def user_factory(fake, phone_no) -> Factory[User]:
         for _ in range(quantity):
             users.append(
                 user_account_create(
-                    first_name=(kwargs.get("fist_name", fake.first_name())),
+                    first_name=(kwargs.get("first_name", fake.first_name())),
                     last_name=kwargs.get("last_name", fake.last_name()),
                     password="Pa55word!",
                     email=kwargs.get("email", fake.email()),
@@ -126,7 +126,7 @@ def user_factory(fake, phone_no) -> Factory[User]:
 
 
 @pytest.fixture
-def user(user_factory) -> User:
+def user(user_factory: Factory[User]) -> User:
     return user_factory()[0]
 
 
@@ -145,36 +145,34 @@ def get_role() -> typing.Callable[[str], Group]:
     Pass in the str value of the group
     """
     from users.selectors import get_group
+
     return lambda name: get_group(name)
 
 
 @pytest.fixture
-def super_user(user_factory):
-    u: User = user_factory()[0]
+def superuser(user_factory: Factory[User]):
+    u = user_factory()[0]
     u.is_superuser = True
     u.save(update_fields=["is_superuser"])
     return u
 
 
 @pytest.fixture
-def manager_user(user_factory, get_role) -> User:
+def manager_user(user_factory: Factory[User], get_role: typing.Callable[[str], Group]) -> User:
     u = user_factory()[0]
-    user_set_role(user=u, role=get_role("manager"))
-    return u
+    return user_set_role(user=u, role=get_role("manager"))
 
 
 @pytest.fixture
-def caretaker_user(user_factory, get_role) -> User:
+def caretaker_user(user_factory: Factory[User], get_role) -> User:
     u = user_factory()[0]
-    user_set_role(user=u, role=get_role("caretaker"))
-    return u
+    return user_set_role(user=u, role=get_role("caretaker"))
 
 
 @pytest.fixture
-def tenant_user(user_factory, get_role) -> User:
+def tenant_user(user_factory: Factory[User], get_role) -> User:
     u = user_factory()[0]
-    user_set_role(user=u, role=get_role("tenant"))
-    return u
+    return user_set_role(user=u, role=get_role("tenant"))
 
 
 @pytest.fixture
@@ -184,7 +182,7 @@ def password() -> str:
 
 
 @pytest.fixture
-def phone_no(fake) -> typing.Callable[[],str]:
+def phone_no(fake) -> typing.Callable[[], str]:
     return lambda: fake.numerify("2547########")
 
 
@@ -230,9 +228,9 @@ def caretaker_client(caretaker_user) -> APIClient:
 
 
 @pytest.fixture
-def super_user_client(super_user) -> APIClient:
+def superuser_client(superuser) -> APIClient:
     client = APIClient()
-    client.force_authenticate(user=super_user)
+    client.force_authenticate(user=superuser)
     return client
 
 
@@ -271,11 +269,11 @@ def apartment(apartment_factory) -> Apartment:
 def tenancy_patch_validators(monkeypatch: pytest.MonkeyPatch) -> dict[str, MagicMock]:
     user_reservations = MagicMock()
     lease_period = MagicMock()
-    
+
     monkeypatch.setattr("tenancy.validators.validate_max_monthly_reservations", user_reservations)
     monkeypatch.setattr("tenancy.validators.validate_lease_period", lease_period)
 
-    return {"user_reservations": user_reservations,"lease_period": lease_period}
+    return {"user_reservations": user_reservations, "lease_period": lease_period}
 
 
 @pytest.fixture
@@ -313,6 +311,6 @@ def tenancy_factory(apartment_factory: Factory[Apartment], user_factory: Factory
 
 
 @pytest.fixture
-def tenancy(tenancy_factory) -> Tenancy:
+def tenancy(tenancy_factory: Factory[Tenancy]) -> Tenancy:
     """Single tenancy fixture"""
     return tenancy_factory()[0]
