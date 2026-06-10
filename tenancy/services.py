@@ -12,6 +12,7 @@ from tenancy.selectors import tenancy_in
 from apartments.selectors import apartment_lock
 from billing.services import billing_period_create
 from billing.choices import BillingStatus
+from billing.selectors import billing_last_paid_for
 
 logger = get_logger("tenancy.services")
 
@@ -104,7 +105,7 @@ def tenancy_lease_extend(tenancy: Tenancy, duration_months: int) -> tuple[Tenanc
         raise ValidationError("You have an unpaid billing period, cancel it to create a new one")
     
     # No need to lock, its immutable.
-    last = tenancy.last_paid_billing
+    last = billing_last_paid_for(tenancy.pk)
     
     r = DateRange.compute_lease_window(start_date=last.next_start, duration_months=duration_months)
 
