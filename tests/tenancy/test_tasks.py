@@ -88,7 +88,7 @@ class TestReservedSetTerminated:
         one_day_later = now + timedelta(1)
         after_expiry = now + DEFAULT_RESERVATION_DURATION + timedelta(1)
 
-        tenants = tenancy_factory(2, overrides={"status": TS.RESERVED})
+        tenants = tenancy_factory(2, status=TS.RESERVED)
         t = tenants[0]
         assert t.billings.filter(status=BS.UNPAID).count() == 1
 
@@ -134,8 +134,8 @@ class TestDefaultingSetTerminated:
         """
         For defaulting tenants move them to terminated and provide reason.
         """
-        defaulting = tenancy_factory(2, overrides={"status": TS.DEFAULTING})
-        active = tenancy_factory(2, overrides={"status": TS.ACTIVE})
+        defaulting = tenancy_factory(2, status=TS.DEFAULTING)
+        active = tenancy_factory(2, status=TS.ACTIVE)
 
         assert {t.pk for t in defaulting} == set(defaulting_set_terminated())
         t = defaulting[0]
@@ -148,7 +148,7 @@ class TestNotifyReservedOnExpiry:
     def test_reserved_on_expiry_queries_correct_list(self, tenancy_factory: Factory[Tenancy], mailoutbox: list[EmailMessage]):
         """Those whose expiry is tomorrow should be included"""
 
-        tenants = tenancy_factory(3, overrides={"status": TS.RESERVED})
+        tenants = tenancy_factory(3, status=TS.RESERVED)
         day_of_expiry = timezone.now() + DEFAULT_RESERVATION_DURATION - timedelta(1)
 
         with freeze_time(day_of_expiry):

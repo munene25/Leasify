@@ -84,7 +84,7 @@ class TestTenancyCreation:
         The same apartment should not exist in states [defaulting, active reserved]
         The same user should not exist in the states [defaulting, active, reserved]
         """
-        a1, a2 = apartment_factory(2, overrides={"rentable": True})
+        a1, a2 = apartment_factory(2, rentable=True)
         u1, u2 = user_factory(2)
         r = DateRange.for_month(today)
 

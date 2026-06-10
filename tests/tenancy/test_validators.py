@@ -12,21 +12,21 @@ class TestMaxMonthlyReservations:
         """In the case of one reserved tenancy should fail"""
     
         user1 = user_factory()
-        tenancy_factory(users=user1, overrides={"status": TenancyStatus.RESERVED})
+        tenancy_factory(users=user1, status=TenancyStatus.RESERVED)
         with pytest.raises(MaxReservationsExceededError):
             validate_max_monthly_reservations(user_id=user1[0].pk)
 
     def test_with_two_terminated_fails(self, user_factory: Factory[User], tenancy_factory: Factory[Tenancy]):
         """In the case of two terminated tenancies should fail"""
         users = user_factory()
-        tenancy_factory(2, users=[users[0], users[0]], overrides={"status": TenancyStatus.TERMINATED})
+        tenancy_factory(2, users=[users[0], users[0]], status=TenancyStatus.TERMINATED)
         with pytest.raises(MaxReservationsExceededError):
             validate_max_monthly_reservations(user_id=users[0].pk)
 
 
     def test_with_one_terminated_succeeds(self, tenancy_factory: Factory[Tenancy]):
         """In the case of one terminated tenancy should succeed """
-        tenancy_factory(overrides={"status": TenancyStatus.TERMINATED})
+        tenancy_factory(status=TenancyStatus.TERMINATED)
         # Should not raise
         validate_max_monthly_reservations(user_id=1)
 
