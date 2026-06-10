@@ -12,7 +12,7 @@ class TestApartmentList:
 
     def test_apartment_for_regular_user(self, user_factory, apartment_factory, tenancy_patch_validators):
         """Test how Policy filters based on user"""
-        apartments = apartment_factory(5, overrides={"rentable": True})
+        apartments = apartment_factory(5, rentable=True)
         users = user_factory(2)
 
         list_for_user1 = apartment_list_for(user=users[0], filters={})

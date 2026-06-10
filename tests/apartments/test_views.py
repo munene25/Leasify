@@ -125,8 +125,8 @@ class TestApartmentListCreateView:
         Regular clients should only view rentable apartments
         """
 
-        apartment_factory(quantity=2, overrides={"rentable": True})
-        apartment_factory(quantity=2, overrides={"rentable": False})
+        apartment_factory(quantity=2, rentable=True)
+        apartment_factory(quantity=2, rentable=False)
         client: IsClient = request.getfixturevalue(client_fixture)
         res1 = client.get(self.path)
         parse_paginated_response(res1, expected)
@@ -161,10 +161,8 @@ class TestApartmentListCreateView:
         rentable bool
         """
 
-        other_apartments = apartment_factory(
-            quantity=5, ordered=True, overrides={"block": "OLD", "rent": Decimal(12_000), "rentable": True}
-        )
-        apartment = apartment_factory(overrides={field: value}, quantity=1)[0]
+        other_apartments = apartment_factory(quantity=5, ordered=True, rentable=True, block="OLD", rent=12_000)
+        apartment = apartment_factory(**{field: value}, quantity=1)[0]
         path = self.path + f"?{query_param}={value}"
 
         response = manager_client.get(path)
@@ -190,8 +188,8 @@ class TestApartmentListCreateView:
         _client: str,
         expected_count: int,
     ):
-        apartment_factory(quantity=5, overrides={"rentable": True})
-        apartment_factory(quantity=5, overrides={"rentable": False})
+        apartment_factory(quantity=5, rentable=True)
+        apartment_factory(quantity=5, rentable=True)
         client = request.getfixturevalue(_client)
         response = client.get(self.path)
         parse_paginated_response(response, expected_count)
@@ -237,9 +235,9 @@ class TestApartmentListCreateView:
     ):
         """Ordering by price or unit_number should possible"""
 
-        apartment1 = apartment_factory(overrides={"unit_number": 20, "rent": Decimal(30_000)})[0]
-        apartment2 = apartment_factory(overrides={"unit_number": 10, "rent": Decimal(20_000)})[0]
-        apartment3 = apartment_factory(overrides={"unit_number": 30, "rent": Decimal(10_000)})[0]
+        apartment1 = apartment_factory(unit_number=20, rent=Decimal(30_000))[0]
+        apartment2 = apartment_factory(unit_number=10, rent=Decimal(20_000))[0]
+        apartment3 = apartment_factory(unit_number=30, rent=Decimal(10_000))[0]
 
         apts = [apartment1, apartment2, apartment3]
 
@@ -409,9 +407,9 @@ class TestApartmentOverviewView:
         users = user_factory(quantity=5)
 
         apartments = [
-            *apartment_factory(quantity=4, overrides={"rent": 12000, "rentable": True}),
-            *apartment_factory(quantity=1, overrides={"rent": 17000, "rentable": True}),
-            *apartment_factory(quantity=1, overrides={"rent": 18000, "rentable": False}),
+            *apartment_factory(quantity=4, rent=12000, rentable=True),
+            *apartment_factory(quantity=1, rent=17000, rentable=True),
+            *apartment_factory(quantity=1, rent=18000, rentable=False),
         ]
 
         # create another tenancy for an apartment to ensure that the popularity count works as expected
@@ -419,7 +417,8 @@ class TestApartmentOverviewView:
         previous_tenancy = tenancy_factory(
             users=[users[0]],
             apartments=[apartments[0]],
-            overrides={"start_date": r.previous_month().start_date, "status": TenancyStatus.TERMINATED},
+            start_date=r.previous_month().start_date,
+            status=TenancyStatus.TERMINATED,
         )
         tenancies = tenancy_factory(users=users, apartments=apartments[:5])
 
