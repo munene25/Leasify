@@ -17,14 +17,17 @@ class TenancyCreateSerializer(serializers.Serializer):
     duration_months = serializers.IntegerField(min_value=1, max_value=4)
 
 class TenancyDetailSerializer(serializers.Serializer):
-    tenant_id = serializers.IntegerField(source="pk")
     user_id = serializers.IntegerField()
+    apartment_id = serializers.IntegerField()
+    tenancy_id = serializers.IntegerField(source="pk")
     tenant_name = serializers.CharField(source="user.full_name")
     apartment_name = serializers.CharField(source="apartment.apartment_name")
     status = serializers.CharField()
-    created_at = serializers.DateTimeField()
-    date_joined = serializers.DateField()
     paid_up_to = serializers.DateField()
+    date_joined = serializers.DateField()
+    created_at = serializers.DateTimeField()
+    termination_date = serializers.DateField()
+    termination_reason = serializers.CharField()
 
 
 class TenancyLeaseExtensionSerializer(serializers.Serializer):
