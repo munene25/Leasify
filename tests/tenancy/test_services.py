@@ -129,43 +129,33 @@ class TestTenancyCreation:
 
 
 class TestTenancyLeaseExtension:
-    def test_tenancy_lease_extension_successful(self, actual_tenant: Tenancy, today: date):
+    def test_tenancy_lease_extension_successful(self, active_tenant: Tenancy, today: date):
         """
         This can only work if the tenant has actually made a payment and they are active or defaulting.
         We can just ignore that by making the billing period paid.
         """
-        actual_tenant.status = TenancyStatus.ACTIVE
-        actual_tenant.save(update_fields=["status"])
-
-        billing = actual_tenant.billings.first()
-        assert billing is not None
-        billing.status = BillingStatus.PAID
-        billing.save(update_fields=["status"])
 
         # now extending should work
-        tenancy = tenancy_lease_extend(actual_tenant, 1)[0]
+        tenancy = tenancy_lease_extend(active_tenant, 1)[0]
         tenancy.refresh_from_db()
-        assert tenancy == actual_tenant
+        assert tenancy == active_tenant
         assert tenancy.billings.count() == 2
 
     @pytest.mark.parametrize(
         "duration_months",
         [1, 2, 3, 4]
     )
-    def test_tenancy_lease_extension_calls_billing_period_with_correct_args(self, monkeypatch: pytest.MonkeyPatch, duration_months: int, actual_tenant: Tenancy, mock_billing_create: MagicMock):
+    def test_tenancy_lease_extension_calls_billing_period_with_correct_args(self, monkeypatch: pytest.MonkeyPatch, duration_months: int, active_tenant: Tenancy, mock_billing_create: MagicMock):
         """billing period should be called with the new date range computed from """
         
-        billing = actual_tenant.billings.latest("start_date")
-        billing.status = BillingStatus.PAID
-        billing.save()
 
         monkeypatch.setattr(Tenancy, "is_continuing", property(lambda self: True))
         monkeypatch.setattr(Tenancy, "has_pending_bills", property(lambda self: False))
 
-        tenancy_lease_extend(actual_tenant, duration_months)
+        tenancy_lease_extend(active_tenant, duration_months)
         # today is implied
         r = DateRange.for_month().shift_months(1, duration_months)
-        mock_billing_create.assert_called_once_with(tenancy=actual_tenant, date_r=r)
+        mock_billing_create.assert_called_once_with(tenancy=active_tenant, date_r=r)
 
 
     @pytest.mark.parametrize(
@@ -175,46 +165,41 @@ class TestTenancyLeaseExtension:
             TenancyStatus.TERMINATED,
         ],
     )
-    def test_lease_extension_fails_for_terminated_or_reserved(self, actual_tenant: Tenancy, status: TenancyStatus):
+    def test_lease_extension_fails_for_terminated_or_reserved(self, tenancy: Tenancy, status: TenancyStatus):
         """
         Change tenancy status and try to extend. Expect error
         """
-        actual_tenant.status = status
-        actual_tenant.save(update_fields=["status"])
+        tenancy.status = status
+        tenancy.save(update_fields=["status"])
 
         with pytest.raises(ValidationError) as exc:
-            tenancy_lease_extend(actual_tenant, 1)
+            tenancy_lease_extend(tenancy, 1)
         assert "Only continuing tenants can extend their lease" in str(exc.value.detail)
 
 
 
-    def test_lease_extension_fails_for_unpaid_billings(self, actual_tenant: Tenancy):
+    def test_lease_extension_fails_for_unpaid_billings(self, tenancy_factory: Factory[Tenancy]):
         """Since a new tenant already has a unpaid billing period, we just have to patch their status"""
-        
-        actual_tenant.status = TenancyStatus.ACTIVE
-        actual_tenant.save(update_fields=["status"])
-        
+        tenant = tenancy_factory(status=TenancyStatus.ACTIVE)[0]
+        tenant.billings.update(status=BillingStatus.UNPAID)
         with pytest.raises(ValidationError) as exc:
-            tenancy_lease_extend(actual_tenant, 1)
+            tenancy_lease_extend(tenant, 1)
 
         assert "You have an unpaid billing period" in str(exc.value.detail)
 
     
-    def test_edge_case_no_last_paid_billing(self, actual_tenant: Tenancy):
+    def test_edge_case_no_last_paid_billing(self, active_tenant: Tenancy):
         """Tenant canceled their one and only billing, should raise a not found"""
         
-        actual_tenant.status = TenancyStatus.ACTIVE
-        last_billing = actual_tenant.billings.latest("start_date")
-        last_billing.status = BillingStatus.CANCELED
-        actual_tenant.save(update_fields=["status"])
-        last_billing.save(update_fields=["status"])
+        active_tenant.status = TenancyStatus.ACTIVE
+        last_billing = active_tenant.billings.update(status=BillingStatus.CANCELED)
 
         with pytest.raises(NotFound) as exc:
-            tenancy_lease_extend(actual_tenant, duration_months=1)
+            tenancy_lease_extend(active_tenant, duration_months=1)
         assert "No paid billing exists" in str(exc.value.detail)
     
 
-    def test_lease_extend_no_queries(self, actual_tenant: Tenancy, monkeypatch: pytest.MonkeyPatch, django_assert_num_queries: DjangoAssertNumQueries):
+    def test_lease_extend_no_queries(self, active_tenant: Tenancy, monkeypatch: pytest.MonkeyPatch, django_assert_num_queries: DjangoAssertNumQueries):
         """
         1. transaction start
         2. lock tenancy
@@ -224,12 +209,8 @@ class TestTenancyLeaseExtension:
         6. transaction end
         """
         monkeypatch.setattr(Tenancy, "is_continuing", property(lambda self: True))
-        billing = actual_tenant.billings.latest("start_date")
-        billing.status = BillingStatus.PAID
-        billing.save()
-
         with django_assert_num_queries(6):
-            tenancy_lease_extend(actual_tenant, 1)
+            tenancy_lease_extend(active_tenant, 1)
         
 
 class TestTenancyTerminate:
@@ -243,14 +224,14 @@ class TestTenancyTerminate:
                 (None, TerminationReason.NONPAYMENT),
             ]
     )
-    def test_tenancy_termination_successful(self, actual_tenant: Tenancy, date: date, reason: TerminationReason, today: date):
+    def test_tenancy_termination_successful(self, reserved_tenant: Tenancy, date: date, reason: TerminationReason, today: date):
         """
         Termination_date, termination_reason and status should be updated.
         Unpaid billing periods are cancelled
         """
-        t = tenancy_terminate(tenancy=actual_tenant, termination_date=date, termination_reason=reason)
+        t = tenancy_terminate(tenancy=reserved_tenant, termination_date=date, termination_reason=reason)
         t.refresh_from_db()
-        assert t == actual_tenant
+        assert t == reserved_tenant
         assert t.status == TenancyStatus.TERMINATED
         assert t.termination_date == date or today
         assert t.termination_reason == reason
@@ -259,11 +240,17 @@ class TestTenancyTerminate:
         assert billing.status == BillingStatus.CANCELED
  
     
-    def test_tenancy_termination_fails_for_backdated_termination_dates(self, actual_tenant: Tenancy, today: date):
+    def test_tenancy_termination_fails_for_backdated_termination_dates(self, tenancy: Tenancy, today: date):
         with pytest.raises(ValidationError) as exc:
             tenancy_terminate(
-                tenancy=actual_tenant, 
+                tenancy=tenancy, 
                 termination_reason=TerminationReason.VOLUNTARY, 
                 termination_date=today-timedelta(days=1)
             )
         assert "Cannot set termination date before tenant's creation" in str(exc.value.detail)
+    
+    def test_tenancy_termination_does_not_close_paid_billings(self, active_tenant):
+        """Paid billings should remain untouched"""
+        t = tenancy_terminate(tenancy=active_tenant, termination_reason=TerminationReason.VOLUNTARY)
+        t.refresh_from_db()
+        assert t.billings.filter(status=BillingStatus.CANCELED).count() == 0
