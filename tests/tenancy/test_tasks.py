@@ -54,16 +54,16 @@ class TestTenancyActiveSetDefaulting:
         unpaid_tenant.refresh_from_db()
         assert unpaid_tenant.status == TS.DEFAULTING
 
-    def test_in_case_of_no_billing_period(self, actual_tenant: Tenancy):
+    def test_in_case_of_no_billing_period(self, tenancy: Tenancy):
         """Should also work for tenancies that do not have a billing period"""
 
-        actual_tenant.billings.latest("start_date").delete()
-        actual_tenant.status = TS.ACTIVE
-        actual_tenant.save(update_fields=["status"])
+        tenancy.billings.latest("start_date").delete()
+        tenancy.status = TS.ACTIVE
+        tenancy.save(update_fields=["status"])
 
         assert len(active_set_defaulting()) == 1
-        actual_tenant.refresh_from_db()
-        assert actual_tenant.status == TS.DEFAULTING
+        tenancy.refresh_from_db()
+        assert tenancy.status == TS.DEFAULTING
 
     def test_active_to_defaulting_no_of_queries(self, tenancy_factory: Factory[Tenancy], django_assert_num_queries):
         """
@@ -115,7 +115,7 @@ class TestReservedSetTerminated:
             # now check the status of their last billing
             assert t.billings.filter(status=BS.UNPAID).count() == 0
     
-    def test_reserved_set_terminated_no_querries(self, actual_tenant: Tenancy, django_assert_num_queries):
+    def test_reserved_set_terminated_no_querries(self, reserved_tenant: Tenancy, django_assert_num_queries):
         """
         1. open transaction
         2. get list.
@@ -154,20 +154,20 @@ class TestNotifyReservedOnExpiry:
         with freeze_time(day_of_expiry):
             assert set(notify_reserved_on_expiry()) == {t.pk for t in tenants}
 
-    def test_reserved_notify_expiry(self, actual_tenant: Tenancy, mailoutbox: list[EmailMessage]):
+    def test_reserved_notify_expiry(self, reserved_tenant: Tenancy, mailoutbox: list[EmailMessage]):
         """We need to check the mail message. Verify apartment_name, tenant_name, max_reservations, payment_url"""
 
         from tests.helpers import check_links_in_mail
         tommorrow = today() + timedelta(1)
-        actual_tenant.reservation_expiry = tommorrow
-        actual_tenant.save(update_fields=["reservation_expiry"])
+        reserved_tenant.reservation_expiry = tommorrow
+        reserved_tenant.save(update_fields=["reservation_expiry"])
 
         notify_reserved_on_expiry()
         assert len(mailoutbox) == 1
         
         mail = mailoutbox[0]
-        check_links_in_mail(actual_tenant.user, mail, "payments/initiate")
+        check_links_in_mail(reserved_tenant.user, mail, "payments/initiate")
         assert "reservation is about to expire" in mail.subject
-        assert actual_tenant.apartment.apartment_name in mail.body
-        assert actual_tenant.user.full_name in mail.body
+        assert reserved_tenant.apartment.apartment_name in mail.body
+        assert reserved_tenant.user.full_name in mail.body
         assert str(MAX_RESERVATIONS_PER_USER) in mail.body
