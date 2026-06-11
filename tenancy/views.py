@@ -63,9 +63,9 @@ class TenancyTerminateView(BaseAPIView):
                 if selected.user == request.user
                 else self.validate_serializer(data=request.data)["termination_reason"]
             )
-            sr.tenancy_terminate(tenancy=selected, termination_reason=reason)
+            selected = sr.tenancy_terminate(tenancy=selected, termination_reason=reason)
         outgoing = sc.TenancyDetailSerializer(instance=selected)
-        return Response(data=outgoing, status=status.HTTP_204_NO_CONTENT)
+        return Response(data=outgoing, status=status.HTTP_200_OK)
 
 
 class TenancyLeaseExtensionView(BaseAPIView):
