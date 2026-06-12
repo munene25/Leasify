@@ -51,10 +51,13 @@ def apartment_list_for(*, user: "User", filters: dict[str, Any] | None = None):
             fields = ("rentable",)
 
         def search_fields(self, queryset, name, value):
-            query = models.Q(block__icontains=value)
+            q = models.Q()
             if value.isdigit():
-                query |= models.Q(unit_number=int(value)) | models.Q(rent=Decimal(value))
-            return queryset.filter(query)
+                q |= models.Q(unit_number=int(value)) 
+                q |= models.Q(rent=Decimal(value))
+            else:
+                q |= models.Q(block__icontains=value)
+            return queryset.filter(q)
 
     a_filters = ApartmentFilterPolicy.for_user(user)
     apartments = BASE_QS.filter(a_filters)
