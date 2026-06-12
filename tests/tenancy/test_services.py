@@ -127,6 +127,15 @@ class TestTenancyCreation:
         with django_assert_num_queries(10):
             tenancy_create(**tenancy_payload)
 
+    @pytest.mark.parametrize("_user", ("manager_user", "caretaker_user"))
+    def test_tenancy_creation_fails_for_priviledged_users(self, _user: str, request: pytest.FixtureRequest, tenancy_payload: TenancyPayload):
+        """For manager and caretaker clients, it should raise RoleAssigmentError in service"""
+        from common.exceptions import RoleAssignmentError
+
+        user = request.getfixturevalue(_user)
+        tenancy_payload["user"] = user
+        with pytest.raises(RoleAssignmentError):
+            tenancy_create(**tenancy_payload)
 
 class TestTenancyLeaseExtension:
     def test_tenancy_lease_extension_successful(self, active_tenant: Tenancy, today: date):
