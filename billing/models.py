@@ -29,7 +29,7 @@ class BillingPeriod(BaseModel):
                 fields=["tenancy"],
                 condition=models.Q(status=BillingStatus.UNPAID),
                 name="unique_unpaid_billing_per_tenancy",
-                violation_error_message="Only one unpaid billing period allowed per tenant",
+                violation_error_message="An 'UNPAID' billing period already exists for this tenant",
             )
         ]
 
