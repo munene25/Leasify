@@ -49,7 +49,7 @@ def tenancy_list_for(*, user: "User", filters: QueryDict | dict[str, Any]) -> Qu
                 q |= Q(apartment__block__icontains=value)
                 q |= Q(user__first_name__icontains=value)
                 q |= Q(user__last_name__icontains=value)
-            return queryset.filter(q)
+            return queryset.filter(q).distinct()
         
             
 
