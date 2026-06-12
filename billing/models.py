@@ -32,6 +32,9 @@ class BillingPeriod(BaseModel):
                 violation_error_message="An 'UNPAID' billing period already exists for this tenant",
             )
         ]
+        permissions = [
+            ("complete_billingperiod", "Can manually set the billing period to PAID"),
+        ]
 
 
     tenancy = models.ForeignKey(Tenancy, on_delete=models.PROTECT, null=False, blank=False, related_name="billings")
