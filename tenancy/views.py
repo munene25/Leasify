@@ -76,9 +76,9 @@ class TenancyLeaseExtensionView(BaseAPIView):
     def post(self, request, tenancy_id: int):
         check_perms(request.user, "tenancy.change_tenancy")
         selected = sl.tenancy_get_for(request.user, tenancy_id)
-        duration = self.validate_serializer(data=request.data)["duration_months"]
-        sr.tenancy_lease_extend(tenancy=selected, duration_months=duration)
-        return Response(data={"message": "Lease extended"}, status=status.HTTP_204_NO_CONTENT)
+        incoming = self.validate_serializer(data=request.data)
+        _, billing = sr.tenancy_lease_extend(tenancy=selected, **incoming)
+        return Response(data={"message": f"Lease {str(billing)} created", "billing_id": billing.pk}, status=status.HTTP_200_OK)
 
 
 @api_view(["GET"])
