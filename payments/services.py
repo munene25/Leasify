@@ -1,24 +1,28 @@
+from uuid import uuid4
+from structlog import get_logger
 from typing import TYPE_CHECKING
-from payments.models import Payment
 from django.db import transaction
 from rest_framework.exceptions import ValidationError
-from payments.choices import PaymentStatus, PaymentInitiator
-from structlog import get_logger
-from uuid import uuid4
+from payments.models import Payment
+from payments.mpesa.stk_push import intiate_stk_push
+from payments.choices import PaymentStatus as PS, PaymentInitiator as PI
 
 logger = get_logger("payments.services")
 
 if TYPE_CHECKING:
     from payments.mpesa import CallbackResponse
-    from billing.models import BillingPeriod
+    from billing.models import BillingPeriod as BP
 
 
 @transaction.atomic
 def payment_initiate(
-    billing: "BillingPeriod",
-    phone_number: str,
-    initiator: PaymentInitiator,
-    stk_push: bool = False,
+    *, 
+    billing: "BP", 
+    initiator: PI, 
+    stk_push: bool,
+    phone_number:str, 
+    paid_by: str,
+    status: PS = PS.PENDING
 ) -> Payment:
     """
     Initialize a payment. Depending on status can be updated later on callback
@@ -26,14 +30,12 @@ def payment_initiate(
     :param billing:
     :param transaction_type:
     :param status:
-    :param phone_number: phone number to
+    :param phone_number: phone number that initiated the transaction
     :param initiator: The short code for who is initiating the request. determined upstream
 
     """
-    # ? if initiator is tenant dont allow status confirmed?
     
     if stk_push:
-        from payments.mpesa.stk_push import intiate_stk_push
         r = intiate_stk_push(
             phone_number=phone_number,
             amount=int(billing.total_due),
@@ -44,18 +46,15 @@ def payment_initiate(
     else:
         checkout_id = str(uuid4())
 
-    payment = Payment(
+    payment = Payment.objects.create(
         billing=billing,
         phone_number=phone_number,
         amount=billing.total_due,
-        status=PaymentStatus.PENDING,
+        status=status,
         checkout_id=checkout_id,
         initiator=initiator,
-        payee=billing.tenancy.user.full_name
+        paid_by=paid_by,
     )
-
-    payment.full_clean()
-    payment.save()
 
     logger.info(
         "payment_initiated",
@@ -69,27 +68,24 @@ def payment_initiate(
 
 
 @transaction.atomic
-def payment_confirm(r: "CallbackResponse") -> Payment:
+def payment_confirm(cb: "CallbackResponse") -> Payment:
     """
     Parse callback response and return an upadted payment.
     Update the payment status and receipt no if it's successfull
     """
 
-    checkout_id = r.checkout_id
-
+    checkout_id = cb.checkout_id
     payment = Payment.objects.select_for_update().get(checkout_id=checkout_id)
 
-    if payment.status in [PaymentStatus.FAILED, PaymentStatus.SUCCESS]:
+    if payment.status in [PS.FAILED, PS.SUCCESS]:
         raise ValidationError("Operation not allowed, payment already closed")
 
-    payment.status =  PaymentStatus.SUCCESS if r.success else PaymentStatus.FAILED
+    payment.status =  PS.SUCCESS if cb.success else PS.FAILED
 
-    if r.success:
-        payment.receipt_no = r.receipt_no
+    if cb.success:
+        payment.receipt_no = cb.receipt_no
     
-    # Generate receipt?
-
-    payment.full_clean()
+    # ? Generate receipt?
     payment.save()
     logger.info("payment_confirmed", checkout_id=payment.checkout_id, status=payment.status)
     return payment
