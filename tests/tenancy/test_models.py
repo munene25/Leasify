@@ -1,6 +1,5 @@
-from datetime import date
-
 import pytest
+from datetime import date
 from tenancy.models import Tenancy
 from tenancy.services import tenancy_create
 from tenancy.choices import *
@@ -50,8 +49,9 @@ def test_tenancy_model_properties(user, apartment, today):
         total_due=20000,
     )
 
-    # force DB re-evaluation, not cache hacking
+    # force DB re-evaluation,
     t.refresh_from_db()
+    t.__dict__.pop('last_paid_billing', None)  #type: ignore
 
     assert t.last_paid_billing == b_paid
     assert t.paid_up_to == b_paid.end_date
