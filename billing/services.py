@@ -3,9 +3,10 @@ from decimal import Decimal
 from structlog import get_logger
 from django.db import transaction
 from rest_framework.exceptions import ValidationError
-from common.period import DateRange
+from common.period import DateRange, today
 from billing.models import BillingPeriod, MAX_BILLING_PERIOD
-from billing.selectors import billing_last_paid_for
+from payments.choices import PaymentStatus
+from tenancy.choices import TenancyStatus
 from billing.choices import BillingStatus
 
 if TYPE_CHECKING:
@@ -15,7 +16,6 @@ if TYPE_CHECKING:
 logger = get_logger("billing.services")
 
 
-
 def billing_period_create(*, tenancy: "Tenancy", date_r: DateRange) -> BillingPeriod:
     """
     Can't create a billing period if the previous one is not cleared.
@@ -23,8 +23,9 @@ def billing_period_create(*, tenancy: "Tenancy", date_r: DateRange) -> BillingPe
     """
     # Cap max billing period
     if date_r.duration_months > MAX_BILLING_PERIOD:
-        raise ValidationError("Max Billng period exceeded")
+        raise ValidationError("Max billing period exceeded")
 
+    # compute total rent due
     total_due = (tenancy.apartment.rent * date_r.duration_months).quantize(Decimal("0.01"))
 
     bp = BillingPeriod(
@@ -47,54 +48,44 @@ def billing_period_create(*, tenancy: "Tenancy", date_r: DateRange) -> BillingPe
 @transaction.atomic
 def billing_period_cancel(billing: BillingPeriod) -> BillingPeriod:
     """
-    Cancel an existing billing period.
-    It has to be unpaid to cancel.
+    Cancel an existing unpaid billing period.
+    Irrelevant to lock billing period, can only move one of two ways: paid or canceled.
     """
+    if billing.status != BillingStatus.UNPAID:
+        raise ValidationError("Billing cannot be canceled")
 
-    locked = BillingPeriod.objects.select_for_update().get(pk=billing.pk)
-
-    if locked.status != BillingStatus.UNPAID:
-        raise ValidationError("Cannot complete request. Billing period cannot be changed once created")
-
-    locked.status = BillingStatus.CANCELED
-    locked.save(update_fields=["status"])
+    billing.status = BillingStatus.CANCELED
+    billing.save(update_fields=["status"])
     logger.info(
         "billing_period_canceled",
-        tenancy_id=locked.tenancy_id,
-        billing_id=locked.pk,
-        billing_period=str(locked),
-        
+        tenancy_id=billing.tenancy_id,
+        billing_id=billing.pk,
+        billing_period=billing.name,
     )
-    return locked
+    return billing
 
 
 @transaction.atomic
-def billing_period_confirm_payment(billing: BillingPeriod, payment: "Payment") -> BillingPeriod:
-    from payments.choices import PaymentStatus
-    from common.period import today
-    from tenancy.choices import TenancyStatus
+def billing_period_complete(payment: "Payment") -> BillingPeriod:
+    """Update billing period status to PAID and update tenancy status if billing current"""
 
-    locked = BillingPeriod.objects.select_for_update().get(pk=billing.pk)
+    bp = payment.billing
 
-    if locked.pk != payment.billing_id:
-        raise ValidationError("Payment is not associated with this billing period")
-    
     if payment.status != PaymentStatus.SUCCESS:
-        raise ValidationError("Required successful payment instance to complete request")
-
-    if locked.start_date <= today() <= locked.end_date:
-        # ! Need to move this to tenancy service for auditing via logs.
-        locked.tenancy.status = TenancyStatus.ACTIVE
-        locked.tenancy.save(update_fields=["status"])
-
-    locked.status = BillingStatus.PAID
-    locked.save(update_fields=["status"])
+        raise ValidationError("Successful payment required to complete request")
+    
+    bp.status = BillingStatus.PAID
+    bp.save(update_fields=["status"])
     logger.info(
         "billing_period_paid",
-        tenancy_id=locked.tenancy_id,
+        tenancy_id=bp.tenancy_id,
         payment_id=payment.pk,
-        billing_id=locked.pk,
-        billing_period=str(locked),
-
+        billing_id=bp.pk,
+        billing_period=bp.name,
     )
-    return locked
+    if bp.is_current:
+        t_logger = get_logger("tenancy.services")
+        bp.tenancy.status = TenancyStatus.ACTIVE
+        bp.tenancy.save(update_fields=["status"])
+        t_logger.info("tenancy_activated", tenancy_id=bp.tenancy_id, billing_id=bp.pk)
+    return bp
