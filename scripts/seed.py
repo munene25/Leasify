@@ -85,7 +85,7 @@ def run():
     ]
 
     # ============================================= Payments =============================================
-    from billing.services import billing_period_confirm_payment
+    from billing.services import billing_period_complete
 
     for t in tenancies:
         billing = t.billings.first()
@@ -97,12 +97,6 @@ def run():
             phone_number=f.numerify("+2547########"),
             stk_push=False,
         )
-        confirmed = payment_confirm(
-            CallbackResponse(
-                checkout_id=p.checkout_id,
-                success=True,
-                result_desc="Payment completed successfuly",
-                receipt_no=f.bothify("????#???#??").upper(),
-            )
-        )
-        billing_period_confirm_payment(billing, confirmed)
+        p.status= "success"
+        p.save()
+        billing_period_complete(p)
