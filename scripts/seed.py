@@ -5,7 +5,6 @@ import random
 from tenancy.services import tenancy_create
 from apartments.services import apartment_create
 from payments.services import payment_initiate, payment_confirm
-from payments.mpesa import CallbackResponse
 from users.services import user_account_create
 from faker import Faker
 from django.core.management import call_command
@@ -93,6 +92,7 @@ def run():
             raise ValueError("billing not created")
         p = payment_initiate(
             billing=billing,
+            paid_by=t.user.full_name,
             initiator=PaymentInitiator.TENANT,
             phone_number=f.numerify("+2547########"),
             stk_push=False,
