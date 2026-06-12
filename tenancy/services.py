@@ -110,6 +110,7 @@ def tenancy_lease_extend(tenancy: Tenancy, duration_months: int) -> tuple[Tenanc
     r = DateRange.compute_lease_window(start_date=last.next_start, duration_months=duration_months)
 
     billing = billing_period_create(tenancy=tenancy, date_r=r)
+    logger.info("tenancy_lease_extended",tenancy_id=tenancy.pk,duration_months=duration_months)
     return tenancy, billing
 
 @transaction.atomic
