@@ -1,12 +1,12 @@
 import pytest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, call
 from datetime import date, timedelta
 from tests.types import IsClient
 from tests.types import Factory
 from tests.helpers import *
 from common.period import today
-from tenancy.models import Tenancy
 from users.models import User
+from tenancy.models import Tenancy
 from tenancy.choices import TenancyStatus as TS, TerminationReason as TR
 from apartments.models import Apartment
 
@@ -260,7 +260,7 @@ class TestTenancyTerminateView:
         assert res2["termination_date"] == tomorrow.isoformat()
 
 
-    def test_termination_view_calls_terminate_service(self,manager_client, monkeypatch, active_tenant ):
+    def test_termination_view_calls_terminate_service(self, manager_client, monkeypatch, active_tenant ):
         """Termination services should be called once with correct args. This avoids testing service layer in view"""
         
         tr = {"termination_reason": TR.NONPAYMENT, "termination_date": "2020-12-31"}
@@ -273,4 +273,104 @@ class TestTenancyTerminateView:
             termination_reason=tr["termination_reason"],
             termination_date=date.fromisoformat(tr["termination_date"]),
         )
+
+class TestTenancyLeaseExtensionView:
+    def path(self, pk):
+        return f"/tenancy/{pk}/extend"
+
+    @pytest.mark.parametrize(
+        "_client,code",
+        [
+            ("superuser_client", 200),
+            ("manager_client", 200,),
+            ("caretaker_client", 200),
+            ("tenant_client", 200),
+            ("user_client", 403),
+            ("client", 401),
+        ],
+    )
+    def test_authentication(self, _client: str, active_tenant: Tenancy, code: int, monkeypatch, request):
+        """Test how each client interacts with the view"""
+        service = MagicMock(return_value = (None, "billing"))
+        monkeypatch.setattr("tenancy.services.tenancy_lease_extend", service)
+
+        url = self.path(active_tenant.pk)
+        client = request.getfixturevalue(_client)
+        response = client.post(url, data={"duration_months": 2})
+        parse_message(response, code)
+
+
+    def test_calls_service(self, manager_client, monkeypatch, active_tenant):
+        """Mock service and assert called with. Avoids multiple repetetive tests"""
+        service = MagicMock(return_value = (None, "billing"))
+        monkeypatch.setattr("tenancy.services.tenancy_lease_extend", service)
+
+        url = self.path(1)
+        manager_client.post(url, data={"duration_months": 2})
+        service.assert_called_once_with(tenancy=active_tenant, duration_months=2)
+
+    def test_successful_response_structure(self, tenant_client , active_tenant):
+        """Assert returns  the billing name in the response message"""
+        url = self.path(1)
+        r = tenant_client.post(url, data={"duration_months": 1})
+        data = parse_message(r)
+        assert str(active_tenant.billings.first()) in data["message"]
+        assert active_tenant.billings.first().pk == data["billing_id"]
+
+
+    def test_unsuccessful_response_structure(self, manager_client):
+        """Assert returns the error message"""
+        url = self.path(2)
+        r = manager_client.post(url, data={"duration_months": 1})
+        parse_error(r, 404)[0]
+
+
+    def test_tenancy_filters_based_on_user(self, manager_client: IsClient, tenant_client: IsClient, caretaker_client: IsClient, monkeypatch):
+        """Mock the tenancy_get_for and assert called with correct user"""
+        url = self.path(1)
+        selector = MagicMock(return_value=Tenancy())
+        monkeypatch.setattr("tenancy.selectors.tenancy_get_for", selector)
+        service = MagicMock(return_value = (None, "billing"))
+        monkeypatch.setattr("tenancy.services.tenancy_lease_extend", service)
+
+        # Assert manager client can access all tenancies
+        manager_client.post(url, {})
+        caretaker_client.post(url, {})
+        tenant_client.post(url, {})
+        assert selector.call_args_list == [
+            call(manager_client.user, 1),
+            call(caretaker_client.user, 1),
+            call(tenant_client.user, 1)
+        ]
+
+
+class TestTenancyTerminationReasons:
+    path = "/tenancy/termination-reasons"
+    
+    def test_response_structure(self, manager_client: IsClient):
+        """Mock the tenancy_get_for and assert called with correct user"""
         
+        response = manager_client.get(self.path)
+        data = parse_message(response)
+        assert len(data) == len(TR.choices)
+        assert TR.MANAGERIAL in str(data)
+        assert TR.EXPIRED in str(data)
+        assert TR.VOLUNTARY in str(data)
+        assert TR.NONPAYMENT in str(data)
+
+    @pytest.mark.parametrize(
+         "_client,code",
+        [
+            ("superuser_client", 200),
+            ("manager_client", 200,),
+            ("caretaker_client", 200),
+            ("tenant_client", 200),
+            ("user_client", 200),
+            ("client", 401),
+        ],
+    )
+    def test_auth(self, _client: str, code: int, request):
+        """Auth should be as follows"""
+        client = request.getfixturevalue(_client)
+        response = client.get(self.path)
+        assert response.status_code == code
