@@ -34,5 +34,5 @@ class TenancyLeaseExtensionSerializer(serializers.Serializer):
     duration_months = serializers.IntegerField()
 
 class TenancyTerminateSerializer(serializers.Serializer):
-    termination_reason = serializers.ChoiceField(choices=TerminationReason)
-    
+    termination_reason = serializers.ChoiceField(choices=TerminationReason.choices)
+    termination_date = serializers.DateField(required=False)
