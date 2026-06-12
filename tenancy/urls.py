@@ -6,5 +6,5 @@ urlpatterns = [
     path("<int:tenancy_id>", views.TenancyDetailView.as_view(), name="detail_update"),
     path("<int:tenancy_id>/terminate", views.TenancyTerminateView.as_view(), name="detail_update"),
     path("<int:tenancy_id>/extend", views.TenancyLeaseExtensionView.as_view(), name="detail_update"),
-    path("termination_reasons", views.get_tenancy_termination_reasons, name="termination_reasons"),
+    path("termination-reasons", views.get_tenancy_termination_reasons, name="termination_reasons"),
 ]
