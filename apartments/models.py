@@ -29,9 +29,8 @@ class Apartment(BaseModel):
     block = models.CharField(max_length=10, choices=Block.choices, blank=False, null=False)
     unit_number = models.PositiveSmallIntegerField(blank=False, null=False)
     rent = models.DecimalField(decimal_places=2, max_digits=10, blank=False, null=False)
-    rentable = models.BooleanField(
-        default=True, blank=False, help_text="Viewable and available to rent"
-    )
+    rentable = models.BooleanField(default=True, blank=False, null=False, help_text="Viewable and available to rent")
+    
     tenancy_set: models.QuerySet[Tenancy]
     _active_tenant: list[Tenancy]
 
