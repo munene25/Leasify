@@ -3,7 +3,7 @@ from decimal import Decimal
 from structlog import get_logger
 from django.db import transaction
 from rest_framework.exceptions import ValidationError
-from common.period import DateRange, today
+from common.period import DateRange
 from billing.models import BillingPeriod, MAX_BILLING_PERIOD
 from payments.choices import PaymentStatus
 from tenancy.choices import TenancyStatus
