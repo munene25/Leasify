@@ -18,7 +18,7 @@ class User(BaseModel, AbstractUser):
     first_name = NameModelField(verbose_name="first name")
     last_name = NameModelField(verbose_name="last name")
     email = models.EmailField(unique=True, blank=False, db_index=True)
-    verified = models.BooleanField(default=False)
+    verified = models.BooleanField(null=False, default=False)
     last_email_change = models.DateTimeField(null=True, blank=True)
 
     USERNAME_FIELD = "email"
