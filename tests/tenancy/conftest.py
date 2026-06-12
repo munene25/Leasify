@@ -26,6 +26,7 @@ def tenancy_payload(user: "User", apartment: "Apartment", today: "date") -> "Ten
 def tenant_client(active_tenant: "Tenancy") -> APIClient:
     client = APIClient()
     client.force_authenticate(user=active_tenant.user)
+    setattr(client, "user", active_tenant.user)
     return client
 
 @pytest.fixture

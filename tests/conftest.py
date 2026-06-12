@@ -203,6 +203,7 @@ def csrf_client() -> APIClient:
 def user_client(user) -> APIClient:
     client = APIClient()
     client.force_authenticate(user=user)
+    setattr(client, "user", user)
     return client
 
 
@@ -210,6 +211,7 @@ def user_client(user) -> APIClient:
 def manager_client(manager_user) -> APIClient:
     client = APIClient()
     client.force_authenticate(user=manager_user)
+    setattr(client, "user", manager_user)
     return client
 
 
@@ -217,6 +219,7 @@ def manager_client(manager_user) -> APIClient:
 def tenant_client(tenant_user) -> APIClient:
     client = APIClient()
     client.force_authenticate(user=tenant_user)
+    setattr(client, "user", tenant_user)
     return client
 
 
@@ -224,6 +227,7 @@ def tenant_client(tenant_user) -> APIClient:
 def caretaker_client(caretaker_user) -> APIClient:
     client = APIClient()
     client.force_authenticate(user=caretaker_user)
+    setattr(client, "user", caretaker_user)
     return client
 
 
@@ -231,6 +235,7 @@ def caretaker_client(caretaker_user) -> APIClient:
 def superuser_client(superuser) -> APIClient:
     client = APIClient()
     client.force_authenticate(user=superuser)
+    setattr(client, "user", superuser)
     return client
 
 
