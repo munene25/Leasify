@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import MagicMock
-from datetime import date
+from datetime import date, timedelta
 from tests.types import IsClient
 from tests.types import Factory
 from tests.helpers import *
@@ -189,3 +189,88 @@ class TestTenancyDetailView:
         assert data1["date_joined"] is not None
         assert data1["termination_date"] is None
         assert data1["termination_reason"] is None
+
+    def test_tenancy_detail_response_no_tenancy_found(self, manager_client: IsClient):
+        """Test response when no tenancy found for the given pk"""
+        res1 = manager_client.get(self.path(99))  # Assuming no tenant with this pk exists
+        assert parse_error(res1, 404)
+
+
+class TestTenancyTerminateView:
+    def path(self, pk: int) -> str:
+        return f"/tenancy/{str(pk)}/terminate"
+
+    @pytest.mark.parametrize(
+        "_client,post",
+        [
+            ("superuser_client", 200),
+            ("manager_client", 200,),
+            ("caretaker_client", 200),
+            ("tenant_client", 200),
+            ("user_client", 403),
+            ("client", 401),
+        ],
+    )
+    def test_authentication_and_authorization(self, monkeypatch: pytest.MonkeyPatch, _client: str, post: int, request: pytest.FixtureRequest, mock_serializer):
+        """Test both list and create views. Need to patch to avoid validation."""
+
+        client: IsClient = request.getfixturevalue(_client)
+        t = Tenancy(status=TS.ACTIVE, user=User())
+        monkeypatch.setattr("tenancy.services.tenancy_terminate", lambda *args, **kwargs: t)
+        monkeypatch.setattr("tenancy.selectors.tenancy_get_for", lambda *args, **kwargs: t)
+        monkeypatch.setattr("tenancy.serializer.TenancyDetailSerializer", mock_serializer)
+        
+        parse_message(client.post(self.path(1), {"termination_reason": TR.VOLUNTARY}), post)
+    
+    def test_filtering_based_on_role(self, monkeypatch, manager_client: IsClient, tenant_client: IsClient, tenancy_factory):
+        """Manager client and tenant client should view different tenancies"""
+
+        # create a random tenancy
+        t = tenancy_factory()[0]
+        
+        # patch to avoid service calls
+        monkeypatch.setattr("tenancy.services.tenancy_terminate", lambda *args, **kwargs: t)
+        
+        # check that the manager can see it
+        parse_message(manager_client.post(self.path(t.id), {"termination_reason": TR.NONPAYMENT}), 200)
+        
+        # check that the tenant cannot see it
+        parse_message(tenant_client.post(self.path(t.id), {}), 404)
+    
+
+    def test_fails_on_non_existent(self, manager_client: IsClient):
+        """Fails on nonexistent tenancy"""
+        parse_message(manager_client.post(self.path(999), {}), 404)
+
+
+    def test_termination_successful(self, manager_client: IsClient, tenancy_factory: Factory[Tenancy], today: date):
+        """Manager can set termination reason"""
+
+        t = tenancy_factory()[0]
+        tr = {"termination_reason": TR.NONPAYMENT}
+        res1 = parse_message(manager_client.post(self.path(t.pk), tr), 200)
+        assert res1["status"] == TS.TERMINATED
+        assert res1["termination_reason"] == TR.NONPAYMENT
+        assert res1["termination_date"] == today.isoformat()
+
+        # test setting of date and reason
+        t = tenancy_factory()[0]
+        tomorrow = today + timedelta(1)
+        res2 = parse_message(manager_client.post(self.path(t.pk), {"termination_date": tomorrow, "termination_reason": TR.MANAGERIAL}), 200)
+        assert res2["termination_date"] == tomorrow.isoformat()
+
+
+    def test_termination_view_calls_terminate_service(self,manager_client, monkeypatch, active_tenant ):
+        """Termination services should be called once with correct args. This avoids testing service layer in view"""
+        
+        tr = {"termination_reason": TR.NONPAYMENT, "termination_date": "2020-12-31"}
+
+        mock = MagicMock(return_value=active_tenant)
+        monkeypatch.setattr("tenancy.services.tenancy_terminate", mock)
+        parse_message(manager_client.post(self.path(active_tenant.pk), tr), 200)
+        mock.assert_called_once_with(
+            tenancy=active_tenant,
+            termination_reason=tr["termination_reason"],
+            termination_date=date.fromisoformat(tr["termination_date"]),
+        )
+        
