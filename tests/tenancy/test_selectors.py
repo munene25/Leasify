@@ -1,6 +1,7 @@
+import pytest
 from datetime import date
 from tenancy.models import Tenancy
-from tenancy.selectors import tenancy_list_for
+from tenancy import selectors as sl
 from tenancy.choices import TenancyStatus as TS
 from users.models import User
 from apartments.models import Apartment
@@ -20,7 +21,7 @@ class TestTenancyListFilters:
         tenancy_factory(users=user2, apartments=apartment2, status=TS.ACTIVE, start_date= date(2026, 6, 1))
 
         def query(q: dict[str, str], expected) -> None:
-            qs = tenancy_list_for(user=manager_user, filters=q)
+            qs = sl.tenancy_list_for(user=manager_user, filters=q)
             assert qs.count() == expected, f"Expected {expected} results {qs.all()}"
 
         # -- search on name --
@@ -37,3 +38,26 @@ class TestTenancyListFilters:
         query({"joined_after": "2026-06-01"}, 2)
         query({"joined_after": "2026-06-01", "joined_before": "2026-06-30"}, 1)
         query({"joined_before": "2026-5-30"}, 1)
+
+
+def test_tenancy_get_for( manager_user,caretaker_user ,user_factory, tenancy_factory):
+    """The selector should filter based on the filter policy"""
+    from rest_framework.exceptions import NotFound
+    
+    t1 = tenancy_factory()[0]
+    t2 = tenancy_factory()[0]
+
+    sl.tenancy_get_for(manager_user, 1)
+    sl.tenancy_get_for(caretaker_user, 1)
+    sl.tenancy_get_for(t1.user, t1.pk)
+
+    with pytest.raises(NotFound):
+        sl.tenancy_get_for(t2.user, t1.pk)
+
+    with pytest.raises(NotFound):
+        sl.tenancy_get_for(t1.user, t2.pk)
+    
+    u = user_factory(1)[0]
+
+    with pytest.raises(NotFound):
+        sl.tenancy_get_for(u, t1.pk)
