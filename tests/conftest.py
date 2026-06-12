@@ -314,3 +314,17 @@ def tenancy_factory(apartment_factory: Factory[Apartment], user_factory: Factory
 def tenancy(tenancy_factory: Factory[Tenancy]) -> Tenancy:
     """Single tenancy fixture"""
     return tenancy_factory()[0]
+
+
+# ------------------------------------------------ Tenancy  ------------------------------------------------
+
+@pytest.fixture
+def mock_serializer():
+    mock = MagicMock()
+    mocked_instance = MagicMock()
+    mocked_instance.data = {}
+    
+    mock.return_value = mocked_instance
+    mock.is_valid.return_value = True
+    mock.save.return_value = None
+    return mock
