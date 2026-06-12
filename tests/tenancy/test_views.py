@@ -31,12 +31,13 @@ class TestTenancyListCreateView:
         ],
     )
     def test_authentication_and_authorization(
-        self, monkeypatch: pytest.MonkeyPatch, _client: str, get: int, post: int, request: pytest.FixtureRequest
+        self, monkeypatch: pytest.MonkeyPatch, _client: str, get: int, post: int, request: pytest.FixtureRequest, mock_serializer,
     ):
         """Test both list and create views. Need to patch to speed up."""
         initialized: IsClient = request.getfixturevalue(_client)
         monkeypatch.setattr("tenancy.views.TenancyListCreateView.validate_serializer", lambda *args, **kwargs: {})
         monkeypatch.setattr("tenancy.services.tenancy_create", lambda **kwargs: Tenancy())
+        monkeypatch.setattr("tenancy.serializer.TenancyDetailSerializer", mock_serializer)
         parse_message(initialized.get(self.path), get)
         parse_message(initialized.post(self.path, self.data), post)
 
@@ -133,11 +134,11 @@ class TestTenancyListCreateView:
         assert data["termination_reason"] is None
         assert data["termination_date"] is None
 
-    def test_tenancy_create_calls(self, monkeypatch, user_client: IsClient, user: User, apartment: Apartment):
+    def test_tenancy_create_calls(self, monkeypatch, user_client: IsClient, user: User, apartment: Apartment, mock_serializer):
         """Test that tenancy_create is called with correct values"""
         mock = MagicMock(return_value=Tenancy())
         monkeypatch.setattr("tenancy.services.tenancy_create", mock)
-
+        monkeypatch.setattr("tenancy.serializer.TenancyDetailSerializer", mock_serializer)
         user_client.post(self.path, data=self.data)
         mock.assert_called_once_with(
             user=user,
