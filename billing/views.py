@@ -21,7 +21,7 @@ class BillingListView(BaseAPIView):
     def get(self, request) -> Response:
         check_perms(request.user, "billingperiod.view_billingperiod")
         filters = self.validate_filter(data=request.query_params)
-        selected = sl.billing_list_for(request.user, filters)
+        selected = sl.billing_list_for(user=request.user, filters=filters)
         return get_paginated_response(
             view=self,
             request=request, 
