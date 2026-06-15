@@ -21,14 +21,16 @@ class BillingFilteringPolicy(FilteringPolicy):
     SUPERUSER = Q()
     MANAGER = Q()
     CARETAKER = Q()
-    TENANT = lambda u: Q(tenancy_id__in=[list(u.tenancy_set.values_list('pk', flat=True))])
+    TENANT = lambda u: Q(tenancy_id__in=list(u.tenancy_set.values_list('pk', flat=True)))
+    REGULAR = Q(pk=0)
 
 
-def billing_list_for(user: "User", filters: dict[str, Any] | QueryDict = {}) -> QuerySet["Tenancy"]:
+def billing_list_for(*, user: "User", filters: dict[str, Any] | QueryDict = {}) -> QuerySet[BP]:
     
     class F(django_filters.FilterSet): 
         class Meta:
             model = BP
+            fields = ("status", )
         
         search = django_filters.CharFilter(method="search_fields")
         is_current = django_filters.BooleanFilter(method="filter_current")
