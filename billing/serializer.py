@@ -20,6 +20,3 @@ class BillingDetailSerializer(serializers.Serializer):
     status = serializers.ChoiceField(choices=BillingStatus.choices)
     is_current = serializers.BooleanField()
     duration_months = serializers.IntegerField()
-
-class BillingCompleteSerializer(serializers.Serializer):
-    payment = serializers.PrimaryKeyRelatedField(queryset=Payment.objects.all())
