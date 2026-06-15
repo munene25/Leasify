@@ -55,18 +55,11 @@ class BillingCancelView(BaseAPIView):
 
 class BillingCompleteView(BaseAPIView):
     permission_classes = [IsAuthenticated]
-    serializer_class = sc.BillingCompleteSerializer
 
     def post(self, request, billing_id: int) -> Response:
         check_perms(request.user, "billingperiod.complete_billingperiod")
-        billing = sl.billing_get_for(request.user, billing_id)
-        incoming = self.validate_serializer(data=request.data)
-        payment = incoming["payment"]
-        # This ensures explicitness
-        if billing != payment.billing:
-            raise ValidationError("Payment does not belong to this billing period")
-        
-        billing = sr.billing_period_complete(**payment)
+        selected = sl.billing_get_for(request.user, billing_id)
+        billing = sr.billing_period_complete(selected)
         outgoing = sc.BillingDetailSerializer(instance=billing)
         return Response(data=outgoing.data, status=status.HTTP_200_OK)
 
