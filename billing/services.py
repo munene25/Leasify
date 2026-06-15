@@ -66,26 +66,25 @@ def billing_period_cancel(billing: BillingPeriod) -> BillingPeriod:
 
 
 @transaction.atomic
-def billing_period_complete(payment: "Payment") -> BillingPeriod:
+def billing_period_complete(billing: BillingPeriod) -> BillingPeriod:
     """Update billing period status to PAID and update tenancy status if billing current"""
 
-    bp = payment.billing
-
-    if payment.status != PaymentStatus.SUCCESS:
+    payment = billing.payments.filter(status=PaymentStatus.SUCCESS).first()
+    if not payment or payment.status != PaymentStatus.SUCCESS:
         raise ValidationError("Successful payment required to complete request")
     
-    bp.status = BillingStatus.PAID
-    bp.save(update_fields=["status"])
+    billing.status = BillingStatus.PAID
+    billing.save(update_fields=["status"])
     logger.info(
         "billing_period_paid",
-        tenancy_id=bp.tenancy_id,
+        tenancy_id=billing.tenancy_id,
         payment_id=payment.pk,
-        billing_id=bp.pk,
-        billing_period=bp.name,
+        billing_id=billing.pk,
+        billing_period=billing.name,
     )
-    if bp.is_current:
+    if billing.is_current:
         t_logger = get_logger("tenancy.services")
-        bp.tenancy.status = TenancyStatus.ACTIVE
-        bp.tenancy.save(update_fields=["status"])
-        t_logger.info("tenancy_activated", tenancy_id=bp.tenancy_id, billing_id=bp.pk)
-    return bp
+        billing.tenancy.status = TenancyStatus.ACTIVE
+        billing.tenancy.save(update_fields=["status"])
+        t_logger.info("tenancy_activated", tenancy_id=billing.tenancy_id, billing_id=billing.pk)
+    return billing
