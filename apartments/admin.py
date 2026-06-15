@@ -33,7 +33,7 @@ class ApartmentAdmin(admin.ModelAdmin):
         return obj.is_occupied
 
     is_occupied.boolean = True
-    is_occupied.short_description = "Currently is_occupied"
+    is_occupied.short_description = "Currently occupied"
 
     def current_tenant(self, obj):
         tenant = obj.current_tenant
@@ -41,14 +41,13 @@ class ApartmentAdmin(admin.ModelAdmin):
         if not tenant:
             return "--/--"
 
-        url = reverse("admin:users_user_change", args=[tenant.pk])
+        url = reverse("admin:tenancy_tenancy_change", args=[tenant.pk])
 
         return format_html('<a href="{}">{}</a>', url, tenant.user.full_name)
     
     def get_queryset(self, request: HttpRequest) -> QuerySet:
-        from tenancy.selectors import current_tenant_prefetch
-
-        return super().get_queryset(request).prefetch_related(current_tenant_prefetch())
+        from apartments.selectors import BASE_QS
+        return BASE_QS
 
     @admin.action(description="Mark selected apartments as rentable")
     def make_rentable(self, request, queryset):
