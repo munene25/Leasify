@@ -32,7 +32,6 @@ class Tenancy(BaseModel):
     If rent is increased for an apartment, historical tenancies which relied on the apartment.rent
     fail to portray the correct payment status. This is why we store agreed rent on the tenancy.
     ? Maybe add expired status for expired booking attempts over terminated
-    ? Maybe add start date to know the time the tenant has been around
     """
 
     class Meta:
