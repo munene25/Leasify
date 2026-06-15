@@ -67,7 +67,7 @@ class Tenancy(BaseModel):
     billings: models.QuerySet["BillingPeriod"]
 
     def __str__(self) -> str:
-        return f"user:{self.user_id} - tenancy:{self.pk}"
+        return f"{self.user.full_name}"
 
     @property
     def is_continuing(self) -> bool:
