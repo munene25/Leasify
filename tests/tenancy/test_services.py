@@ -92,7 +92,7 @@ class TestTenancyCreation:
         last_month = r.previous_month()
 
         # first create a reservation for user1
-        first_tenancy = tenancy_create(user=u1, apartment=a1, start_date=today, duration_months=1)
+        tenancy_create(user=u1, apartment=a1, start_date=today, duration_months=1)
 
         # Full clean raises drf validation errors coerced from BaseModel.
         # Try create a new tenancy with the same user in a new apartment
@@ -138,13 +138,11 @@ class TestTenancyCreation:
             tenancy_create(**tenancy_payload)
 
 class TestTenancyLeaseExtension:
-    def test_tenancy_lease_extension_successful(self, active_tenant: Tenancy, today: date):
+    def test_tenancy_lease_extension_successful(self, active_tenant: Tenancy, billing_factory: Factory[BillingPeriod]):
         """
         This can only work if the tenant has actually made a payment and they are active or defaulting.
         We can just ignore that by making the billing period paid.
         """
-
-        # now extending should work
         tenancy = tenancy_lease_extend(active_tenant, 1)[0]
         tenancy.refresh_from_db()
         assert tenancy == active_tenant
@@ -160,7 +158,6 @@ class TestTenancyLeaseExtension:
 
         monkeypatch.setattr(Tenancy, "is_continuing", property(lambda self: True))
         monkeypatch.setattr(Tenancy, "has_pending_bills", property(lambda self: False))
-
         tenancy_lease_extend(active_tenant, duration_months)
         # today is implied
         r = DateRange.for_month().shift_months(1, duration_months)
@@ -187,12 +184,11 @@ class TestTenancyLeaseExtension:
 
 
 
-    def test_lease_extension_fails_for_unpaid_billings(self, tenancy_factory: Factory[Tenancy]):
-        """Since a new tenant already has a unpaid billing period, we just have to patch their status"""
-        tenant = tenancy_factory(status=TenancyStatus.ACTIVE)[0]
-        tenant.billings.update(status=BillingStatus.UNPAID)
+    def test_lease_extension_fails_for_unpaid_billings(self, active_tenant: Tenancy, billing_factory: Factory[BillingPeriod]):
+        """Get a reserved tenant and check if the lease extension fails"""
+        billing_factory(tenancy=active_tenant, statuses=[BillingStatus.UNPAID])
         with pytest.raises(ValidationError) as exc:
-            tenancy_lease_extend(tenant, 1)
+            tenancy_lease_extend(active_tenant, 1)
 
         assert "You have an unpaid billing period" in str(exc.value.detail)
 
@@ -217,7 +213,6 @@ class TestTenancyLeaseExtension:
         5. create billing period
         6. transaction end
         """
-        monkeypatch.setattr(Tenancy, "is_continuing", property(lambda self: True))
         with django_assert_num_queries(6):
             tenancy_lease_extend(active_tenant, 1)
         
