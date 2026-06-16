@@ -13,14 +13,13 @@ from billing.services import billing_period_cancel, billing_period_complete, bil
 from tests.types import Factory
 
 
-
 class TestBillingPeriodCreate:
     def test_billing_period_create(self, tenancy_factory: Factory[Tenancy]):
         """
         This should create a new billing period for the given tenant and date range.
         """
         tenancy = tenancy_factory()[0]
-        billing= billing_period_create(tenancy=tenancy,date_r=DateRange.compute_lease_window(date(2022, 1, 1), 2))
+        billing = billing_period_create(tenancy=tenancy, date_r=DateRange.compute_lease_window(date(2022, 1, 1), 2))
         assert BP.objects.count() == 1
         assert BP.objects.first() == billing
         assert billing.tenancy == tenancy
@@ -28,7 +27,7 @@ class TestBillingPeriodCreate:
         # assert total due is duration months * apartment.rent
 
         rent = int(tenancy.apartment.rent)
-        assert int(billing.total_due) == rent*2
+        assert int(billing.total_due) == rent * 2
 
         assert billing.start_date == date(2022, 1, 1)
         assert billing.end_date == date(2022, 2, 28)
@@ -50,7 +49,7 @@ class TestBillingPeriodCancel:
         _billing = billing_period_cancel(billing)
         billing.refresh_from_db()
         assert billing == _billing
-        
+
         assert billing.status == BS.CANCELED
 
     def test_cancelation_fails_for_non_unpaid_billings(self, billing_factory: Factory[BP]):
@@ -62,6 +61,7 @@ class TestBillingPeriodCancel:
         with pytest.raises(ValidationError):
             billing_period_cancel(billing[1])
 
+
 class TestBillingPeriodComplete:
     def test_completion_sets_status_paid(self, billing_factory: Factory[BP], payment_factory: Factory[Payment]):
         """Should complete the billing period"""
@@ -70,10 +70,16 @@ class TestBillingPeriodComplete:
         _billing = billing_period_complete(billing)
         billing.refresh_from_db()  # type: ignore
         assert billing == _billing
-        
+
         assert billing.status == BS.PAID
-    
-    def test_sets_tenancy_active_if_billing_is_current(self, tenancy_factory: Factory[Tenancy], billing_factory: Factory[BP], payment_factory: Factory[Payment], today: date):
+
+    def test_sets_tenancy_active_if_billing_is_current(
+        self,
+        tenancy_factory: Factory[Tenancy],
+        billing_factory: Factory[BP],
+        payment_factory: Factory[Payment],
+        today: date,
+    ):
         """Should also set the tenancy active if it is current"""
         # setup tenancy and a paid billing period with a successful payment
         tenancy = tenancy_factory(statuses=[TS.RESERVED])[0]
@@ -85,3 +91,16 @@ class TestBillingPeriodComplete:
         tenancy.refresh_from_db()
         assert tenancy.status == TS.ACTIVE
         
+    @pytest.mark.parametrize("status", [PS.PENDING, PS.FAILED])
+    def test_completion_fails_for_non_successful_payments(
+        self,
+        billing_factory: Factory[BP],
+        payment_factory: Factory[Payment],
+        status,
+    ):
+        """Should raise ValidationError if the billing has no successful payments"""
+        billing = billing_factory(statuses=[BS.UNPAID])[0]
+        payment_factory(billing=billing, statuses=[status])
+
+        with pytest.raises(ValidationError):
+            billing_period_complete(billing)
