@@ -4,6 +4,7 @@ from rest_framework.test import APIClient
 from unittest.mock import MagicMock
 from tenancy.choices import TenancyStatus as TS
 from billing.choices import BillingStatus as BS
+from common.period import DateRange
 
 if TYPE_CHECKING:
     from datetime import date
@@ -11,6 +12,8 @@ if TYPE_CHECKING:
     from users.models import User
     from tenancy.models import Tenancy
     from tests.types import TenancyPayload
+    from billing.models import BillingPeriod as BP
+    from tests.types import Factory
 
 
 @pytest.fixture
@@ -30,13 +33,18 @@ def tenant_client(active_tenant: "Tenancy") -> APIClient:
     return client
 
 @pytest.fixture
-def reserved_tenant(tenancy_factory) -> "Tenancy":
-    return tenancy_factory(status=TS.RESERVED)[0]
+def reserved_tenant(tenancy_factory, billing_factory: "Factory[BP]") -> "Tenancy":
+    t = tenancy_factory(status=TS.RESERVED)[0]
+    starting = DateRange.for_month().previous_month().start_date
+    billing_factory(tenancy=t, statuses=[BS.UNPAID], starting=starting)
+    return t
+
 
 @pytest.fixture
-def active_tenant(tenancy_factory) -> "Tenancy":
-    t = tenancy_factory()[0]
-    t.billings.update(status=BS.PAID)
+def active_tenant(tenancy_factory: "Factory[Tenancy]", billing_factory: "Factory[BP]") -> "Tenancy":
+    t = tenancy_factory(status=TS.ACTIVE)[0]
+    starting = DateRange.for_month().previous_month().start_date
+    billing_factory(tenancy=t, statuses=[BS.PAID], starting=starting)
     return t
     
 @pytest.fixture
