@@ -11,20 +11,23 @@ from django.utils import timezone
 from common.period import today as _today
 from django.core.mail import EmailMessage
 
-# define a helper to quickly change status
-def status_to(tenants: list[Tenancy], status: BS) -> None:
-    BillingPeriod.objects.filter(tenancy_id__in=[t.pk for t in tenants]).update(status=status)
+
 
 
 class TestTenancyActiveSetDefaulting:
 
-    def test_active_set_defaulting_successful(self, tenancy_factory: Factory[Tenancy]):
+    def test_active_set_defaulting_successful(self, tenancy_factory: Factory[Tenancy], billing_factory: Factory[BillingPeriod]):
         """
         Create 5 tenancies.
         Set status is active,
         Set billing period is PAID CANCELLED OR UNPAID(default)
         Only Paid should be spared from transition
         """
+
+        # define a helper to quickly change status
+        def status_to(tenants: list[Tenancy], status: BS) -> None:
+            for t in tenants:
+                billing_factory(tenancy=t, statuses=[status])
 
         tenants = tenancy_factory(5)
         paid_tenants = tenants[:2]
@@ -56,8 +59,6 @@ class TestTenancyActiveSetDefaulting:
 
     def test_in_case_of_no_billing_period(self, tenancy: Tenancy):
         """Should also work for tenancies that do not have a billing period"""
-
-        tenancy.billings.latest("start_date").delete()
         tenancy.status = TS.ACTIVE
         tenancy.save(update_fields=["status"])
 
@@ -77,7 +78,7 @@ class TestTenancyActiveSetDefaulting:
 
 class TestReservedSetTerminated:
 
-    def test_reserved_set_terminated_successful(self, tenancy_factory: Factory[Tenancy]):
+    def test_reserved_set_terminated_successful(self, tenancy_factory: Factory[Tenancy], billing_factory: Factory[BillingPeriod], ):
         """
         First create tenants in status of reserved today.
         Expiry will be set DEFAULT_EXPIRY_DURATION days ahead of today.
@@ -90,7 +91,7 @@ class TestReservedSetTerminated:
 
         tenants = tenancy_factory(2, status=TS.RESERVED)
         t = tenants[0]
-        assert t.billings.filter(status=BS.UNPAID).count() == 1
+        [billing_factory(tenancy=t, statuses=[BS.UNPAID]) for t in tenants]
 
         with freeze_time(now, tz_offset=0) as frozen:
             assert tenants[0].reservation_expiry == _today() + timedelta(days=2)
