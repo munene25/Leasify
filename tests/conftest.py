@@ -17,6 +17,9 @@ from billing.models import BillingPeriod as BP
 from billing.services import billing_period_create
 from billing.choices import BillingStatus as BS
 from common.period import DateRange
+from payments.models import Payment
+from payments.choices import PaymentInitiator as PI, PaymentStatus as PS
+
 # ------------------------------------------------------ Globals  ------------------------------------------------------ #
 
 # # conftest.py
@@ -140,7 +143,7 @@ def roles_list() -> list[Group]:
     return list(Group.objects.all())
 
 
-@pytest.fixture(scope="class")
+@pytest.fixture(scope="session")
 def get_role() -> typing.Callable[[str], Group]:
     """
     Callable to return a specific group
@@ -284,9 +287,8 @@ def tenancy_patch_validators(monkeypatch: pytest.MonkeyPatch) -> dict[str, Magic
 
 
 @pytest.fixture(scope="session")
-def tenancy_factory(apartment_factory: Factory[Apartment], user_factory: Factory[User], today: date) -> Factory[Tenancy]:
+def tenancy_factory(apartment_factory: Factory[Apartment], user_factory: Factory[User], today: date, get_role) -> Factory[Tenancy]:
     """Tenancy generator - creates lease-based tenancies"""
-    from tenancy.services import tenancy_create
     from tenancy.choices import TenancyStatus
 
     def create(quantity=1, users: list[User] | None = None, apartments: list[Apartment] | None = None, **kwargs) -> list[Tenancy]:
@@ -295,22 +297,18 @@ def tenancy_factory(apartment_factory: Factory[Apartment], user_factory: Factory
         users = users or user_factory(quantity)
         apartments = apartments or apartment_factory(quantity=len(users), rentable=True)
 
-        duration_months = kwargs.get("duration_months", 1)
         start_date: date = kwargs.get("start_date", today)
         status = kwargs.get("status", TenancyStatus.ACTIVE)
 
         for i, user in enumerate(users):
-            tenancy = tenancy_create(
+            t = Tenancy.objects.create(
                 user=user,
                 apartment=apartments[i],
-                start_date=start_date,
-                duration_months=duration_months,
+                date_joined=start_date,
+                status=status,
             )
-            if status != tenancy.status:
-                tenancy.status = status
-                tenancy.save()
-
-            tenancies.append(tenancy)
+            user_set_role(user=user, role=get_role("tenant"))
+            tenancies.append(t)
 
         return tenancies
 
@@ -338,14 +336,14 @@ def mock_serializer():
 
 # ------------------------------------------------ BillingPeriod  ------------------------------------------------
 @pytest.fixture(scope="session")
-def billing_factory(today: date, request) -> Factory[BP]:
-    """Generate bilings for tenants"""
-    def create(quantity = 1, tenancy: Tenancy | None = None, starting: date = today, duration: int = 1, statuses: list[BS] | None = None) -> list[BP]:
-        tenancy = tenancy or request.getfixturevalue("tenancy")
-        tenancy.billings.all().delete()
-        billings = []
+def billing_factory(today: date, request, tenancy_factory: Factory[Tenancy]) -> Factory[BP]:
+    def create(quantity = 1, tenancy: Tenancy | None = None, statuses: list[BS] | None = None, starting: date=today, duration: int = 1) -> list[BP]:
+        """Generate bilings for tenants"""
+        
+        tenancy = tenancy or tenancy_factory()[0]
         statuses = statuses or [BS.PAID] * quantity
-        r = DateRange.for_month(starting or today)
+        billings = []
+        r = DateRange.for_month(starting)
         for s in statuses:
             b = billing_period_create(tenancy=tenancy, date_r=r)
             b.status = s
@@ -354,4 +352,30 @@ def billing_factory(today: date, request) -> Factory[BP]:
             r = r.shift_months(+duration, +duration)
         return billings
 
+    return create
+
+# ------------------------------------------------ Payment  ------------------------------------------------
+@pytest.fixture(scope="session")
+def payment_factory(billing_factory, phone_no) -> Factory[Payment]:
+    
+    def create(quantity = 1, billing: BP | None = None, statuses: list[PS] | None = None, initiator: PI = PI.TENANT) -> list[Payment]:
+        """A payment creation factory, creates payments for a given billing period"""
+        billing = billing or billing_factory(quantity)
+        statuses = statuses or [PS.SUCCESS] * quantity
+        
+        payments = []
+        phone_number = phone_no(), 
+        for status in statuses:
+            p = Payment.objects.create(
+                billing=billing,
+                receipt_no=None, 
+                amount=10.00, 
+                checkout_id="checkout_123", 
+                initiator=initiator,
+                phone_no=phone_number,
+                status=status
+            )
+            payments.append(p)
+        return payments
+    
     return create
