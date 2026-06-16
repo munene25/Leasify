@@ -14,7 +14,6 @@ if TYPE_CHECKING:
     from tenancy.models import Tenancy
 
 
-billing_not_found = raise_not_found("billing_id", "Billing Period not found")
 BASE_QS = BP.objects.select_related("tenancy__user").all()
 
 class BillingFilteringPolicy(FilteringPolicy):
@@ -34,7 +33,7 @@ def billing_list_for(*, user: "User", filters: dict[str, Any] | QueryDict = {}) 
         
         search = django_filters.CharFilter(method="search_fields")
         is_current = django_filters.BooleanFilter(method="filter_current")
-        period = django_filters.DateFromToRangeFilter(field_name="start_date")
+        period = django_filters.DateFromToRangeFilter(method="filter_period")
         status = django_filters.CharFilter(field_name="status")
 
         def search_fields(self, queryset, name, value):
@@ -51,19 +50,25 @@ def billing_list_for(*, user: "User", filters: dict[str, Any] | QueryDict = {}) 
             now = today()
             return queryset.filter(start_date__lte=now, end_date__gte=now) if value else queryset
 
-
+        def filter_period(self, queryset, name, value):
+            if value.start:
+                queryset = queryset.filter(end_date__gte=value.start)
+            if value.stop:
+                queryset = queryset.filter(start_date__lte=value.stop)
+            return queryset
       
     u_filters = BillingFilteringPolicy.for_user(user)
     qs = BASE_QS.filter(u_filters)
     return F(filters, qs).qs
 
 
-@billing_not_found
-def billing_get_for(user: "User", tenancy_id: int):
+@raise_not_found("billing_id", "Billing not found")
+def billing_get_for(*, user: "User", billing_id: int):
     u_filters = BillingFilteringPolicy.for_user(user)
-    return BASE_QS.filter(u_filters).get(tenancy_id=tenancy_id)
+    return BASE_QS.filter(u_filters).get(pk=billing_id)
 
 
 @raise_not_found("billing", "No paid billing exists for the tenant")
-def billing_last_paid_for(tenancy_id: int) -> BP:
+def billing_last_paid(tenancy_id: int) -> BP:
+    """Required because it raises a not found if no paid billing exists"""
     return BP.objects.filter(tenancy_id=tenancy_id, status=BS.PAID).latest("start_date")
