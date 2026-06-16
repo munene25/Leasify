@@ -13,7 +13,10 @@ from apartments.services import apartment_create
 from apartments.models import Apartment
 from tenancy.models import Tenancy
 from datetime import date, timedelta
-
+from billing.models import BillingPeriod as BP
+from billing.services import billing_period_create
+from billing.choices import BillingStatus as BS
+from common.period import DateRange
 # ------------------------------------------------------ Globals  ------------------------------------------------------ #
 
 # # conftest.py
@@ -63,7 +66,7 @@ def enable_db_access(db):
     pass
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def cache_clear():
     cache.clear()
     yield
@@ -83,7 +86,7 @@ def settings_override(settings):
     }
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def fake():
     """
     Return a faker instance with a locale already set
@@ -92,7 +95,7 @@ def fake():
     return Faker("en_KE")
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def today():
     "Returns today's date"
     from django.utils import timezone
@@ -103,7 +106,7 @@ def today():
 # ------------------------------------------------------ Users  ------------------------------------------------------ #
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def user_factory(fake, phone_no) -> Factory[User]:
     """Returns a callable for generating users"""
 
@@ -129,7 +132,6 @@ def user_factory(fake, phone_no) -> Factory[User]:
 def user(user_factory: Factory[User]) -> User:
     return user_factory()[0]
 
-
 @pytest.fixture
 def roles_list() -> list[Group]:
     """
@@ -138,7 +140,7 @@ def roles_list() -> list[Group]:
     return list(Group.objects.all())
 
 
-@pytest.fixture
+@pytest.fixture(scope="class")
 def get_role() -> typing.Callable[[str], Group]:
     """
     Callable to return a specific group
@@ -175,13 +177,13 @@ def tenant_user(user_factory: Factory[User], get_role) -> User:
     return user_set_role(user=u, role=get_role("tenant"))
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def password() -> str:
     """Default password for test users"""
     return "Pa55word!"
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def phone_no(fake) -> typing.Callable[[], str]:
     return lambda: fake.numerify("2547########")
 
@@ -242,7 +244,7 @@ def superuser_client(superuser) -> APIClient:
 # ------------------------------------------------ Apartments  ------------------------------------------------
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def apartment_factory(fake) -> Factory[Apartment]:
     """Returns a callable for generating apartments"""
 
@@ -281,7 +283,7 @@ def tenancy_patch_validators(monkeypatch: pytest.MonkeyPatch) -> dict[str, Magic
     return {"user_reservations": user_reservations, "lease_period": lease_period}
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def tenancy_factory(apartment_factory: Factory[Apartment], user_factory: Factory[User], today: date) -> Factory[Tenancy]:
     """Tenancy generator - creates lease-based tenancies"""
     from tenancy.services import tenancy_create
@@ -321,8 +323,7 @@ def tenancy(tenancy_factory: Factory[Tenancy]) -> Tenancy:
     return tenancy_factory()[0]
 
 
-# ------------------------------------------------ Tenancy  ------------------------------------------------
-
+# ------------------------------------------------ Mocks  ------------------------------------------------
 @pytest.fixture
 def mock_serializer():
     mock = MagicMock()
@@ -333,3 +334,24 @@ def mock_serializer():
     mock.is_valid.return_value = True
     mock.save.return_value = None
     return mock
+
+
+# ------------------------------------------------ BillingPeriod  ------------------------------------------------
+@pytest.fixture(scope="session")
+def billing_factory(today: date, request) -> Factory[BP]:
+    """Generate bilings for tenants"""
+    def create(quantity = 1, tenancy: Tenancy | None = None, starting: date = today, duration: int = 1, statuses: list[BS] | None = None) -> list[BP]:
+        tenancy = tenancy or request.getfixturevalue("tenancy")
+        tenancy.billings.all().delete()
+        billings = []
+        statuses = statuses or [BS.PAID] * quantity
+        r = DateRange.for_month(starting or today)
+        for s in statuses:
+            b = billing_period_create(tenancy=tenancy, date_r=r)
+            b.status = s
+            b.save()
+            billings.append(b)
+            r = r.shift_months(+duration, +duration)
+        return billings
+
+    return create
