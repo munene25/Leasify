@@ -291,7 +291,10 @@ class TestTenancyLeaseExtensionView:
     )
     def test_authentication(self, _client: str, active_tenant: Tenancy, code: int, monkeypatch, request):
         """Test how each client interacts with the view"""
-        service = MagicMock(return_value = (None, "billing"))
+        billing = MagicMock()
+        billing.name = "billng"
+        billing.pk = 1
+        service = MagicMock(return_value = (None, billing))
         monkeypatch.setattr("tenancy.services.tenancy_lease_extend", service)
 
         url = self.path(active_tenant.pk)
@@ -302,7 +305,10 @@ class TestTenancyLeaseExtensionView:
 
     def test_calls_service(self, manager_client, monkeypatch, active_tenant):
         """Mock service and assert called with. Avoids multiple repetetive tests"""
-        service = MagicMock(return_value = (None, "billing"))
+        billing = MagicMock()
+        billing.name = "billng"
+        billing.pk = 1
+        service = MagicMock(return_value = (None, billing))
         monkeypatch.setattr("tenancy.services.tenancy_lease_extend", service)
 
         url = self.path(1)
