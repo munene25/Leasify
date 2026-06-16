@@ -135,6 +135,7 @@ def user_factory(fake, phone_no) -> Factory[User]:
 def user(user_factory: Factory[User]) -> User:
     return user_factory()[0]
 
+
 @pytest.fixture
 def roles_list() -> list[Group]:
     """
@@ -287,11 +288,15 @@ def tenancy_patch_validators(monkeypatch: pytest.MonkeyPatch) -> dict[str, Magic
 
 
 @pytest.fixture(scope="session")
-def tenancy_factory(apartment_factory: Factory[Apartment], user_factory: Factory[User], today: date, get_role) -> Factory[Tenancy]:
+def tenancy_factory(
+    apartment_factory: Factory[Apartment], user_factory: Factory[User], today: date, get_role
+) -> Factory[Tenancy]:
     """Tenancy generator - creates lease-based tenancies"""
     from tenancy.choices import TenancyStatus
 
-    def create(quantity=1, users: list[User] | None = None, apartments: list[Apartment] | None = None, **kwargs) -> list[Tenancy]:
+    def create(
+        quantity=1, users: list[User] | None = None, apartments: list[Apartment] | None = None, **kwargs
+    ) -> list[Tenancy]:
         tenancies = []
 
         users = users or user_factory(quantity)
@@ -327,7 +332,7 @@ def mock_serializer():
     mock = MagicMock()
     mocked_instance = MagicMock()
     mocked_instance.data = {}
-    
+
     mock.return_value = mocked_instance
     mock.is_valid.return_value = True
     mock.save.return_value = None
@@ -337,9 +342,15 @@ def mock_serializer():
 # ------------------------------------------------ BillingPeriod  ------------------------------------------------
 @pytest.fixture(scope="session")
 def billing_factory(today: date, request, tenancy_factory: Factory[Tenancy]) -> Factory[BP]:
-    def create(quantity = 1, tenancy: Tenancy | None = None, statuses: list[BS] | None = None, starting: date=today, duration: int = 1) -> list[BP]:
+    def create(
+        quantity=1,
+        tenancy: Tenancy | None = None,
+        statuses: list[BS] | None = None,
+        starting: date = today,
+        duration: int = 1,
+    ) -> list[BP]:
         """Generate bilings for tenants"""
-        
+
         tenancy = tenancy or tenancy_factory()[0]
         statuses = statuses or [BS.PAID] * quantity
         billings = []
@@ -354,28 +365,35 @@ def billing_factory(today: date, request, tenancy_factory: Factory[Tenancy]) -> 
 
     return create
 
+
 # ------------------------------------------------ Payment  ------------------------------------------------
 @pytest.fixture(scope="session")
-def payment_factory(billing_factory, phone_no) -> Factory[Payment]:
-    
-    def create(quantity = 1, billing: BP | None = None, statuses: list[PS] | None = None, initiator: PI = PI.TENANT) -> list[Payment]:
+def payment_factory(billing_factory, phone_no, fake) -> Factory[Payment]:
+
+    def create(
+        quantity=1, billing: BP | None = None, statuses: list[PS] | None = None, initiator: PI = PI.TENANT
+    ) -> list[Payment]:
         """A payment creation factory, creates payments for a given billing period"""
         billing = billing or billing_factory(quantity)
+        # billing_factory may return a list; use first element if so
+        if isinstance(billing, (list, tuple)):
+            billing = billing[0]
         statuses = statuses or [PS.SUCCESS] * quantity
-        
+
         payments = []
-        phone_number = phone_no(), 
+        phone_number = phone_no()
         for status in statuses:
             p = Payment.objects.create(
                 billing=billing,
-                receipt_no=None, 
-                amount=10.00, 
-                checkout_id="checkout_123", 
+                receipt_no=None,
+                amount=10.00,
+                # use faker to generate a unique checkout id per payment
+                checkout_id=fake.unique.uuid4(),
                 initiator=initiator,
                 phone_number=phone_number,
-                status=status
+                status=status,
             )
             payments.append(p)
         return payments
-    
+
     return create
