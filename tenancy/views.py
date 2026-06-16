@@ -78,7 +78,7 @@ class TenancyLeaseExtensionView(BaseAPIView):
         selected = sl.tenancy_get_for(request.user, tenancy_id)
         incoming = self.validate_serializer(data=request.data)
         _, billing = sr.tenancy_lease_extend(tenancy=selected, **incoming)
-        return Response(data={"message": f"Lease {str(billing)} created", "billing_id": billing.pk}, status=status.HTTP_200_OK)
+        return Response(data={"message": f"Lease {billing.name} created", "billing_id": billing.pk}, status=status.HTTP_200_OK)
 
 
 @api_view(["GET"])
