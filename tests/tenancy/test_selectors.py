@@ -7,8 +7,8 @@ from users.models import User
 from apartments.models import Apartment
 from tests.types import Factory
 
-class TestTenancyListFilters:
-    def test_tenancy_list_query_filters(self, manager_user: User, tenancy_factory: Factory[Tenancy], user_factory: Factory[User], apartment_factory: Factory[Apartment], tenancy_patch_validators):
+
+def test_tenancy_list_for_query_filters(manager_user: User, tenancy_factory: Factory[Tenancy], user_factory: Factory[User], apartment_factory: Factory[Apartment], tenancy_patch_validators):
         """
         Test that the query filters work as expected. We have a lot of them and they are important.
         """
