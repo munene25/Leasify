@@ -1,11 +1,11 @@
 from typing import TYPE_CHECKING
 from django.db import models
+from rest_framework.exceptions import ValidationError
 from common.models import BaseModel
 from common.period import DateRange, today
 from datetime import date, timedelta
 from tenancy.models import Tenancy
 from billing.choices import BillingStatus
-from rest_framework.exceptions import ValidationError
 
 MAX_BILLING_PERIOD: int = 4
 
