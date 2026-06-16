@@ -1,6 +1,5 @@
 import pytest
-from typing import TYPE_CHECKING
-from datetime import date, timedelta
+from datetime import date
 from rest_framework.exceptions import ValidationError
 from tenancy.models import Tenancy
 from common.period import DateRange
@@ -11,7 +10,7 @@ from tenancy.choices import TenancyStatus as TS
 from billing.choices import BillingStatus as BS
 from billing.services import billing_period_cancel, billing_period_complete, billing_period_create
 from tests.types import Factory
-
+from freezegun import freeze_time
 
 class TestBillingPeriodCreate:
     def test_billing_period_create(self, tenancy_factory: Factory[Tenancy]):
@@ -91,6 +90,26 @@ class TestBillingPeriodComplete:
         tenancy.refresh_from_db()
         assert tenancy.status == TS.ACTIVE
         
+    
+    @freeze_time("2026-06-16")
+    def test_does_not_activate_tenancy_if_billing_is_past(
+        self,
+        tenancy_factory: Factory[Tenancy],
+        billing_factory: Factory[BP],
+        payment_factory: Factory[Payment],
+    ):
+        """Should NOT activate tenancy if the billing period is in the past"""
+        # setup tenancy with a past billing period (May 2026) and payment
+        # Frozen time is June 16, 2026, so May is in the past
+        tenancy = tenancy_factory(status=TS.RESERVED)[0]
+        assert tenancy.status == TS.RESERVED
+        may_date = date(2026, 5, 15)  # Any date in May 2026
+        billing = billing_factory(tenancy=tenancy, statuses=[BS.UNPAID], starting=may_date)[0]
+        payment_factory(billing=billing)
+
+        billing_period_complete(billing)
+        tenancy.refresh_from_db()
+
     @pytest.mark.parametrize("status", [PS.PENDING, PS.FAILED])
     def test_completion_fails_for_non_successful_payments(
         self,
