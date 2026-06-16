@@ -372,7 +372,7 @@ def payment_factory(billing_factory, phone_no) -> Factory[Payment]:
                 amount=10.00, 
                 checkout_id="checkout_123", 
                 initiator=initiator,
-                phone_no=phone_number,
+                phone_number=phone_number,
                 status=status
             )
             payments.append(p)
