@@ -15,6 +15,8 @@ if TYPE_CHECKING:
 
 
 class TenancyListCreateView(BaseAPIView):
+    """Handles listing and creating tenancies with filtering capabilities."""
+
     class FilterClass(serializers.Serializer):
         joined_before = serializers.DateField()
         joined_after = serializers.DateField()
@@ -26,12 +28,16 @@ class TenancyListCreateView(BaseAPIView):
     filter_class = FilterClass
 
     def get(self, request: Request) -> Response:
+        """Retrieve a paginated list of tenancies matching the provided filters."""
         check_perms(request.user, "tenancy.view_tenancy")
         filters = self.validate_filter(data=request.query_params)
         qs = sl.tenancy_list_for(user=request.user, filters=filters)
-        return get_paginated_response(serializer_class=sc.TenancyListSerializer, queryset=qs, request=request, view=self)
+        return get_paginated_response(
+            serializer_class=sc.TenancyListSerializer, queryset=qs, request=request, view=self
+        )
 
     def post(self, request) -> Response:
+        """Create a new tenancy and return its details."""
         incoming = self.validate_serializer(data=request.data)
         tenancy = sr.tenancy_create(user=request.user, **incoming)
         outgoing = sc.TenancyDetailSerializer(instance=tenancy)
@@ -39,10 +45,13 @@ class TenancyListCreateView(BaseAPIView):
 
 
 class TenancyDetailView(BaseAPIView):
+    """Retrieves detailed information about a specific tenancy."""
+
     permission_classes = [IsAuthenticated]
     serializer_class = sc.TenancyLeaseExtensionSerializer
 
     def get(self, request, tenancy_id: int) -> Response:
+        """Get details of a single tenancy by ID."""
         check_perms(request.user, "tenancy.view_tenancy")
         selected = sl.tenancy_get_for(request.user, tenancy_id)
         outgoing = sc.TenancyDetailSerializer(instance=selected)
@@ -50,10 +59,13 @@ class TenancyDetailView(BaseAPIView):
 
 
 class TenancyTerminateView(BaseAPIView):
+    """Terminates a tenancy and returns its updated details."""
+
     serializer_class = sc.TenancyTerminateSerializer
     permission_classes = [IsAuthenticated]
 
     def post(self, request, tenancy_id: int):
+        """Terminate a tenancy with an optional reason and date."""
         check_perms(request.user, "tenancy.change_tenancy")
         selected = sl.tenancy_get_for(request.user, tenancy_id)
 
@@ -70,26 +82,37 @@ class TenancyTerminateView(BaseAPIView):
 
 
 class TenancyLeaseExtensionView(BaseAPIView):
+    """Extends a tenancy's lease period and creates a billing record."""
+
     serializer_class = sc.TenancyLeaseExtensionSerializer
     permission_classes = [IsAuthenticated]
 
     def post(self, request, tenancy_id: int):
+        """Extend the lease term of a tenancy by adding days to the end date."""
         check_perms(request.user, "tenancy.change_tenancy")
         selected = sl.tenancy_get_for(request.user, tenancy_id)
         incoming = self.validate_serializer(data=request.data)
         _, billing = sr.tenancy_lease_extend(tenancy=selected, **incoming)
-        return Response(data={"message": f"Lease {billing.name} created", "billing_id": billing.pk}, status=status.HTTP_200_OK)
+        return Response(
+            data={"message": f"Lease {billing.name} created", "billing_id": billing.pk}, status=status.HTTP_200_OK
+        )
 
 
-@api_view(["GET"])
-@permission_classes([IsAuthenticated])
-def get_tenancy_termination_reasons(request):
-    reasons = [{"key": reason.value, "display": reason.label} for reason in TR]
-    return Response(data=reasons, status=status.HTTP_200_OK)
+class TenancyTerminationReasonsView(BaseAPIView):
+    """Returns a list of valid termination reasons for tenancies."""
 
-
-class TenancyOverviewView(BaseAPIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        pass
+        """Retrieve all available termination reason options."""
+        reasons = [{"key": reason.value, "display": reason.label} for reason in TR]
+        return Response(data=reasons, status=status.HTTP_200_OK)
+
+
+class TenancyOverviewView(BaseAPIView):
+    """Provides an overview summary of a user's tenancies."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        """Retrieve and display comprehensive information about the user's tenancies."""
