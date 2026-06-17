@@ -20,7 +20,7 @@ class BillingPeriod(BaseModel):
     All billing periods are expected to be quantized 
     """
     class Meta:
-        ordering = ("-start_date",)
+        ordering = ("-start_date", "-created_at")
         indexes = [
             models.Index(fields=("tenancy", "start_date", "end_date")),
         ]
