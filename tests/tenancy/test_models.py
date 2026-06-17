@@ -34,7 +34,7 @@ def test_tenancy_model_properties(user, apartment, today):
     assert t.last_paid_billing is None
     assert t.paid_up_to is None
 
-    b_unpaid.status = BillingStatus.CANCELED
+    b_unpaid.status = BillingStatus.CANCELLED
     b_unpaid.save()
 
     assert t.has_pending_bills is False
@@ -51,10 +51,11 @@ def test_tenancy_model_properties(user, apartment, today):
 
     # force DB re-evaluation,
     t.refresh_from_db()
-    t.__dict__.pop('last_paid_billing', None)  #type: ignore
+    t.__dict__.pop("last_paid_billing", None)  # type: ignore
 
     assert t.last_paid_billing == b_paid
     assert t.paid_up_to == b_paid.end_date
+
 
 def test_user_unique_active_pending_constraint(user, apartment, today):
     Tenancy.objects.create(
@@ -65,11 +66,12 @@ def test_user_unique_active_pending_constraint(user, apartment, today):
     )
     with pytest.raises(IntegrityError):
         Tenancy.objects.create(
-        user=user,
-        apartment=apartment,
-        status=TenancyStatus.RESERVED,
-        date_joined=today,
-    )
+            user=user,
+            apartment=apartment,
+            status=TenancyStatus.RESERVED,
+            date_joined=today,
+        )
+
 
 def test_apartment_unique_active_pending_constraint(user, apartment, user_factory: Factory[User]):
     Tenancy.objects.create(

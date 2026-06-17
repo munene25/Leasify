@@ -43,20 +43,25 @@ class TestTenancyCreation:
         assert last_billing.tenancy == tenancy
         assert user.groups.first() == get_group("tenant")
 
-    @pytest.mark.parametrize(
-        "duration_months", 
-        [1, 2, 3, 4]
-    )    
-    def test_tenancy_creation_calls_billing_period_with_correct_arguments(self, tenancy_payload: TenancyPayload, duration_months: int, tenancy_patch_validators: dict[str, MagicMock], mock_billing_create: MagicMock):
+    @pytest.mark.parametrize("duration_months", [1, 2, 3, 4])
+    def test_tenancy_creation_calls_billing_period_with_correct_arguments(
+        self,
+        tenancy_payload: TenancyPayload,
+        duration_months: int,
+        tenancy_patch_validators: dict[str, MagicMock],
+        mock_billing_create: MagicMock,
+    ):
         """This is in order to avoid testing billing period in tenancy"""
 
         tenancy_payload["duration_months"] = duration_months
         t = tenancy_create(**tenancy_payload)
 
-        date_range = DateRange.for_month().shift_months(0, + (duration_months-1))
+        date_range = DateRange.for_month().shift_months(0, +(duration_months - 1))
         mock_billing_create.assert_called_once_with(tenancy=t, date_r=date_range)
 
-    def test_tenancy_creation_calls_validators(self, tenancy_payload: TenancyPayload, today: date, tenancy_patch_validators: dict[str, MagicMock]):
+    def test_tenancy_creation_calls_validators(
+        self, tenancy_payload: TenancyPayload, today: date, tenancy_patch_validators: dict[str, MagicMock]
+    ):
         """
         Instead of testing validation logic here, just mock they were called once with the arguments.
         """
@@ -79,7 +84,13 @@ class TestTenancyCreation:
             tenancy_create(**tenancy_payload)
         assert Tenancy.objects.count() == 0
 
-    def test_model_constraints_fail_on_conflicts(self, user_factory: Factory[User], apartment_factory: Factory[Apartment], today: date, tenancy_patch_validators: dict[str, MagicMock],):
+    def test_model_constraints_fail_on_conflicts(
+        self,
+        user_factory: Factory[User],
+        apartment_factory: Factory[Apartment],
+        today: date,
+        tenancy_patch_validators: dict[str, MagicMock],
+    ):
         """
         The same apartment should not exist in states [defaulting, active reserved]
         The same user should not exist in the states [defaulting, active, reserved]
@@ -128,7 +139,9 @@ class TestTenancyCreation:
             tenancy_create(**tenancy_payload)
 
     @pytest.mark.parametrize("_user", ("manager_user", "caretaker_user"))
-    def test_tenancy_creation_fails_for_priviledged_users(self, _user: str, request: pytest.FixtureRequest, tenancy_payload: TenancyPayload):
+    def test_tenancy_creation_fails_for_priviledged_users(
+        self, _user: str, request: pytest.FixtureRequest, tenancy_payload: TenancyPayload
+    ):
         """For manager and caretaker clients, it should raise RoleAssigmentError in service"""
         from common.exceptions import RoleAssignmentError
 
@@ -136,6 +149,7 @@ class TestTenancyCreation:
         tenancy_payload["user"] = user
         with pytest.raises(RoleAssignmentError):
             tenancy_create(**tenancy_payload)
+
 
 class TestTenancyLeaseExtension:
     def test_tenancy_lease_extension_successful(self, active_tenant: Tenancy, billing_factory: Factory[BillingPeriod]):
@@ -148,13 +162,15 @@ class TestTenancyLeaseExtension:
         assert tenancy == active_tenant
         assert tenancy.billings.count() == 2
 
-    @pytest.mark.parametrize(
-        "duration_months",
-        [1, 2, 3, 4]
-    )
-    def test_tenancy_lease_extension_calls_billing_period_with_correct_args(self, monkeypatch: pytest.MonkeyPatch, duration_months: int, active_tenant: Tenancy, mock_billing_create: MagicMock):
-        """billing period should be called with the new date range computed from """
-        
+    @pytest.mark.parametrize("duration_months", [1, 2, 3, 4])
+    def test_tenancy_lease_extension_calls_billing_period_with_correct_args(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        duration_months: int,
+        active_tenant: Tenancy,
+        mock_billing_create: MagicMock,
+    ):
+        """billing period should be called with the new date range computed from"""
 
         monkeypatch.setattr(Tenancy, "is_continuing", property(lambda self: True))
         monkeypatch.setattr(Tenancy, "has_pending_bills", property(lambda self: False))
@@ -162,7 +178,6 @@ class TestTenancyLeaseExtension:
         # today is implied
         r = DateRange.for_month().shift_months(1, duration_months)
         mock_billing_create.assert_called_once_with(tenancy=active_tenant, date_r=r)
-
 
     @pytest.mark.parametrize(
         "status",
@@ -182,9 +197,9 @@ class TestTenancyLeaseExtension:
             tenancy_lease_extend(tenancy, 1)
         assert "Only continuing tenants can extend their lease" in str(exc.value.detail)
 
-
-
-    def test_lease_extension_fails_for_unpaid_billings(self, active_tenant: Tenancy, billing_factory: Factory[BillingPeriod]):
+    def test_lease_extension_fails_for_unpaid_billings(
+        self, active_tenant: Tenancy, billing_factory: Factory[BillingPeriod]
+    ):
         """Get a reserved tenant and check if the lease extension fails"""
         billing_factory(tenancy=active_tenant, statuses=[BillingStatus.UNPAID])
         with pytest.raises(ValidationError) as exc:
@@ -192,19 +207,19 @@ class TestTenancyLeaseExtension:
 
         assert "You have an unpaid billing period" in str(exc.value.detail)
 
-    
     def test_edge_case_no_last_paid_billing(self, active_tenant: Tenancy):
         """Tenant canceled their one and only billing, should raise a not found"""
-        
+
         active_tenant.status = TenancyStatus.ACTIVE
-        last_billing = active_tenant.billings.update(status=BillingStatus.CANCELED)
+        last_billing = active_tenant.billings.update(status=BillingStatus.CANCELLED)
 
         with pytest.raises(NotFound) as exc:
             tenancy_lease_extend(active_tenant, duration_months=1)
         assert "No paid billing exists" in str(exc.value.detail)
-    
 
-    def test_lease_extend_no_queries(self, active_tenant: Tenancy, monkeypatch: pytest.MonkeyPatch, django_assert_num_queries: DjangoAssertNumQueries):
+    def test_lease_extend_no_queries(
+        self, active_tenant: Tenancy, monkeypatch: pytest.MonkeyPatch, django_assert_num_queries: DjangoAssertNumQueries
+    ):
         """
         1. transaction start
         2. lock tenancy
@@ -215,20 +230,22 @@ class TestTenancyLeaseExtension:
         """
         with django_assert_num_queries(6):
             tenancy_lease_extend(active_tenant, 1)
-        
+
 
 class TestTenancyTerminate:
 
     @pytest.mark.parametrize(
-            "date,reason",
-            [
-                (_today(), TerminationReason.VOLUNTARY),
-                (_today() + timedelta(days=1), TerminationReason.MANAGERIAL),
-                (_today() + timedelta(days=30), TerminationReason.EXPIRED),
-                (None, TerminationReason.NONPAYMENT),
-            ]
+        "date,reason",
+        [
+            (_today(), TerminationReason.VOLUNTARY),
+            (_today() + timedelta(days=1), TerminationReason.MANAGERIAL),
+            (_today() + timedelta(days=30), TerminationReason.EXPIRED),
+            (None, TerminationReason.NONPAYMENT),
+        ],
     )
-    def test_tenancy_termination_successful(self, reserved_tenant: Tenancy, date: date, reason: TerminationReason, today: date):
+    def test_tenancy_termination_successful(
+        self, reserved_tenant: Tenancy, date: date, reason: TerminationReason, today: date
+    ):
         """
         Termination_date, termination_reason and status should be updated.
         Unpaid billing periods are cancelled
@@ -241,20 +258,19 @@ class TestTenancyTerminate:
         assert t.termination_reason == reason
 
         billing = t.billings.latest("start_date")
-        assert billing.status == BillingStatus.CANCELED
- 
-    
+        assert billing.status == BillingStatus.CANCELLED
+
     def test_tenancy_termination_fails_for_backdated_termination_dates(self, tenancy: Tenancy, today: date):
         with pytest.raises(ValidationError) as exc:
             tenancy_terminate(
-                tenancy=tenancy, 
-                termination_reason=TerminationReason.VOLUNTARY, 
-                termination_date=today-timedelta(days=1)
+                tenancy=tenancy,
+                termination_reason=TerminationReason.VOLUNTARY,
+                termination_date=today - timedelta(days=1),
             )
         assert "Cannot set termination date before tenant's creation" in str(exc.value.detail)
-    
+
     def test_tenancy_termination_does_not_close_paid_billings(self, active_tenant):
         """Paid billings should remain untouched"""
         t = tenancy_terminate(tenancy=active_tenant, termination_reason=TerminationReason.VOLUNTARY)
         t.refresh_from_db()
-        assert t.billings.filter(status=BillingStatus.CANCELED).count() == 0
+        assert t.billings.filter(status=BillingStatus.CANCELLED).count() == 0

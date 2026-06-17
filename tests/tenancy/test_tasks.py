@@ -12,11 +12,11 @@ from common.period import today as _today
 from django.core.mail import EmailMessage
 
 
-
-
 class TestTenancyActiveSetDefaulting:
 
-    def test_active_set_defaulting_successful(self, tenancy_factory: Factory[Tenancy], billing_factory: Factory[BillingPeriod]):
+    def test_active_set_defaulting_successful(
+        self, tenancy_factory: Factory[Tenancy], billing_factory: Factory[BillingPeriod]
+    ):
         """
         Create 5 tenancies.
         Set status is active,
@@ -36,8 +36,8 @@ class TestTenancyActiveSetDefaulting:
 
         status_to(paid_tenants, BS.PAID)
         assert paid_tenants[0].billings.latest("start_date").status == BS.PAID
-        status_to(cancelled_tenants, BS.CANCELED)
-        assert cancelled_tenants[0].billings.latest("start_date").status == BS.CANCELED
+        status_to(cancelled_tenants, BS.CANCELLED)
+        assert cancelled_tenants[0].billings.latest("start_date").status == BS.CANCELLED
 
         ids = set(active_set_defaulting())
         assert {t.pk for t in [*unpaid_tenants, *cancelled_tenants]} == ids
@@ -78,7 +78,11 @@ class TestTenancyActiveSetDefaulting:
 
 class TestReservedSetTerminated:
 
-    def test_reserved_set_terminated_successful(self, tenancy_factory: Factory[Tenancy], billing_factory: Factory[BillingPeriod], ):
+    def test_reserved_set_terminated_successful(
+        self,
+        tenancy_factory: Factory[Tenancy],
+        billing_factory: Factory[BillingPeriod],
+    ):
         """
         First create tenants in status of reserved today.
         Expiry will be set DEFAULT_EXPIRY_DURATION days ahead of today.
@@ -107,7 +111,7 @@ class TestReservedSetTerminated:
             assert len(reserved_set_terminated()) == len(tenants)
 
             # sample tenants and check status:
-            
+
             t.refresh_from_db()
             assert t.status == TS.TERMINATED
             assert t.termination_date == _today()
@@ -115,7 +119,7 @@ class TestReservedSetTerminated:
 
             # now check the status of their last billing
             assert t.billings.filter(status=BS.UNPAID).count() == 0
-    
+
     def test_reserved_set_terminated_no_querries(self, reserved_tenant: Tenancy, django_assert_num_queries):
         """
         1. open transaction
@@ -128,6 +132,7 @@ class TestReservedSetTerminated:
         with freeze_time(past_expiry) as frozen:
             with django_assert_num_queries(5):
                 reserved_set_terminated()
+
 
 class TestDefaultingSetTerminated:
 
@@ -142,11 +147,14 @@ class TestDefaultingSetTerminated:
         t = defaulting[0]
         t.refresh_from_db()
         assert t.status == TS.TERMINATED
-        assert t.termination_reason ==  TR.NONPAYMENT
+        assert t.termination_reason == TR.NONPAYMENT
         assert t.billings.filter(status=BS.UNPAID).count() == 0
 
+
 class TestNotifyReservedOnExpiry:
-    def test_reserved_on_expiry_queries_correct_list(self, tenancy_factory: Factory[Tenancy], mailoutbox: list[EmailMessage]):
+    def test_reserved_on_expiry_queries_correct_list(
+        self, tenancy_factory: Factory[Tenancy], mailoutbox: list[EmailMessage]
+    ):
         """Those whose expiry is tomorrow should be included"""
 
         tenants = tenancy_factory(3, status=TS.RESERVED)
@@ -159,13 +167,14 @@ class TestNotifyReservedOnExpiry:
         """We need to check the mail message. Verify apartment_name, tenant_name, max_reservations, payment_url"""
 
         from tests.helpers import check_links_in_mail
+
         tommorrow = today() + timedelta(1)
         reserved_tenant.reservation_expiry = tommorrow
         reserved_tenant.save(update_fields=["reservation_expiry"])
 
         notify_reserved_on_expiry()
         assert len(mailoutbox) == 1
-        
+
         mail = mailoutbox[0]
         check_links_in_mail(reserved_tenant.user, mail, "payments/initiate")
         assert "reservation is about to expire" in mail.subject
