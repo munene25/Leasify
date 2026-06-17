@@ -41,7 +41,7 @@ def test_billing_period_model(today: date):
         tenancy=t,
         start_date=r.start_date,
         end_date=r.end_date,
-        status=BS.CANCELED,
+        status=BS.CANCELLED,
         total_due=10000,
     )
     unpaid = BillingPeriod.objects.create(
@@ -61,7 +61,7 @@ def test_billing_period_model(today: date):
         canceled.next_start
 
     assert paid.next_start == paid.end_date + timedelta(1)
-    
+
     # test duration_months
     assert canceled.duration_months == 1
     assert unpaid.duration_months == 2
@@ -79,5 +79,3 @@ def test_billing_period_model(today: date):
             status=BS.UNPAID,
             total_due=10000,
         )
-
-    
