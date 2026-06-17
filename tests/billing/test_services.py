@@ -12,6 +12,7 @@ from billing.services import billing_period_cancel, billing_period_complete, bil
 from tests.types import Factory
 from freezegun import freeze_time
 
+
 class TestBillingPeriodCreate:
     def test_billing_period_create(self, tenancy_factory: Factory[Tenancy]):
         """
@@ -49,11 +50,11 @@ class TestBillingPeriodCancel:
         billing.refresh_from_db()
         assert billing == _billing
 
-        assert billing.status == BS.CANCELED
+        assert billing.status == BS.CANCELLED
 
     def test_cancelation_fails_for_non_unpaid_billings(self, billing_factory: Factory[BP]):
         """Should raise when the billing is not unpaid"""
-        billing = billing_factory(statuses=[BS.PAID, BS.CANCELED])
+        billing = billing_factory(statuses=[BS.PAID, BS.CANCELLED])
 
         with pytest.raises(ValidationError):
             billing_period_cancel(billing[0])
@@ -89,8 +90,7 @@ class TestBillingPeriodComplete:
         billing_period_complete(billing)
         tenancy.refresh_from_db()
         assert tenancy.status == TS.ACTIVE
-        
-    
+
     @freeze_time("2026-06-16")
     def test_does_not_activate_tenancy_if_billing_is_past(
         self,
