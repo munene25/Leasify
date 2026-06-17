@@ -5,7 +5,7 @@ from payments.models import Payment
 
 class BillingListSerializer(serializers.Serializer):
     name = serializers.CharField()
-    billing_id = serializers.IntegerField()
+    billing_id = serializers.IntegerField(source="pk")
     tenancy_id = serializers.IntegerField()
     tenant_name = serializers.CharField(source="tenancy.user.full_name")
     status = serializers.ChoiceField(choices=BillingStatus.choices)
@@ -14,6 +14,7 @@ class BillingListSerializer(serializers.Serializer):
 
 
 class BillingDetailSerializer(serializers.Serializer):
+    billing_id = serializers.IntegerField(source="pk")
     start_date = serializers.DateField()
     end_date = serializers.DateField()
     total_due = serializers.DecimalField(max_digits=10, decimal_places=2)
