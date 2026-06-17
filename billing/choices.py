@@ -1,6 +1,7 @@
 from django.db.models import TextChoices
 
+
 class BillingStatus(TextChoices):
     PAID = "paid", "Full payment has been made"
     UNPAID = "unpaid", "No payment has been made"
-    CANCELED = "canceled", "Canceled by user, non deletion allows audit trails"
+    CANCELLED = "cancelled", "Canceled by user, non deletion allows audit trails"
