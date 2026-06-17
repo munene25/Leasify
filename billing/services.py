@@ -54,7 +54,7 @@ def billing_period_cancel(billing: BillingPeriod) -> BillingPeriod:
     if billing.status != BillingStatus.UNPAID:
         raise ValidationError("Billing cannot be canceled")
 
-    billing.status = BillingStatus.CANCELED
+    billing.status = BillingStatus.CANCELLED
     billing.save(update_fields=["status"])
     logger.info(
         "billing_period_canceled",
@@ -72,7 +72,7 @@ def billing_period_complete(billing: BillingPeriod) -> BillingPeriod:
     payment = billing.payments.filter(status=PaymentStatus.SUCCESS).first()
     if not payment or payment.status != PaymentStatus.SUCCESS:
         raise ValidationError("Successful payment required to complete request")
-    
+
     billing.status = BillingStatus.PAID
     billing.save(update_fields=["status"])
     logger.info(
