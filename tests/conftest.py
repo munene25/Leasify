@@ -18,7 +18,7 @@ from billing.services import billing_period_create
 from billing.choices import BillingStatus as BS
 from common.period import DateRange
 from payments.models import Payment
-from payments.choices import PaymentInitiator as PI, PaymentStatus as PS
+from payments.choices import PaymentMode as PM, PaymentStatus as PS
 
 # ------------------------------------------------------ Globals  ------------------------------------------------------ #
 
@@ -370,28 +370,27 @@ def billing_factory(today: date, request, tenancy_factory: Factory[Tenancy]) -> 
 @pytest.fixture(scope="session")
 def payment_factory(billing_factory, phone_no, fake) -> Factory[Payment]:
 
-    def create(
-        quantity=1, billing: BP | None = None, statuses: list[PS] | None = None, initiator: PI = PI.TENANT
-    ) -> list[Payment]:
+    def create(quantity=1, billing: BP | None = None, statuses: list[PS] | None = None, phone_number: str | None = None, payment_mode: PM = PM.MPESA, recorded_by: User | None = None) -> list[Payment]:
         """A payment creation factory, creates payments for a given billing period"""
-        billing = billing or billing_factory(quantity)
-        # billing_factory may return a list; use first element if so
-        if isinstance(billing, (list, tuple)):
-            billing = billing[0]
+        
+        billing = billing or billing_factory(quantity)[0]
         statuses = statuses or [PS.SUCCESS] * quantity
 
         payments = []
         phone_number = phone_no()
         for status in statuses:
             p = Payment.objects.create(
+                
                 billing=billing,
-                receipt_no=None,
-                amount=10.00,
-                # use faker to generate a unique checkout id per payment
-                checkout_id=fake.unique.uuid4(),
-                initiator=initiator,
-                phone_number=phone_number,
+                amount=billing.total_due, #type: ignore
                 status=status,
+                payment_mode=payment_mode,
+                
+                phone_number=phone_number,
+                checkout_id=fake.unique.uuid4(),
+                receipt_no=None,
+
+                recorded_by=recorded_by
             )
             payments.append(p)
         return payments
