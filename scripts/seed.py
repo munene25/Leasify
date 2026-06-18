@@ -4,11 +4,11 @@ from apartments.models import Apartment
 import random
 from tenancy.services import tenancy_create
 from apartments.services import apartment_create
-from payments.services import payment_initiate, payment_confirm
+from payments.services import payment_alt_create
 from users.services import user_account_create
 from faker import Faker
 from django.core.management import call_command
-from payments.choices import PaymentInitiator
+from payments.choices import PaymentMode
 from django.utils import timezone
 
 ITERATIONS = list(range(20))
@@ -87,16 +87,10 @@ def run():
     from billing.services import billing_period_complete
 
     for t in tenancies:
-        billing = t.billings.first()
-        if not billing:
-            raise ValueError("billing not created")
-        p = payment_initiate(
+        billing = t.billings.latest("pk")
+        payment = payment_alt_create(
             billing=billing,
-            paid_by=t.user.full_name,
-            initiator=PaymentInitiator.TENANT,
-            phone_number=f.numerify("+2547########"),
-            stk_push=False,
+            mode=PaymentMode.MPESA,
+            recorded_by=t.user,
         )
-        p.status= "success"
-        p.save()
-        billing_period_complete(p)
+        billing_period_complete(billing)
