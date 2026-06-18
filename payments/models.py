@@ -17,22 +17,23 @@ class Payment(BaseModel):
 
     class Meta:
         ordering = ["-created_at"]
-        indexes = [models.Index(fields=["status"]), models.Index(fields=["checkout_id"])]
+        indexes = [models.Index(fields=["status"]), models.Index(fields=["checkout_id"]), models.Index(fields=["receipt_no"])]
         permissions = [
             ("add_payment_manually", "Can manually create a payment"),
         ]
 
+    # Required
     billing = models.ForeignKey(BillingPeriod, null=False, blank=False, on_delete=models.PROTECT, related_name="payments" )
-    payment_mode = models.CharField(null=False, blank=False, choices=PaymentMode)
     amount = models.DecimalField(decimal_places=2, max_digits=10, blank=False, null=False)
     status = models.CharField(null=False, blank=False, choices=PaymentStatus, default=PaymentStatus.PENDING)
+    payment_mode = models.CharField(null=False, blank=False, choices=PaymentMode)
 
     # MPESA only
     phone_number = PhoneNumberModelField(null=True, blank=True)
     checkout_id = models.CharField(unique=True, null=True, blank=True)
     receipt_no = models.CharField(null=True, blank=True)
 
-    # Manual only
+    # Manual only for cash/bank payments
     recorded_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.PROTECT, related_name="recorded_payments")
 
     billing_id: int
