@@ -9,7 +9,7 @@ ROLE_PERMISSIONS = {
         {"tenancy": ["view_tenancy", "change_tenancy", "delete_tenancy",]},
         {"user": ["add_user", "view_user", "change_user", "delete_user"]},
         {"billingperiod": ["view_billingperiod", "change_billingperiod", "complete_billingperiod"]},
-        {"payment": ["add_payment", "view_payment", "add_payment_manually"]}
+        {"payment": ["view_payment", "add_payment_manually"]}
     ],
     "caretaker": [
         {"apartment": ["view_apartment", "change_apartment"]},
@@ -21,6 +21,7 @@ ROLE_PERMISSIONS = {
     "tenant": [
         {"billingperiod": ["view_billingperiod", "change_billingperiod"]},
         {"tenancy": ["add_tenancy", "view_tenancy", "change_tenancy"]},
+        {"payment": ["view_payment"]},
     ]
 
 }
