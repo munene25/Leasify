@@ -1,12 +1,12 @@
-from __future__ import annotations 
+from __future__ import annotations
 from typing import TYPE_CHECKING
 from django.db import models
 from common.models import BaseModel
 from tenancy.choices import active_reserved_defaulting
 
-
 if TYPE_CHECKING:
     from tenancy.models import Tenancy
+
 
 class Apartment(BaseModel):
     """
@@ -18,10 +18,8 @@ class Apartment(BaseModel):
     class Meta:
         ordering = ["-created_at"]
         unique_together = ("block", "unit_number")
-        permissions = (
-            ("view_overview", "Can view the apartments overview status for the semester"),
-        )
-    
+        permissions = (("view_overview", "Can view the apartments overview status for the semester"),)
+
     class Block(models.TextChoices):
         NEW = "NEW", "New Block"
         OLD = "OLD", "Old Block"
@@ -30,7 +28,7 @@ class Apartment(BaseModel):
     unit_number = models.PositiveSmallIntegerField(blank=False, null=False)
     rent = models.DecimalField(decimal_places=2, max_digits=10, blank=False, null=False)
     rentable = models.BooleanField(default=True, blank=False, null=False, help_text="Viewable and available to rent")
-    
+
     tenancy_set: models.QuerySet[Tenancy]
     _active_tenant: list[Tenancy]
 
@@ -38,13 +36,12 @@ class Apartment(BaseModel):
         return f"{self.block}-{self.unit_number:02}"
 
     @property
-    def apartment_name(self) -> str:
+    def name(self) -> str:
         """
         Representation of the apartment block and number.
         """
         return str(self)
 
-    
     @property
     def current_tenant(self) -> Tenancy | None:
         """
@@ -55,7 +52,7 @@ class Apartment(BaseModel):
         if not current:
             return self.tenancy_set.select_related("user").filter(status__in=active_reserved_defaulting).first()
         return next(iter(current), None)
-    
+
     @property
     def is_occupied(self) -> bool:
         """
