@@ -38,7 +38,7 @@ DEBUG = True
 DEV_ENVIRONMENT = True
 
 # ALLOWED_HOSTS = [FRONTEND_DOMAIN, "localhost", "127.0.0.1"]
-ALLOWED_HOSTS = [FRONTEND_DOMAIN, "localhost", "127.0.0.1", ".ngrok.io"]
+ALLOWED_HOSTS = [FRONTEND_DOMAIN, "localhost", "127.0.0.1"]
 
 
 INSTALLED_APPS = [
@@ -183,7 +183,6 @@ CACHES = {
     },
     "dev": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache", "LOCATION": "memory://"},
 }
-CACHES["default"] = CACHES["dev"] if DEV_ENVIRONMENT else CACHES["default"]
 
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
@@ -229,7 +228,7 @@ ADMINS = ["edmune25@gmail.com"]  # Logging email alerts in prod
 
 ## CELERY
 CELERY_BROKER_URL = CACHES["default"]["LOCATION"]
-CELERY_TASK_ALWAYS_EAGER = True if DEV_ENVIRONMENT else False
+CELERY_TASK_ALWAYS_EAGER = False
 CELERY_IGNORE_RESULT = True
 CELERY_ENABLE_UTC = True
 CELERY_TIMEZONE = 'UTC'
@@ -248,3 +247,10 @@ MPESA_CONFIG = {
 
 FLOWER_URL = "http://localhost:5555"
 FLOWER_URL_PREFIX = "flower"
+
+if DEV_ENVIRONMENT: 
+    ALLOWED_HOSTS.append("morbidity-blaspheme-shifty.ngrok-free.dev")
+    CSRF_TRUSTED_ORIGINS.append("https://morbidity-blaspheme-shifty.ngrok-free.dev")
+    CORS_ALLOWED_ORIGINS.append("https://morbidity-blaspheme-shifty.ngrok-free.dev")
+    CACHES["default"] = CACHES["dev"]
+    CELERY_TASK_ALWAYS_EAGER = True 
