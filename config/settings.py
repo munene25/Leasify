@@ -23,7 +23,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Site settings
 FRONTEND_DOMAIN = os.getenv("FRONTEND_DOMAIN", "localhost")
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
-APP_NAME = "Bisika Apartments"
+APP_NAME = "Leasify"
 COMPANY_NAME = "Bisika Apartments Ltd."
 COMPANY_ADDRESS = "Embu, Kenya"
 
