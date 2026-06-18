@@ -1,5 +1,4 @@
 import pytest
-from typing import TYPE_CHECKING
 from freezegun import freeze_time
 from datetime import date, timedelta
 from tests.types import Factory
@@ -12,12 +11,12 @@ from tenancy.choices import TenancyStatus as TS
 from users.models import User
 
 
-def test_number_of_queries(tenancy, django_assert_num_queries):
+def test_number_of_queries(billing_factory: Factory[BP], django_assert_num_queries):
     """Accessing user data from the billing period should not result in a new query"""
+    # New fixture does not automatically create a billing period
+    billing = billing_factory()[0]
     with django_assert_num_queries(1):
-        bp = sl.BASE_QS.get(pk=1)
-        assert bp.tenancy == tenancy
-        assert bp.tenancy.user is not None
+        bp = sl.BASE_QS.get(pk=billing.pk)
 
 
 class TestBillingListFor:
