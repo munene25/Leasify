@@ -1,4 +1,4 @@
-from rest_framework import status
+from rest_framework import status, serializers
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -15,16 +15,17 @@ class PaymentListView(BaseAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = sc.PaymentListSerializer
     
+    class FilterClass(serializers.Serializer):
+        billing = serializers.IntegerField()
+        status = serializers.CharField()
+        payment_mode = serializers.CharField()
+        search = serializers.CharField()
+
     def get(self, request) -> Response:
         check_perms(request.user, "payment.view_payment")
-        
-        # Validate filters from query params (e.g., billing_id, status, payment_mode, search)
-        filters = self.validate_filter(data=request.query_params.as_dict())
-        
-        # Get the filtered queryset using selectors
+        filters = self.validate_filter(data=request.query_params)
         payments_qs = sl.payment_list_for(user=request.user, filters=filters)
-        
-        # Paginate and serialize response
+
         return get_paginated_response(
             serializer_class=sc.PaymentListSerializer,
             queryset=payments_qs,
@@ -32,7 +33,8 @@ class PaymentListView(BaseAPIView):
             view=self,
         )
 
-class PaymentInitiateView(BaseAPIView):
+
+class PaymentInitiateMpesaView(BaseAPIView):
     """Initiate an M-Pesa payment via STK push"""
 
     permission_classes = [IsAuthenticated]
