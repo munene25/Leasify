@@ -1,6 +1,7 @@
 {% extends 'emails/base.txt' %}
 
 {% block body %}
+Onboarding
 Welcome to {{ app_name }}
 
 We’re glad you’re here. To get started, please confirm that this email

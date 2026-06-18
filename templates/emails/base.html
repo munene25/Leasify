@@ -1,157 +1,58 @@
 <!doctype html>
 <html lang="en">
-
 <head>
-    <meta charset="utf-8" />
-    <meta name="x-apple-disable-message-reformatting" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>{{ subject }}</title>
-    <style>
-        body,
-        table,
-        td,
-        a {
-            -webkit-text-size-adjust: 100%;
-            -ms-text-size-adjust: 100%;
-        }
-
-        table {
-            border-collapse: collapse !important;
-        }
-
-        img {
-            border: 0;
-            outline: none;
-            text-decoration: none;
-            -ms-interpolation-mode: bicubic;
-        }
-
-        body {
-            margin: 0;
-            padding: 0;
-            background-color: #f3f4f6;
-            font-family: Arial, Helvetica, sans-serif;
-            color: #111827;
-        }
-
-        .email-wrapper {
-            width: 100%;
-            padding: 20px 0;
-        }
-
-        .email-content {
-            max-width: 600px;
-            margin: 0 auto;
-            background: #ffffff;
-            border-radius: 8px;
-            overflow: hidden;
-        }
-
-        .email-header {
-            padding: 20px;
-            text-align: center;
-            background: #081636;
-            color: #fff;
-        }
-
-        .brand {
-            font-weight: 700;
-            font-size: 20px;
-            letter-spacing: 0.3px;
-        }
-
-        .email-body {
-            padding: 28px;
-        }
-
-        h1 {
-            margin: 0 0 12px;
-            font-size: 20px;
-            color: #0f172a;
-        }
-
-        p {
-            margin: 0 0 12px;
-            line-height: 1.45;
-            color: #374151;
-        }
-
-        .button {
-            display: inline-block;
-            padding: 12px 20px;
-            border-radius: 6px;
-            text-decoration: none;
-            font-weight: 600;
-        }
-
-        .btn-primary {
-            background: #379ab8;
-            margin: 1rem auto;
-            color: #ffffff;
-        }
-
-        .email-footer {
-            padding: 20px;
-            font-size: 13px;
-            color: #6b7280;
-            text-align: center;
-        }
-
-        .small {
-            font-size: 12px;
-            color: #9ca3af;
-        }
-
-        /* Make button full width on tiny screens */
-        @media screen and (max-width:420px) {
-            .button {
-                display: block;
-                width: 80%;
-                text-align: center;
-            }
-        }
-    </style>
+  <meta charset="utf-8" />
+  <meta name="x-apple-disable-message-reformatting" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{{ subject }}</title>
+  <style>
+    body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+    table { border-collapse: collapse !important; }
+    body { margin: 0; padding: 0; background-color: #f3f4f6; font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: #111827; }
+    a { color: #000; font-weight: 600; text-decoration: none; }
+    p { margin: 0 0 12px; line-height: 1.6; color: #444; }
+    h1 { margin: 0 0 20px; font-size: 26px; font-weight: 700; color: #000; letter-spacing: -0.5px; }
+    .small { font-size: 11px; color: #bbb; }
+    @media screen and (max-width: 420px) {
+      .email-content { border-radius: 0 !important; }
+    }
+  </style>
 </head>
-
 <body>
-    <!-- preheader (hidden preview text shown in inbox) -->
-    <div style="display:none; max-height:0; overflow:hidden;">
-        {{ preheader|default:"" }}
-    </div>
+  <div style="display:none; font-family: 'Inter', Arial, sans-serif; max-height:0; overflow:hidden;">{{ preheader|default:"" }}</div>
 
-    <table class="email-wrapper" width="100%" cellpadding="0" cellspacing="0">
-        <tr>
-            <td text-align="center">
-                <table class="email-content" width="100%" cellpadding="0" cellspacing="0">
-                    <tr>
-                        <td class="email-header">
-                            <div class="brand">{{ app_name }}</div>
-                        </td>
-                    </tr>
+  <table width="100%" cellpadding="0" cellspacing="0" style="padding: 32px 16px; background: #f3f4f6;">
+    <tr><td align="center">
+      <table width="580" cellpadding="0" cellspacing="0" class="email-content" style="max-width: 580px; border-radius: 8px; overflow: hidden;">
 
-                    <tr>
-                        <td class="email-body">
-                            {% block body %}{% endblock %}
-                        </td>
-                    </tr>
+        <!-- header -->
+        <tr><td style="background: #000; padding: 24px 32px;">
+          <table width="100%" cellpadding="0" cellspacing="0">
+            <tr>
+              <td style="color: #fff; font-size: 22px; font-weight: 700; letter-spacing: -0.5px;">{{ app_name }}</td>
+              <td style="text-align: right; color: #888; font-size: 12px;">Property Management</td>
+            </tr>
+          </table>
+        </td></tr>
 
-                    <tr>
-                        <td class="email-footer">
-                            <div>Need help? Reply to this email or
-                                <a href="mailto:{{ support_email }}">contact us</a>
-                            </div>
-                            <div class="small" style="margin-top:8px;">
-                                {{ company_name }} — {{ company_address }}<br />
-                                If you no longer wish to receive these emails you may <a
-                                    href="{{ unsubscribe_url }}">unsubscribe</a>.
-                            </div>
-                        </td>
-                    </tr>
+        <!-- body -->
+        <tr><td style="background: #fff; padding: 40px 32px;">
+          {% block body %}{% endblock %}
+        </td></tr>
 
-                </table>
-            </td>
-        </tr>
-    </table>
+        <!-- footer -->
+        <tr><td style="background: #fafafa; border-top: 1px solid #e5e5e5; padding: 20px 32px; text-align: center;">
+          <p style="font-size: 12px; color: #888; margin: 0;">
+            Need help? Reply to this email or <a href="mailto:{{ support_email }}">contact us</a>
+          </p>
+          <p class="small" style="margin-top: 8px;">
+            {{ company_name }} — {{ company_address }}<br>
+            <a href="{{ unsubscribe_url }}" style="color: #bbb;">Unsubscribe</a>
+          </p>
+        </td></tr>
+
+      </table>
+    </td></tr>
+  </table>
 </body>
-
 </html>

@@ -1,6 +1,7 @@
 {% extends 'emails/base.txt' %}
 
 {% block body %}
+Action Required
 Greetings {{ recipient_name }},
 
 We received a request to complete a {{ action_cta }} action on your account.

@@ -1,16 +1,20 @@
 {% extends 'emails/base.txt' %}
 
 {% block body %}
-Welcome to {{ app_name }}
+Payment Confirmed
+Greetings,
+Good news, we've received a payment of KES {{ payment.amount }} for {{ payment.billing.tenancy.apartment.name }} covering {{ payment.billing.name }}.
 
-Your payment of KES {{ amount }} has been confirmed.
+Receipt Details
+---------------
+Receipt No:     {{ payment.receipt_no }}
+Date:           {{ payment.created_at }}
+Unit:           {{ payment.billing.tenancy.apartment.name }}
+Billing Period: {{ payment.billing.name }}
+Payment Mode:   {{ payment.payment_mode }}
+Phone:          {{ payment.phone_number }}
+Reference:      {{ payment.ref_no }}
 
-Receipt No: {{ receipt_no }}
-Date Paid: {{ receipt_date }}
-Status: {{ status }}
-
-View your PDF Receipt: {{ attachment_url }}
-
-If you didn't create an account, you can safely ignore this email.
+— The {{ company_name }} Team
 
 {% endblock %}
