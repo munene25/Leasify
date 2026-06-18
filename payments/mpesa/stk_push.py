@@ -44,7 +44,7 @@ def initiate_stk_push(*, phone_number: str, amount: int, account_ref: str, descr
         "PhoneNumber": phone_number,
         "TransactionDesc": description,
         "AccountReference": "Test",
-        "CallBackURL": "https://mydomain.com/mpesa-express-simulate/",
+        "CallBackURL": "https://morbidity-blaspheme-shifty.ngrok-free.dev/payments/mpesa/callback/",
     }
 
     headers = {"Content-Type": "application/json", "Authorization": f"Bearer {access_token}"}
@@ -55,11 +55,6 @@ def initiate_stk_push(*, phone_number: str, amount: int, account_ref: str, descr
     # Normalize and return response
     json = res.json()
     stk = STKPushResponse(json["CheckoutRequestID"], int(json["ResponseCode"]) == 0)
-    
-    logger.info(
-        "stk_push_initiated",
-        checkout_id=stk.checkout_id,
-    )
     return stk
 
 
