@@ -44,8 +44,8 @@ def send_template_email(
     """Inject additional context to the email renders and send the email"""
 
     context = {**context, **email_context.as_dict}
-    text_content = render_to_string(f"{template_name}.txt", context)
-    html_content = render_to_string(f"{template_name}.html", context)
+    text_content = render_to_string(f"emails/{template_name}.txt", context)
+    html_content = render_to_string(f"emails/{template_name}.html", context)
 
     email = EmailMultiAlternatives(
         subject=subject,
