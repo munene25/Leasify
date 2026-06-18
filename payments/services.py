@@ -1,91 +1,110 @@
-from uuid import uuid4
+import requests
 from structlog import get_logger
 from typing import TYPE_CHECKING
-from django.db import transaction
-from rest_framework.exceptions import ValidationError
 from payments.models import Payment
-from payments.mpesa.stk_push import intiate_stk_push
-from payments.choices import PaymentStatus as PS, PaymentInitiator as PI
+from payments.choices import PaymentStatus, PaymentMode
+from payments.mpesa.stk_push import initiate_stk_push  # Use original function name from stk_push.py (typo preserved)
+from common.exceptions import PaymentError
+from payments.selectors import payment_get_checkout
 
-logger = get_logger("payments.services")
+logger = get_logger("payments")
 
 if TYPE_CHECKING:
     from payments.mpesa import CallbackResponse
+    from users.models import User
     from billing.models import BillingPeriod as BP
 
 
-@transaction.atomic
-def payment_initiate(
-    *, 
-    billing: "BP", 
-    initiator: PI, 
-    stk_push: bool,
-    phone_number:str, 
-    paid_by: str,
-    status: PS = PS.PENDING
-) -> Payment:
+def payment_mpesa_initiate(*, billing: "BP", phone_number: str) -> Payment:
     """
-    Initialize a payment. Depending on status can be updated later on callback
+    Initialize a payment via M-Pesa STK push. Depending on status can be updated later on callback.
 
-    :param billing:
-    :param transaction_type:
-    :param status:
-    :param phone_number: phone number that initiated the transaction
-    :param initiator: The short code for who is initiating the request. determined upstream
+    :param billing: The billing period being paid for
+    :param phone_number: Phone number that initiated the transaction
+    :returns: Payment object created with PENDING status
 
     """
-    
-    if stk_push:
-        r = intiate_stk_push(
+
+    try:
+        res = initiate_stk_push(
             phone_number=phone_number,
             amount=int(billing.total_due),
-            account_ref=billing.name[:8],
+            account_ref=billing.name[:8],  # example: JAN-2024
             description="Rent Payment",
         )
-        checkout_id = r.checkout_id
-    else:
-        checkout_id = str(uuid4())
+    except (requests.exceptions.Timeout, requests.exceptions.HTTPError) as e:
+        logger.error("stk_push_failed", trace=str(e))
+        raise PaymentError()
 
     payment = Payment.objects.create(
         billing=billing,
-        phone_number=phone_number,
         amount=billing.total_due,
-        status=status,
-        checkout_id=checkout_id,
-        initiator=initiator,
-        paid_by=paid_by,
+        status=PaymentStatus.PENDING,
+        payment_mode=PaymentMode.MPESA,
+        phone_number=phone_number,
+        checkout_id=res.checkout_id,
     )
 
     logger.info(
         "payment_initiated",
         tenancy_id=billing.tenancy_id,
-        billing_period=billing.name,
+        billing_id=billing.pk,
+        billing=billing.name,
         amount=billing.total_due,
-        phone_number=payment.phone_number,
-        payment_ref=payment.ref_no,
+        phone=payment.phone_number,
     )
     return payment
 
 
-@transaction.atomic
-def payment_confirm(cb: "CallbackResponse") -> Payment:
+def payment_alt_create(*, billing: "BP", mode: PaymentMode, recorded_by: "User", status: PaymentStatus = PaymentStatus.SUCCESS):
     """
-    Parse callback response and return an upadted payment.
-    Update the payment status and receipt no if it's successfull
+    Create a manual payment via an alternate mode (CASH/BANK).
+
+    :param billing: The billing period being paid for
+    :param mode: The payment mode (CASH/BANK)
+    :param recorded_by: The user who created this manual payment
+    :param status: Initial status of the payment
+    :returns: Payment object created with specified status
+
     """
 
-    checkout_id = cb.checkout_id
-    payment = Payment.objects.select_for_update().get(checkout_id=checkout_id)
+    payment = Payment.objects.create(
+        billing=billing,
+        amount=billing.total_due,
+        status=status,
+        payment_mode=mode,
+        recorded_by=recorded_by,
+    )
 
-    if payment.status in [PS.FAILED, PS.SUCCESS]:
-        raise ValidationError("Operation not allowed, payment already closed")
+    logger.info(
+        "payment_alt_created",
+        payment_pk=payment.pk,
+        billing=billing.name,
+        amount=billing.total_due,
+        payment_mode=mode,
+    )
 
-    payment.status =  PS.SUCCESS if cb.success else PS.FAILED
+    return payment
 
+
+def payment_mpesa_confirm(cb: "CallbackResponse") -> Payment:
+    """
+    Process M-Pesa callback and update payment status accordingly.
+
+    :param cb: The callback response containing checkout details and transaction result
+    :returns: Updated Payment object with new status
+
+    """
+    payment = payment_get_checkout(cb.checkout_id)
     if cb.success:
+        payment.status = PaymentStatus.SUCCESS
         payment.receipt_no = cb.receipt_no
-    
-    # ? Generate receipt?
+    else:
+        payment.status = PaymentStatus.FAILED
+
     payment.save()
+
+    # ? Generate receipt?
+
     logger.info("payment_confirmed", checkout_id=payment.checkout_id, status=payment.status)
     return payment
