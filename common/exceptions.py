@@ -56,10 +56,10 @@ class MaxReservationsExceededError(APIException):
     default_detail = "Maximum number of reservations for user has been exceeded for the month."
     default_code = "max_reservations_exceeded"
 
-class OverpaymentError(APIException):
-    """
-    Raised when the total amount being paid is more than the rent due for the apartment.
-    """
-    status_code = status.HTTP_409_CONFLICT
-    default_detail = "This payment will result in an overpay."
-    default_code = "payment_exceeds_rent"
+
+class PaymentError(APIException):
+    """Raised when a payment transaction fails or encounters an error."""
+
+    status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+    default_detail = "Payment could not be completed at this time. Service is unavailable"
+    default_code = "payment_failed"
