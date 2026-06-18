@@ -24,7 +24,6 @@ class PaymentDetailSerializer(serializers.Serializer):
     phone_number = serializers.CharField()
     initiated_by = serializers.CharField()
     receipt_no = serializers.CharField(allow_null=True, source="receipt_no", default=None)
-    checkout_id = serializers.CharField(source="checkout_id")
 
 class PaymentInitiateMpesaSerializer(serializers.Serializer):
     """Payment initiation serializer for M-Pesa STK push"""
