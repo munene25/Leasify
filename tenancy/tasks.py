@@ -38,12 +38,15 @@ def notify_reserved_on_expiry() -> list[int]:
     for t in qs.select_related("user").all():
         context = {
             "tenant_name": t.user.full_name,
-            "apartment_name": t.apartment.apartment_name,
+            "apartment_name": t.apartment.name,
             "max_reservations": MAX_RESERVATIONS_PER_USER,
             "payment_url": build_user_url(user=t.user, path="payments/initiate"),
         }
         send_template_email(
-            subject=subject, context=context, to=[t.user.email], template_name="emails/expiry_notification"
+            subject=subject, 
+            context=context, 
+            to=[t.user.email], 
+            template_name="tenancy/expiry_notification"
         )
         affected.append(t.pk)
     return affected

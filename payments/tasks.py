@@ -38,7 +38,7 @@ def notify_payment_received(payment_id: int):
         subject="Payment received",
         context=context,
         to=[user.email], 
-        template_name="emails/payment_notification",
+        template_name="payments/payment_notification",
         attachment=pdf_content,
         attachment_name=f"PaymentReceipt[{payment.billing.name}]",
         attachment_type="application/pdf",

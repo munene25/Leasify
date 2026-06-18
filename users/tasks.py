@@ -7,7 +7,7 @@ from users.selectors import user_get
 
 
 
-auto_retry: Callable[..., Task] = shared_task(autoretry_for=(smtplib.SMTPDataError, ConnectionError), retry_kwargs={'max_retries': 3}, retry_backoff=True, retry_jitter=True)
+auto_retry: Callable[..., Task] = shared_task(autoretry_for=(smtplib.SMTPDataError, ConnectionError), retry_kwargs={'max_retries': 3}, retry_backoff=True, retry_jitter=True) # type: ignore
 
 @auto_retry
 def send_welcome_email(user_id: int):
@@ -21,7 +21,7 @@ def send_welcome_email(user_id: int):
         subject=subject,
         context=context,
         to=[user.email],
-        template_name="emails/welcome"
+        template_name="users/welcome"
     )
     return True
 
@@ -37,7 +37,7 @@ def send_token_email(user_id: int, url_path: str, subject: str, action_cta: str)
         subject=subject,
         context=context,
         to=[user.email],
-        template_name="emails/token"
+        template_name="users/token"
     )
     return True
 
@@ -53,7 +53,7 @@ def notify_password_change(user_id: int):
         subject=subject,
         context=context,
         to=[user.email],
-        template_name="emails/password_changed"
+        template_name="users/password_changed"
     )
 
 
