@@ -6,7 +6,8 @@ class PaymentStatus(TextChoices):
     SUCCESS = "success", "Payment has been confirmed and funds have transferred"
     FAILED = "failed", "Payment could not be completed"
 
-class PaymentInitiator(TextChoices):
-    """TENANT OR ADMIN INITIATED PAYMENT"""
-    TENANT = "TPY", "System initiated"
-    ADMIN = "APY", "System initiated"
+class PaymentMode(TextChoices):
+    """MPESA, CASH, BANK"""
+    MPESA = "MPESA"
+    CASH = "CASH"
+    BANK = "BANK"
