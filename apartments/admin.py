@@ -11,7 +11,7 @@ logger = get_logger("apartments.admin")
 
 @admin.register(Apartment)
 class ApartmentAdmin(admin.ModelAdmin):
-    list_display = ("apartment_name", "rentable", "rent", "is_occupied")
+    list_display = ("name", "rentable", "rent", "is_occupied")
     list_filter = ("rentable", "block")
 
     search_fields = ("unit_number",)
@@ -44,16 +44,17 @@ class ApartmentAdmin(admin.ModelAdmin):
         url = reverse("admin:tenancy_tenancy_change", args=[tenant.pk])
 
         return format_html('<a href="{}">{}</a>', url, tenant.user.full_name)
-    
+
     def get_queryset(self, request: HttpRequest) -> QuerySet:
         from apartments.selectors import BASE_QS
+
         return BASE_QS
 
     @admin.action(description="Mark selected apartments as rentable")
     def make_rentable(self, request, queryset):
         queryset.update(rentable=True)
         logger.info("apartments_made_rentable", apartments=queryset.value_list("id", flat=True))
-    
+
     @admin.action(description="Mark selected apartments as not renatble")
     def make_unrentable(self, request, queryset):
         queryset.update(rentable=False)
@@ -62,9 +63,8 @@ class ApartmentAdmin(admin.ModelAdmin):
     def save_model(self, request, obj, form, change) -> None:
         super().save_model(request, obj, form, change)
         state = {True: "apartment_updated", False: "apartment_created"}[change]
-        logger.info(state, apartment_name=obj.apartment_name)
+        logger.info(state, apartment_name=obj.name)
 
     def delete_model(self, request: HttpRequest, obj) -> None:
         super().delete_model(request, obj)
-        logger.warning("apartment_deleted", apartment_name=obj.apartment_name)
-    
+        logger.warning("apartment_deleted", apartment_namename=obj.name)
