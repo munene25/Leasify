@@ -72,7 +72,7 @@ class BillingPeriod(BaseModel):
 
     def __str__(self) -> str:
         """Outputs it in the form of a string e.g. JUN-2025:JUL-2025"""
-        return f"{self.start_date.strftime('%b-%Y').upper()}:{self.end_date.strftime('%b-%Y').upper()}"
+        return f"{self.start_date.strftime('%b-%Y').upper()} to {self.end_date.strftime('%b-%Y').upper()}"
     
     @property
     def name(self) -> str:
