@@ -3,7 +3,7 @@ from payments import views
 
 urlpatterns = [
     # Payment List - List and retrieve all payments accessible by the authenticated user
-    path("list/", views.PaymentListView.as_view(), name="payment_list"),
+    path("", views.PaymentListView.as_view(), name="payment_list"),
     # Initiate M-Pesa payment via STK push
     path("initiate/<int:billing_id>", views.PaymentInitiateMpesaView.as_view(), name="payment_initiate"),
     # Callback endpoint for M-Pesa to update payment status
