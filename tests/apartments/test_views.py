@@ -98,7 +98,7 @@ class TestApartmentListCreateView:
         response = manager_client.get(self.path)
         data = parse_paginated_response(response, 1)["results"][0]
         assert data["apartment_id"] == apartment.pk, data
-        assert data["apartment_name"] == apartment.apartment_name
+        assert data["apartment_name"] == apartment.name
         assert Decimal(data["rent"]) == apartment.rent
         assert data["is_occupied"] == False
 
@@ -440,8 +440,8 @@ class TestApartmentOverviewView:
         assert Decimal(data1["min_rent"]) == min_rent
         assert Decimal(data1["max_rent"]) == max_rent
 
-        assert data1["most_popular"] == apartments[0].apartment_name
-        assert data1["least_popular"] == apartments[-1].apartment_name
+        assert data1["most_popular"] == apartments[0].name
+        assert data1["least_popular"] == apartments[-1].name
 
         # assert that the default month range will be used for the filter
         response2 = manager_client.get("/apartments/overview")
