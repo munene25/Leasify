@@ -20,7 +20,7 @@ class BillingFilteringPolicy(FilteringPolicy):
     SUPERUSER = Q()
     MANAGER = Q()
     CARETAKER = Q()
-    TENANT = lambda u: Q(tenancy_id__in=list(u.tenancy_set.values_list('pk', flat=True)))
+    TENANT = lambda u: Q(tenancy__user=u)
     REGULAR = Q(pk=0)
 
 
@@ -34,7 +34,6 @@ def billing_list_for(*, user: "User", filters: dict[str, Any] | QueryDict = {}) 
         search = django_filters.CharFilter(method="search_fields")
         is_current = django_filters.BooleanFilter(method="filter_current")
         period = django_filters.DateFromToRangeFilter(method="filter_period")
-        status = django_filters.CharFilter(field_name="status")
 
         def search_fields(self, queryset, name, value):
             if not value.strip():
