@@ -98,7 +98,7 @@ class TestApartmentListCreateView:
         response = manager_client.get(self.path)
         data = parse_paginated_response(response, 1)["results"][0]
         assert data["apartment_id"] == apartment.pk, data
-        assert data["apartment_name"] == apartment.name
+        assert data["name"] == apartment.name
         assert Decimal(data["rent"]) == apartment.rent
         assert data["is_occupied"] == False
 
