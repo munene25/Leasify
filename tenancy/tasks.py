@@ -6,7 +6,7 @@ from tenancy.choices import TenancyStatus as TS, TerminationReason as TR
 from tenancy.models import Tenancy, MAX_RESERVATIONS_PER_USER
 from billing.choices import BillingStatus as BS
 from billing.models import BillingPeriod as Billings
-
+from django.db.models import Q
 
 @shared_task(retry_kwargs={"max_retries": 5}, retry_backoff=True)
 def month_start_tasks() -> dict[str, list]:
@@ -24,15 +24,15 @@ def month_start_tasks() -> dict[str, list]:
 
 
 @shared_task(retry_kwargs={"max_retries": 3}, retry_backoff=True)
-def notify_reserved_on_expiry() -> list[int]:
+def notify_reserved_on_expiry(reserved: list[int] = []) -> list[int]:
     from datetime import timedelta
     from config.emails import send_template_email
     from users.tokens import build_user_url
 
     # Get reserved whose expiry is tomorrow
     tommorow = today() + timedelta(1)
-    qs = Tenancy.objects.filter(status=TS.RESERVED, reservation_expiry=tommorow)
-
+    t_filter = Q(pk__in=reserved) if reserved else Q(status=TS.RESERVED, reservation_expiry=tommorow)
+    qs = Tenancy.objects.filter(t_filter)
     subject = "Your reservation is about to expire."
     affected = []
     for t in qs.select_related("user").all():
@@ -40,7 +40,7 @@ def notify_reserved_on_expiry() -> list[int]:
             "tenant_name": t.user.full_name,
             "apartment_name": t.apartment.name,
             "max_reservations": MAX_RESERVATIONS_PER_USER,
-            "payment_url": build_user_url(user=t.user, path="payments/initiate"),
+            "payment_url": build_user_url(user=t.user, path="payments/initiate", with_token=False),
         }
         send_template_email(
             subject=subject, 
