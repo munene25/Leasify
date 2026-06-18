@@ -10,42 +10,24 @@ class CallbackResponse:
     checkout_id: str
     success: bool
     result_desc: str
-    receipt_no: str| None = None
+    receipt_no: str | None = None
+    metadata: dict | None = None
 
 
-def parse_response(response: dict[str, Any]) -> CallbackResponse:
+def parse_mpesa_response(response: dict[str, Any]) -> CallbackResponse:
+    """Helper to parse the response body for the Mpesa"""
     data = response["Body"]["stkCallback"]
-
     metadata = {"merchant_id": data["MerchantRequestID"]}
-
-    callback = CallbackResponse(
+    
+    cb = CallbackResponse(
         checkout_id=data["CheckoutRequestID"],
         success=int(data["ResultCode"]) == 0,
         result_desc=data["ResultDesc"],
+        metadata=metadata,
     )
-
-    if callback.success:
-        try:
-            metadata.update(
-                {
-                    item["Name"]: item.get("Value") 
-                    for item in data["CallbackMetadata"]["Item"]
-                }
-            )
-
-            callback.receipt_no = metadata["MpesaReceiptNumber"]
-
-        except KeyError as e:
-            logger.debug("failed_to_parse_payment_metadata", error=str(e))
-
-    logger.info(
-        "response_parsed", 
-        checkout_id=callback.checkout_id, 
-        sucess=callback.success,
-        result_desc=callback.result_desc,
-        metadata=str(metadata)
-    )
-    return callback
+    try: cb.receipt_no = metadata["MpesaReceiptNumber"]
+    except KeyError: pass
+    return cb
 
 
 # Sample failed data
