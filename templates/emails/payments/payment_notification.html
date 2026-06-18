@@ -1,0 +1,52 @@
+{% extends "emails/base.html" %}
+
+{% block body %}
+<h1>Payment Received</h1>
+<p>Your payment has been confirmed. Here is your receipt:</p>
+
+<table width="100%" cellpadding="0" cellspacing="0" style="margin:24px 0;">
+  <!-- header -->
+  <tr><td style="background:#4CAF50; padding:24px; text-align:center; border-radius:12px 12px 0 0;">
+    <p style="margin:0; font-size:13px; color:rgba(255,255,255,0.9);">Amount paid</p>
+    <p style="margin:4px 0 0; font-size:28px; font-weight:bold; color:#ffffff;">KES {{ payment.amount|floatformat:2 }}</p>
+  </td></tr>
+
+  <!-- receipt no -->
+  <tr><td style="padding:16px; background:#ffffff;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f5; border-radius:8px;">
+      <tr><td style="padding:10px 16px; text-align:center;">
+        <p style="margin:0; font-size:11px; color:#888; text-transform:uppercase;">M-Pesa receipt no.</p>
+        <p style="margin:4px 0 0; font-size:16px; font-weight:bold;">{{ payment.receipt_no }}</p>
+      </td></tr>
+    </table>
+  </td></tr>
+
+  <!-- details -->
+  <tr><td style="padding:0 16px 16px; background:#ffffff; border-radius:0 0 12px 12px;">
+    <table width="100%" cellpadding="0" cellspacing="0">
+      <tr><td style="padding:10px 0; border-bottom:1px solid #f0f0f0; font-size:13px; color:#888;">Date</td><td style="padding:10px 0; border-bottom:1px solid #f0f0f0; font-size:13px; text-align:right;">{{ payment.created_at|date:"d M Y, h:i A" }}</td></tr>
+      <tr><td style="padding:10px 0; border-bottom:1px solid #f0f0f0; font-size:13px; color:#888;">Tenant</td><td style="padding:10px 0; border-bottom:1px solid #f0f0f0; font-size:13px; text-align:right;">{{ payment.billing.tenancy.user.get_full_name }}</td></tr>
+      <tr><td style="padding:10px 0; border-bottom:1px solid #f0f0f0; font-size:13px; color:#888;">Phone</td><td style="padding:10px 0; border-bottom:1px solid #f0f0f0; font-size:13px; text-align:right;">{{ payment.phone_number }}</td></tr>
+      <tr><td style="padding:10px 0; border-bottom:1px solid #f0f0f0; font-size:13px; color:#888;">Unit</td><td style="padding:10px 0; border-bottom:1px solid #f0f0f0; font-size:13px; text-align:right;">{{ payment.billing.tenancy.apartment.name }}</td></tr>
+      <tr><td style="padding:10px 0; border-bottom:1px solid #f0f0f0; font-size:13px; color:#888;">Billing period</td><td style="padding:10px 0; border-bottom:1px solid #f0f0f0; font-size:13px; text-align:right;">{{ payment.billing.name }}</td></tr>
+      <tr><td style="padding:10px 0; border-bottom:1px solid #f0f0f0; font-size:13px; color:#888;">Payment mode</td><td style="padding:10px 0; border-bottom:1px solid #f0f0f0; font-size:13px; text-align:right;"><span style="background:#E8F5E9; color:#2E7D32; font-size:11px; padding:2px 8px; border-radius:20px;">{{ payment.payment_mode }}</span></td></tr>
+      <tr><td style="padding:10px 0; font-size:13px; color:#888;">Reference</td><td style="padding:10px 0; font-size:13px; text-align:right;">{{ payment.ref_no }}</td></tr>
+    </table>
+
+    <table width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid #f0f0f0; margin-top:12px; padding-top:12px;">
+      <tr>
+        <td style="font-size:13px;">
+          <p style="margin:0; font-size:11px; color:#888;">Powered by</p>
+          <p style="margin:0; font-weight:bold;">Leasify</p>
+        </td>
+        <td style="text-align:right;">
+          <p style="margin:0; font-size:11px; color:#888;">Total paid</p>
+          <p style="margin:0; font-size:16px; font-weight:bold; color:#2E7D32;">KES {{ payment.amount|floatformat:2 }}</p>
+        </td>
+      </tr>
+    </table>
+  </td></tr>
+</table>
+
+<p class="small">If you have any questions about your payment, please contact us.</p>
+{% endblock %}

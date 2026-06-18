@@ -1,0 +1,24 @@
+{% extends "emails/base.html" %}
+{% block body %}
+<p>Greetings <b>{{ recipient_name }}</b>,</p>
+
+<p>
+  We received a request to complete a <b>{{ action_cta }}</b> on your account.
+  Use the link below to continue.
+</p>
+
+<p style="text-align:center; margin:22px 0;">
+  <a href="{{ token_url }}" class="button btn-primary">
+    {{ action_cta }}
+  </a>
+</p>
+
+<p class="small">
+  If you did not make this request, you can safely ignore this email.
+</p>
+
+<p class="small">
+  If the button doesn't work, copy and paste this link into your browser:<br>
+  <code>{{ token_url }}</code>
+</p>
+{% endblock %}

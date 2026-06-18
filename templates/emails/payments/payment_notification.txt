@@ -1,0 +1,16 @@
+{% extends 'emails/base.txt' %}
+
+{% block body %}
+Welcome to {{ app_name }}
+
+Your payment of KES {{ amount }} has been confirmed.
+
+Receipt No: {{ receipt_no }}
+Date Paid: {{ receipt_date }}
+Status: {{ status }}
+
+View your PDF Receipt: {{ attachment_url }}
+
+If you didn't create an account, you can safely ignore this email.
+
+{% endblock %}

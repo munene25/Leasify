@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+    }
+
+    .receipt {
+      max-width: 420px;
+      margin: 0 auto;
+      border: 1px solid #e0e0e0;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .header {
+      background: #4CAF50;
+      padding: 24px;
+      text-align: center;
+      color: white;
+    }
+
+    .header .amount {
+      font-size: 28px;
+      font-weight: bold;
+      margin: 4px 0 0;
+    }
+
+    .header .label {
+      font-size: 13px;
+      opacity: 0.9;
+      margin: 0;
+    }
+
+    .receipt-no {
+      background: #f5f5f5;
+      margin: 16px;
+      border-radius: 8px;
+      padding: 10px 16px;
+      text-align: center;
+    }
+
+    .receipt-no .code {
+      font-size: 16px;
+      font-weight: bold;
+      letter-spacing: 0.05em;
+    }
+
+    .receipt-no .sub {
+      font-size: 11px;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .body {
+      padding: 0 16px 16px;
+    }
+
+    table {
+      width: 100%;
+      font-size: 13px;
+      border-collapse: collapse;
+    }
+
+    td {
+      padding: 10px 0;
+      border-bottom: 1px solid #f0f0f0;
+    }
+
+    td:last-child {
+      text-align: right;
+    }
+
+    .label-col {
+      color: #888;
+    }
+
+    .badge {
+      background: #E8F5E9;
+      color: #2E7D32;
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 20px;
+    }
+
+    .footer {
+      display: flex;
+      justify-content: space-between;
+      border-top: 1px solid #f0f0f0;
+      padding-top: 12px;
+      margin-top: 12px;
+    }
+
+    .total {
+      color: #2E7D32;
+      font-size: 16px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="receipt">
+    <div class="header">
+      <p class="label">Amount paid</p>
+      <p class="amount">KES {{ payment.amount|floatformat:2 }}</p>
+    </div>
+    <div class="receipt-no">
+      <p class="sub">M-Pesa receipt no.</p>
+      <p class="code">{{ payment.receipt_no }}</p>
+    </div>
+    <div class="body">
+      <table>
+        <tr>
+          <td class="label-col">Date</td>
+          <td>{{ payment.created_at|date:"d M Y, h:i A" }}</td>
+        </tr>
+        <tr>
+          <td class="label-col">Tenant</td>
+          <td>{{ payment.billing.tenancy.user.full_name }}</td>
+        </tr>
+        <tr>
+          <td class="label-col">Phone</td>
+          <td>{{ payment.phone_number }}</td>
+        </tr>
+        <tr>
+          <td class="label-col">Unit</td>
+          <td>{{ payment.billing.tenancy.apartment.name }}</td>
+        </tr>
+        <tr>
+          <td class="label-col">Billing period</td>
+          <td>{{ payment.billing.name }}</td>
+        </tr>
+        <tr>
+          <td class="label-col">Payment mode</td>
+          <td><span class="badge">M-Pesa</span></td>
+        </tr>
+        <tr>
+          <td class="label-col">Reference</td>
+          <td>{{ payment.ref_no }}</td>
+        </tr>
+      </table>
+      <div class="footer">
+        <div>
+          <p style="margin:0;font-size:11px;color:#888">Powered by</p>
+          <p style="margin:0;font-weight:bold">Leasify</p>
+        </div>
+        <div style="text-align:right">
+          <p style="margin:0;font-size:11px;color:#888">Total paid</p>
+          <p class="total">KES {{ payment.amount|floatformat:2 }}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+
+</html>
