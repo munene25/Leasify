@@ -1,8 +1,10 @@
 amqp==5.3.1
 asgiref==3.9.1
 billiard==4.2.4
+brotli==1.2.0
 celery==5.6.2
 certifi==2026.5.20
+cffi==2.0.0
 charset-normalizer==3.4.7
 click==8.3.1
 click-didyoumean==0.3.1
@@ -10,6 +12,7 @@ click-plugins==1.1.1.2
 click-repl==0.3.0
 colorama==0.4.6
 coverage==7.13.4
+cssselect2==0.9.0
 Django==5.2.6
 django-cors-headers==4.7.0
 django-extensions==4.1
@@ -18,9 +21,11 @@ django-ipware==7.0.1
 django-redis==6.0.0
 django-structlog==10.0.0
 djangorestframework==3.16.1
+dotenv==0.9.9
 drf-standardized-errors==0.15.0
 Faker==40.5.1
 flower==2.0.1
+fonttools==4.63.0
 freezegun==1.5.5
 hiredis==3.3.0
 humanize==4.15.0
@@ -31,13 +36,17 @@ mypy==1.18.2
 mypy_extensions==1.1.0
 packaging==25.0
 pathspec==0.12.1
+pillow==12.2.0
 pluggy==1.6.0
 prometheus_client==0.25.0
 prompt_toolkit==3.0.52
 psycopg==3.3.4
 psycopg-binary==3.3.4
+pycparser==3.0
+pydyf==0.12.1
 Pygments==2.19.2
 PyJWT==2.10.1
+pyphen==0.17.2
 pytest==9.0.2
 pytest-cov==7.0.0
 pytest-django==4.12.0
@@ -50,6 +59,8 @@ requests==2.34.2
 six==1.17.0
 sqlparse==0.5.3
 structlog==25.5.0
+tinycss2==1.5.1
+tinyhtml5==2.1.0
 tornado==6.5.6
 typing_extensions==4.15.0
 tzdata==2025.2
@@ -57,3 +68,6 @@ tzlocal==5.3.1
 urllib3==2.7.0
 vine==5.1.0
 wcwidth==0.2.14
+weasyprint==69.0
+webencodings==0.5.1
+zopfli==0.4.3
