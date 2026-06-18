@@ -43,8 +43,7 @@ def reserved_tenant(tenancy_factory, billing_factory: "Factory[BP]") -> "Tenancy
 @pytest.fixture
 def active_tenant(tenancy_factory: "Factory[Tenancy]", billing_factory: "Factory[BP]") -> "Tenancy":
     t = tenancy_factory(status=TS.ACTIVE)[0]
-    starting = DateRange.for_month().previous_month().start_date
-    billing_factory(tenancy=t, statuses=[BS.PAID], starting=starting)
+    billing_factory(tenancy=t, statuses=[BS.PAID],)
     return t
     
 @pytest.fixture
