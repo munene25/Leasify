@@ -26,13 +26,11 @@ class PaymentDetailSerializer(serializers.Serializer):
 
 class PaymentInitiateMpesaSerializer(serializers.Serializer):
     """Payment initiation serializer for M-Pesa STK push"""
-    billing_id = serializers.IntegerField(source="billing.pk")
     phone_number = serializers.CharField()
 
 
 class PaymentAltCreateSerializer(serializers.Serializer):
     """Serializer for manual payment creation (alternate mode: CASH/BANK)"""
-    billing_id = serializers.PrimaryKeyRelatedField(queryset=BP.objects.all())
     mode = serializers.ChoiceField(choices=PaymentMode.choices, required=False)
     status = serializers.ChoiceField(choices=PaymentStatus.choices)
     recorded_by = serializers.CharField()
