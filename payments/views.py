@@ -8,18 +8,21 @@ from payments import services as sr, selectors as sl, serializer as sc
 from common.views import BaseAPIView
 from payments.mpesa import parse_response
 from billing.selectors import billing_get_for
+from django.http import HttpResponse
+
 
 class PaymentListView(BaseAPIView):
     """List and retrieve all payments accessible by the authenticated user."""
-    
-    permission_classes = [IsAuthenticated]
-    serializer_class = sc.PaymentListSerializer
     
     class FilterClass(serializers.Serializer):
         billing = serializers.IntegerField()
         status = serializers.CharField()
         payment_mode = serializers.CharField()
         search = serializers.CharField()
+
+    permission_classes = [IsAuthenticated]
+    serializer_class = sc.PaymentListSerializer
+    filter_class = FilterClass
 
     def get(self, request) -> Response:
         check_perms(request.user, "payment.view_payment")
@@ -39,7 +42,7 @@ class PaymentInitiateMpesaView(BaseAPIView):
 
     permission_classes = [IsAuthenticated]
     serializer_class = sc.PaymentInitiateMpesaSerializer
-
+    
     def post(self, request, billing_id: int) -> Response:
         # Get billing through selector to ensure the user can even see the billing
         billing = billing_get_for(user=request.user, billing_id=billing_id)
