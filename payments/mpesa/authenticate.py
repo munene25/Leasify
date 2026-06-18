@@ -27,9 +27,6 @@ def get_access_token() -> str:
         )
     )
     res.raise_for_status()
-
-    logger.info("mpesa_auth_successful")
-    
     token = res.json()["access_token"]
     cache.set(cache_key, token, timeout=60 * 55)
 
