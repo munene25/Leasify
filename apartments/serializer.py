@@ -4,7 +4,7 @@ from apartments.models import Apartment
 
 class ApartmentListSerializer(serializers.Serializer):
     apartment_id = serializers.IntegerField(source="pk")
-    apartment_name = serializers.CharField()
+    name = serializers.CharField()
     rent = serializers.DecimalField(max_digits=10, decimal_places=2)
     rentable = serializers.BooleanField()
     is_occupied = serializers.BooleanField(allow_null=True)
