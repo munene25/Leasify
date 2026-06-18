@@ -53,7 +53,7 @@ def apartment_list_for(*, user: "User", filters: dict[str, Any] | None = None):
         def search_fields(self, queryset, name, value):
             q = models.Q()
             if value.isdigit():
-                q |= models.Q(unit_number=int(value)) 
+                q |= models.Q(unit_number=int(value))
                 q |= models.Q(rent=Decimal(value))
             else:
                 q |= models.Q(block__icontains=value)
@@ -90,8 +90,8 @@ def apartment_overview(r: DateRange):
         "total_apartments": total_apartments,
         "rentable": rentable,
         "occupied": occupied,
-        "least_popular": getattr(popularity.last(), "apartment_name", None),
-        "most_popular": getattr(popularity.first(), "apartment_name", None),
+        "least_popular": getattr(popularity.last(), "name", None),
+        "most_popular": getattr(popularity.first(), "name", None),
         "average_rent": aggregates["rent__avg"],
         "min_rent": aggregates["rent__min"],
         "max_rent": aggregates["rent__max"],
