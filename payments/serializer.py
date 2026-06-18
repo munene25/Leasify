@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from payments.choices import PaymentStatus, PaymentMode
-from billing.models import BillingPeriod as BP
+from common.fields import PhoneNumberSerializerField
 
 class PaymentListSerializer(serializers.Serializer):
     """Serializer for listing payments"""
@@ -21,12 +21,11 @@ class PaymentDetailSerializer(serializers.Serializer):
     amount = serializers.DecimalField(max_digits=10, decimal_places=2)
     status = serializers.CharField()
     phone_number = serializers.CharField()
-    initiated_by = serializers.CharField()
     receipt_no = serializers.CharField()
 
 class PaymentInitiateMpesaSerializer(serializers.Serializer):
     """Payment initiation serializer for M-Pesa STK push"""
-    phone_number = serializers.CharField()
+    phone_number = PhoneNumberSerializerField()
 
 
 class PaymentAltCreateSerializer(serializers.Serializer):
