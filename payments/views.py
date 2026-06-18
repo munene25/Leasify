@@ -7,7 +7,7 @@ from common.permissions import check_perms
 from payments import services as sr, selectors as sl, serializer as sc
 from common.views import BaseAPIView
 from payments.mpesa import parse_response
-
+from billing.selectors import billing_get_for
 
 class PaymentListView(BaseAPIView):
     """List and retrieve all payments accessible by the authenticated user."""
@@ -40,9 +40,11 @@ class PaymentInitiateMpesaView(BaseAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = sc.PaymentInitiateMpesaSerializer
 
-    def post(self, request) -> Response:
+    def post(self, request, billing_id: int) -> Response:
+        # Get billing through selector to ensure the user can even see the billing
+        billing = billing_get_for(user=request.user, billing_id=billing_id)
         incoming = self.validate_serializer(data=request.data)
-        payment = sr.payment_mpesa_initiate(**incoming)
+        payment = sr.payment_mpesa_initiate(billing=billing, phone_number=incoming["phone_number"])
         return Response(data={"message": "An M-Pesa transaction has been initiated.", "payment_id": payment.pk})
 
 
@@ -74,9 +76,10 @@ class PaymentAltCreateView(BaseAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = sc.PaymentAltCreateSerializer
 
-    def post(self, request) -> Response:
+    def post(self, request, billing_id: int) -> Response:
         check_perms(request.user, "add_payment_manually")
         incoming = self.validate_serializer(data=request.data)
-        payment = sr.payment_alt_create(**incoming)
+        billing = billing_get_for(request.user, billing_id=billing_id)
+        payment = sr.payment_alt_create(billing=billing, **incoming)
         outgoing = sc.PaymentDetailSerializer(instance=payment)
         return Response(data=outgoing.data, status=status.HTTP_200_OK)
