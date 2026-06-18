@@ -3,7 +3,7 @@ from functools import cached_property, lru_cache
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
-
+from typing import Any
 
 @dataclass(frozen=True)
 class EmailConfig:
@@ -21,8 +21,8 @@ class EmailConfig:
         for f in fields(cls):
             values[f.name] = getattr(settings, f.name.upper())
         return cls(**values)
-
-    @cached_property
+    
+    @property
     def as_dict(self) -> dict[str, str]:
         return asdict(self)
 
@@ -37,6 +37,9 @@ def send_template_email(
     context: dict,
     template_name: str,
     from_email: str | None = None,
+    attachment: Any | None = None,
+    attachment_name: str = "attachment",
+    attachment_type: str | None = None,
 ) -> None:
     """Inject additional context to the email renders and send the email"""
 
@@ -55,6 +58,8 @@ def send_template_email(
             "List-Unsubscribe": f"<{link}>",
             "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
         }
+    if attachment:
+        email.attach(attachment_name, attachment, attachment_type)
 
     email.attach_alternative(html_content, "text/html")
     email.send(fail_silently=False)
