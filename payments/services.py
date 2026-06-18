@@ -33,7 +33,11 @@ def payment_mpesa_initiate(*, billing: "BP", phone_number: str) -> Payment:
             description="Rent Payment",
         )
     except (requests.exceptions.Timeout, requests.exceptions.HTTPError) as e:
-        logger.error("stk_push_failed", trace=str(e))
+        logger.error(
+            "stk_push_failed",
+            status_code=getattr(e.response, "status_code", None),
+            response=(e.response.json()),  # type: ignore
+        )
         raise PaymentError()
 
     payment = Payment.objects.create(
@@ -87,7 +91,7 @@ def payment_alt_create(*, billing: "BP", mode: PaymentMode, recorded_by: "User",
     return payment
 
 
-def payment_mpesa_confirm(cb: "CallbackResponse") -> Payment:
+def payment_mpesa_process(cb: "CallbackResponse") -> Payment:
     """
     Process M-Pesa callback and update payment status accordingly.
 
@@ -103,8 +107,6 @@ def payment_mpesa_confirm(cb: "CallbackResponse") -> Payment:
         payment.status = PaymentStatus.FAILED
 
     payment.save()
-
-    # ? Generate receipt?
-
-    logger.info("payment_confirmed", checkout_id=payment.checkout_id, status=payment.status)
+    # ? Send email notification
+    logger.info("payment_processed", checkout_id=payment.checkout_id, status=payment.status, description=cb.result_desc)
     return payment
