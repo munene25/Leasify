@@ -16,7 +16,7 @@ class STKPushResponse:
     sucess: bool
     
 
-def intiate_stk_push(*, phone_number: str, amount: int, account_ref: str, description: str) -> STKPushResponse:
+def initiate_stk_push(*, phone_number: str, amount: int, account_ref: str, description: str) -> STKPushResponse:
     """
     Transaction type: "CustomerPayBillOnline" for PayBill Numbers and "CustomerBuyGoodsOnline" for Till Numbers.
     """
