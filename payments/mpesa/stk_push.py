@@ -1,13 +1,8 @@
-import base64
 import requests
-from datetime import datetime
-from zoneinfo import ZoneInfo
 from config.settings import MPESA_CONFIG as cfg
 from payments.mpesa.authenticate import get_access_token
-from structlog import get_logger
 from dataclasses import dataclass
-
-logger = get_logger("payments.mpesa.stk_push")
+from payments.mpesa.utils import make_timestamp, make_password 
 
 
 @dataclass
@@ -35,16 +30,10 @@ def initiate_stk_push(*, phone_number: str, amount: int, account_ref: str, descr
     if len(account_ref) > 12 or len(description) > 13:
         raise ValueError(f"Account_ref ({account_ref=}) or description ({description=}) too long")
 
-    # Compute current time at UTC + 3
-    nairobi = ZoneInfo("Africa/Nairobi")
-    dt = datetime.now(tz=nairobi)
-    timestamp = dt.strftime("%Y%m%H%d%M%S")
-
-    access_token = get_access_token()
-    password_bytes = (cfg["SHORTCODE"] + cfg["PASSKEY"] + timestamp).encode()
+    timestamp = make_timestamp()
 
     payload = {
-        "Password": base64.b64encode(password_bytes).decode(),
+        "Password": make_password(timestamp),
         "BusinessShortCode": cfg["SHORTCODE"],
         "Timestamp": timestamp,
         "Amount": amount,
@@ -57,7 +46,7 @@ def initiate_stk_push(*, phone_number: str, amount: int, account_ref: str, descr
         "CallBackURL": cfg["INITIATE_URL"],
     }
 
-    headers = {"Content-Type": "application/json", "Authorization": f"Bearer {access_token}"}
+    headers = {"Content-Type": "application/json", "Authorization": f"Bearer {get_access_token()}"}
 
     res = requests.post(cfg["EXPRESS_URL"], json=payload, headers=headers)
     res.raise_for_status()
