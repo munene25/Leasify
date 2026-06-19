@@ -1,8 +1,11 @@
-from typing import Any
 from payments.mpesa.types import CallbackResponse
 
-def parse_callback_response(response: dict[str, Any]) -> CallbackResponse:
-    """Helper to parse the response body for the Mpesa"""
+def parse_callback_response(response: dict) -> CallbackResponse:
+    """Parse the M-PESA callback response.
+
+    :param response: The raw callback response dictionary
+    :return: CallbackResponse object with checkout_id, success, result_desc, receipt_no, and metadata
+    """
     data = response["Body"]["stkCallback"]
     metadata = {"merchant_id": data["MerchantRequestID"]}
 
