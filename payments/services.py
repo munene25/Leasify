@@ -10,7 +10,7 @@ from payments.selectors import payment_get_checkout
 logger = get_logger("payments")
 
 if TYPE_CHECKING:
-    from payments.mpesa import CallbackResponse
+    from payments.mpesa import STKResult
     from users.models import User
     from billing.models import BillingPeriod as BP
 
@@ -60,7 +60,9 @@ def payment_mpesa_initiate(*, billing: "BP", phone_number: str) -> Payment:
     return payment
 
 
-def payment_alt_create(*, billing: "BP", mode: PaymentMode, recorded_by: "User", status: PaymentStatus = PaymentStatus.SUCCESS):
+def payment_alt_create(
+    *, billing: "BP", mode: PaymentMode, recorded_by: "User", status: PaymentStatus = PaymentStatus.SUCCESS
+):
     """
     Create a manual payment via an alternate mode (CASH/BANK).
 
@@ -91,22 +93,20 @@ def payment_alt_create(*, billing: "BP", mode: PaymentMode, recorded_by: "User",
     return payment
 
 
-def payment_mpesa_process(cb: "CallbackResponse") -> Payment:
+def payment_mpesa_process(stk_result: "STKResult") -> Payment:
     """
     Process M-Pesa callback and update payment status accordingly.
 
-    :param cb: The callback response containing checkout details and transaction result
+    :param stk_result: The payment response containing checkout details and transaction result
     :returns: Updated Payment object with new status
 
     """
-    payment = payment_get_checkout(cb.checkout_id)
-    if cb.success:
-        payment.status = PaymentStatus.SUCCESS
-        payment.receipt_no = cb.receipt_no
-    else:
-        payment.status = PaymentStatus.FAILED
+    payment = payment_get_checkout(stk_result.checkout_id)
+
+    payment.status = PaymentStatus.SUCCESS if stk_result.success else PaymentStatus.FAILED
+    payment.receipt_no = stk_result.receipt_no  # Might be there or not
 
     payment.save()
     # ? Send email notification
-    logger.info("payment_processed", checkout_id=payment.checkout_id, status=payment.status, description=cb.result_desc)
+    logger.info("payment_processed", checkout_id=payment.checkout_id, status=payment.status, description=stk_result.result_desc)
     return payment
