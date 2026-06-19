@@ -65,8 +65,8 @@ class PaymentMpesaCallbackView(BaseAPIView):
     """Update payment status based on callback response."""
 
     def post(self, request) -> Response:
-        cb = parse_callback_response(request.data)
-        sr.payment_mpesa_process(cb=cb)
+        stk_result = parse_callback_response(request.data)
+        sr.payment_mpesa_process(stk_result)
         return Response(status=status.HTTP_200_OK)
 
 
