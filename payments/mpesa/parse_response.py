@@ -28,13 +28,11 @@ def parse_query_response(response: dict[str, Any]) -> QueryResponse:
     """Parse a 'query payment status' request response"""
     data = response["Body"]["stkCallback"]
 
-    qr = QueryResponse(
+    return QueryResponse(
         checkout_id=data["CheckoutRequestID"],
         success=int(data["ResultCode"]) == 0,
         result_desc=data["ResultDesc"],
     )
-
-    return qr
 
 
 @dataclass
