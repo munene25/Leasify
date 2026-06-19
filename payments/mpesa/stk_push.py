@@ -12,6 +12,16 @@ logger = get_logger("payments.mpesa.stk_push")
 
 @dataclass
 class STKPushResponse:
+    """
+    !Sample response
+    {
+        "MerchantRequestID": "2654-4b64-97ff-b827b542881d3130",
+        "CheckoutRequestID": "ws_CO_1007202409152617172396192",
+        "ResponseCode": "0",
+        "ResponseDescription": "Success. Request accepted for processing",
+        "CustomerMessage": "Success. Request accepted for processing"
+    }
+    """
     checkout_id: str
     sucess: bool
     
@@ -44,7 +54,7 @@ def initiate_stk_push(*, phone_number: str, amount: int, account_ref: str, descr
         "PhoneNumber": phone_number,
         "TransactionDesc": description,
         "AccountReference": "Test",
-        "CallBackURL": "https://morbidity-blaspheme-shifty.ngrok-free.dev/payments/mpesa/callback/",
+        "CallBackURL": cfg["INITIATE_URL"],
     }
 
     headers = {"Content-Type": "application/json", "Authorization": f"Bearer {access_token}"}
@@ -56,13 +66,3 @@ def initiate_stk_push(*, phone_number: str, amount: int, account_ref: str, descr
     json = res.json()
     stk = STKPushResponse(json["CheckoutRequestID"], int(json["ResponseCode"]) == 0)
     return stk
-
-
-# Sample response
-# {
-#   "MerchantRequestID": "2654-4b64-97ff-b827b542881d3130",
-#   "CheckoutRequestID": "ws_CO_1007202409152617172396192",
-#   "ResponseCode": "0",
-#   "ResponseDescription": "Success. Request accepted for processing",
-#   "CustomerMessage": "Success. Request accepted for processing"
-# }
