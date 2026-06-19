@@ -1,25 +1,9 @@
 import requests
 from config.settings import MPESA_CONFIG as cfg
-from payments.mpesa.authenticate import get_access_token
-from dataclasses import dataclass
-from payments.mpesa.utils import make_timestamp, make_password 
+from payments.mpesa.auth import get_access_token
+from payments.mpesa.utils import make_timestamp, make_password
+from payments.mpesa.types import STKPushResponse, QueryResponse
 
-
-@dataclass
-class STKPushResponse:
-    """
-    !Sample response
-    {
-        "MerchantRequestID": "2654-4b64-97ff-b827b542881d3130",
-        "CheckoutRequestID": "ws_CO_1007202409152617172396192",
-        "ResponseCode": "0",
-        "ResponseDescription": "Success. Request accepted for processing",
-        "CustomerMessage": "Success. Request accepted for processing"
-    }
-    """
-    checkout_id: str
-    sucess: bool
-    
 
 def initiate_stk_push(*, phone_number: str, amount: int, account_ref: str, description: str) -> STKPushResponse:
     """
@@ -42,7 +26,7 @@ def initiate_stk_push(*, phone_number: str, amount: int, account_ref: str, descr
         "TransactionType": "CustomerPayBillOnline",
         "PhoneNumber": phone_number,
         "TransactionDesc": description,
-        "AccountReference": "Test",
+        "AccountReference": account_ref,
         "CallBackURL": cfg["INITIATE_URL"],
     }
 
@@ -55,3 +39,29 @@ def initiate_stk_push(*, phone_number: str, amount: int, account_ref: str, descr
     json = res.json()
     stk = STKPushResponse(json["CheckoutRequestID"], int(json["ResponseCode"]) == 0)
     return stk
+
+
+def query_payment_status(checkout_request_id: str) -> QueryResponse:
+    """Query the status of an M-PESA payment."""
+
+    timestamp = make_timestamp()
+    payload = {
+        "BusinessShortCode": cfg["SHORTCODE"],
+        "Password": make_password(timestamp),
+        "Timestamp": timestamp,
+        "CheckoutRequestID": checkout_request_id,
+    }
+    # Make the API request to M-PESA
+    headers = {"Content-Type": "application/json", "Authorization": f"Bearer {get_access_token()}"}
+
+    res = requests.post(cfg["EXPRESS_URL"], json=payload, headers=headers)
+    res.raise_for_status()
+
+    # Parse and normalize response
+    json_data = res.json()
+
+    return QueryResponse(
+        checkout_id=checkout_request_id,
+        success=int(json_data["ResultCode"]) == 0,
+        result_desc=json_data["ResultDesc"],
+    )
