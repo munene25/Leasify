@@ -6,9 +6,8 @@ from common.pagination import get_paginated_response
 from common.permissions import check_perms
 from payments import services as sr, selectors as sl, serializer as sc
 from common.views import BaseAPIView
-from payments.mpesa import parse_mpesa_response
+from payments.mpesa import parse_callback_response
 from billing.selectors import billing_get_for
-from django.http import HttpResponse
 
 class PaymentListView(BaseAPIView):
     """List and retrieve all payments accessible by the authenticated user."""
@@ -66,7 +65,7 @@ class PaymentMpesaCallbackView(BaseAPIView):
     """Update payment status based on callback response."""
 
     def post(self, request) -> Response:
-        cb = parse_mpesa_response(request.data)
+        cb = parse_callback_response(request.data)
         sr.payment_mpesa_process(cb=cb)
         return Response(status=status.HTTP_200_OK)
 
