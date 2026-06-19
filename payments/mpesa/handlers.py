@@ -32,16 +32,16 @@ def initiate_stk_push(phone_number: str, amount: int, account_ref: str, descript
         "Amount": amount,
         "PartyA": phone_number,
         "PartyB": cfg["SHORTCODE"],
-        "TransactionType": "CustomerBuyGoodsOnline",
+        "TransactionType": "CustomerPayBillOnline",
         "PhoneNumber": phone_number,
         "TransactionDesc": description,
         "AccountReference": account_ref,
-        "CallBackURL": cfg["INITIATE_URL"],
+        "CallBackURL": cfg["CALLBACK_URL"],
     }
 
     headers = {"Content-Type": "application/json", "Authorization": f"Bearer {get_access_token()}"}
 
-    res = requests.post(cfg["EXPRESS_URL"], json=payload, headers=headers)
+    res = requests.post(cfg["INITIATE_URL"], json=payload, headers=headers)
     res.raise_for_status()
 
     # Normalize and return response
@@ -67,7 +67,7 @@ def query_payment_status(checkout_request_id: str) -> STKResult:
     # Make the API request to M-PESA
     headers = {"Content-Type": "application/json", "Authorization": f"Bearer {get_access_token()}"}
 
-    res = requests.post(cfg["EXPRESS_URL"], json=payload, headers=headers)
+    res = requests.post(cfg["QUERY_URL"], json=payload, headers=headers)
     res.raise_for_status()
 
     # Parse and normalize response
