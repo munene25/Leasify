@@ -3,7 +3,7 @@ from structlog import get_logger
 from typing import TYPE_CHECKING
 from payments.models import Payment
 from payments.choices import PaymentStatus, PaymentMode
-from payments.mpesa.stk_push import initiate_stk_push  # Use original function name from stk_push.py (typo preserved)
+from payments.mpesa import initiate_stk_push
 from common.exceptions import PaymentError
 from payments.selectors import payment_get_checkout
 
