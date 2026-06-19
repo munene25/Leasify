@@ -13,5 +13,5 @@ urlpatterns = [
     # Payment detail endpoint - Retrieve specific payment information
     path("<int:payment_id>", views.PaymentDetailView.as_view(), name="payment_detail"),
     # Query and update M-PESA payment status
-    path("<int:payment_id>/query", views.QueryPaymentStatusView.as_view(), name="query_payment_status"),
+    path("<int:payment_id>/query", views.PaymentStatusQueryView.as_view(), name="query_payment_status"),
 ]

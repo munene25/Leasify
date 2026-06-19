@@ -2,16 +2,17 @@ from rest_framework import status, serializers
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.exceptions import ValidationError
 from common.pagination import get_paginated_response
 from common.permissions import check_perms
 from payments import services as sr, selectors as sl, serializer as sc
 from common.views import BaseAPIView
-from payments.mpesa import parse_callback_response
+from payments.mpesa import parse_callback_response, query_payment_status
 from billing.selectors import billing_get_for
 
 class PaymentListView(BaseAPIView):
     """List and retrieve all payments accessible by the authenticated user."""
-    
+
     class FilterClass(serializers.Serializer):
         billing = serializers.IntegerField()
         status = serializers.CharField()
@@ -40,9 +41,10 @@ class PaymentInitiateMpesaView(BaseAPIView):
 
     permission_classes = [IsAuthenticated]
     serializer_class = sc.PaymentInitiateMpesaSerializer
-    
+
     def post(self, request, billing_id: int) -> Response:
         # Get billing through selector to ensure the user can even see the billing
+        # ? Filter out paid billing?
         billing = billing_get_for(user=request.user, billing_id=billing_id)
         incoming = self.validate_serializer(data=request.data)
         payment = sr.payment_mpesa_initiate(billing=billing, phone_number=incoming["phone_number"])
@@ -59,6 +61,31 @@ class PaymentDetailView(APIView):
         selected = sl.payment_get_for(user=request.user, payment_id=payment_id)
         outgoing = sc.PaymentDetailSerializer(instance=selected)
         return Response(data=outgoing.data, status=status.HTTP_200_OK)
+
+
+class PaymentStatusQueryView(BaseAPIView):
+    """Query and update the status of an M-PESA payment."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, payment_id: int) -> Response:
+        check_perms(request.user, "payment.view_payment")
+
+        # Get the payment for the user to verify access (raises if not found)
+        selected = sl.payment_get_for(user=request.user, payment_id=payment_id)
+
+        # All checkout_ids are M-PESA payments, so we can query directly
+        if not selected.checkout_id:
+            raise ValidationError("Only MPESA payments can be queried")
+
+        try: stk_result = query_payment_status(selected.checkout_id)
+        except: raise ValidationError("Could not complete the request at this time")
+        # Update the payment status based on the result
+        payment = sr.payment_mpesa_process(stk_result)
+
+        # Return updated payment details
+        outgoing = sc.PaymentDetailSerializer(instance=payment)
+        return Response(data={"result_desc": f"{stk_result.result_desc}",}.update(outgoing.data), status=status.HTTP_200_OK)
 
 
 class PaymentMpesaCallbackView(BaseAPIView):
