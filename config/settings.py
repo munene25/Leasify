@@ -239,10 +239,11 @@ MPESA_CONFIG = {
     "AUTHENTICATE_URL": os.environ["MPESA_AUTHENTICATE_URL"],
     "CONSUMER_KEY": os.environ["MPESA_CONSUMER_KEY"],
     "CONSUMER_SECRET": os.environ["MPESA_CONSUMER_SECRET"],
-    "EXPRESS_URL": os.environ["MPESA_EXPRESS_URL"],
     "SHORTCODE": os.environ["MPESA_SHORTCODE"],
     "PASSKEY": os.environ["MPESA_PASSKEY"],
     "CALLBACK_URL": os.environ["MPESA_CALLBACK_URL"],
+    "QUERY_URL": os.environ["MPESA_EXPRESS_URL_QUERY"],
+    "INITIATE_URL": os.environ["MPESA_EXPRESS_URL_INITIATE"],
 }
 
 FLOWER_URL = "http://localhost:5555"
