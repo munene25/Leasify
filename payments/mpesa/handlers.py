@@ -2,7 +2,7 @@ import requests
 from config.settings import MPESA_CONFIG as cfg
 from payments.mpesa.auth import get_access_token
 from payments.mpesa.utils import make_timestamp, make_password
-from payments.mpesa.types import STKPushResponse, QueryResponse
+from payments.mpesa.types import STKPushResponse, STKResult
 
 
 def initiate_stk_push(phone_number: str, amount: int, account_ref: str, description: str) -> STKPushResponse:
@@ -50,7 +50,7 @@ def initiate_stk_push(phone_number: str, amount: int, account_ref: str, descript
     return stk
 
 
-def query_payment_status(checkout_request_id: str) -> QueryResponse:
+def query_payment_status(checkout_request_id: str) -> STKResult:
     """Query the status of an M-PESA payment.
 
     :param checkout_request_id: The M-PESA CheckoutRequestID from the STK push response
@@ -73,7 +73,7 @@ def query_payment_status(checkout_request_id: str) -> QueryResponse:
     # Parse and normalize response
     json_data = res.json()
 
-    return QueryResponse(
+    return STKResult(
         checkout_id=checkout_request_id,
         success=int(json_data["ResultCode"]) == 0,
         result_desc=json_data["ResultDesc"],

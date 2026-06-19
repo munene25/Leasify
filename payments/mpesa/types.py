@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+
 @dataclass
 class STKPushResponse:
     """
@@ -12,16 +13,17 @@ class STKPushResponse:
         "CustomerMessage": "Success. Request accepted for processing"
     }
     """
+
     checkout_id: str
     sucess: bool
-    
+
 
 @dataclass
-class QueryResponse:
+class STKResult:
     """
-    M-PESA Query Response
+    An M-PESA response giving details of a payment either through Querying status of the response or a callback response
 
-    Sample response structure from the API:
+    Sample response structure from a Query:
     {
         "ResponseCode": "0",
         "ResponseDescription": "The service request has been accepted successfully",
@@ -30,17 +32,8 @@ class QueryResponse:
         "ResultCode": "0",
         "ResultDesc": "The service request is processed successfully.",
     }
-    """
 
-    checkout_id: str
-    success: bool
-    result_desc: str
-
-
-@dataclass
-class CallbackResponse:
-    """
-    !Sample failed data
+    Sample response from the callback [FAILED]
     {
         "Body": {
             "stkCallback": {
@@ -51,7 +44,8 @@ class CallbackResponse:
             }
         }
     }
-    !Sample success data
+
+    Sample response from the callback [SUCCESS]
     {
         "Body": {
             "stkCallback": {

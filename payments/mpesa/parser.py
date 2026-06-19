@@ -1,6 +1,7 @@
-from payments.mpesa.types import CallbackResponse
+from typing import Any
+from payments.mpesa.types import STKResult
 
-def parse_callback_response(response: dict) -> CallbackResponse:
+def parse_callback_response(response: dict[str, Any]) -> STKResult:
     """Parse the M-PESA callback response.
 
     :param response: The raw callback response dictionary
@@ -9,7 +10,7 @@ def parse_callback_response(response: dict) -> CallbackResponse:
     data = response["Body"]["stkCallback"]
     metadata = {"merchant_id": data["MerchantRequestID"]}
 
-    cb = CallbackResponse(
+    cb = STKResult(
         checkout_id=data["CheckoutRequestID"],
         success=int(data["ResultCode"]) == 0,
         result_desc=data["ResultDesc"],
