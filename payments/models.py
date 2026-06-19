@@ -32,6 +32,7 @@ class Payment(BaseModel):
     phone_number = PhoneNumberModelField(null=True, blank=True)
     checkout_id = models.CharField(unique=True, null=True, blank=True)
     receipt_no = models.CharField(null=True, blank=True)
+    timestamp = models.CharField(null=True, blank=True)
 
     # Manual only for cash/bank payments
     recorded_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.PROTECT, related_name="recorded_payments")
