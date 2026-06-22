@@ -2,8 +2,10 @@ from rest_framework import serializers
 from payments.choices import PaymentStatus, PaymentMode
 from common.fields import PhoneNumberSerializerField
 
+
 class PaymentListSerializer(serializers.Serializer):
     """Serializer for listing payments"""
+
     payment_id = serializers.IntegerField(source="pk")
     ref_no = serializers.CharField()
     billing_id = serializers.IntegerField()
@@ -14,6 +16,7 @@ class PaymentListSerializer(serializers.Serializer):
 
 class PaymentDetailSerializer(serializers.Serializer):
     """Serializer for payment detail"""
+
     payment_id = serializers.IntegerField(source="pk")
     ref_no = serializers.CharField()
     billing_id = serializers.IntegerField()
@@ -23,13 +26,18 @@ class PaymentDetailSerializer(serializers.Serializer):
     phone_number = serializers.CharField()
     receipt_no = serializers.CharField()
 
+
 class PaymentInitiateMpesaSerializer(serializers.Serializer):
     """Payment initiation serializer for M-Pesa STK push"""
+
+    billing_id = serializers.IntegerField()
     phone_number = PhoneNumberSerializerField()
 
 
 class PaymentAltCreateSerializer(serializers.Serializer):
     """Serializer for manual payment creation (alternate mode: CASH/BANK)"""
+
+    billing_id = serializers.IntegerField()
     mode = serializers.ChoiceField(choices=PaymentMode.choices, required=False)
     status = serializers.ChoiceField(choices=PaymentStatus.choices)
     recorded_by = serializers.CharField()
