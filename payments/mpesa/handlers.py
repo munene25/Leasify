@@ -1,11 +1,11 @@
 import requests
 from config.settings import MPESA_CONFIG as cfg
 from payments.mpesa.auth import get_access_token
-from payments.mpesa.utils import make_timestamp, make_password
+from payments.mpesa.utils import make_password
 from payments.mpesa.types import STKPushResponse, STKResult
 
 
-def initiate_stk_push(phone_number: str, amount: int, account_ref: str, description: str) -> STKPushResponse:
+def initiate_stk_push(phone_number: str, amount: int, account_ref: str, description: str, timestamp: str) -> STKPushResponse:
     """Initiate a M-PESA STK push request.
 
     Transaction type is "CustomerPayBillOnline" for PayBill Numbers and "CustomerBuyGoodsOnline" for Till Numbers.
@@ -22,8 +22,6 @@ def initiate_stk_push(phone_number: str, amount: int, account_ref: str, descript
     # There is a limit on the length of account ref or description
     if len(account_ref) > 12 or len(description) > 13:
         raise ValueError(f"Account_ref ({account_ref}) or description ({description}) too long")
-
-    timestamp = make_timestamp()
 
     payload = {
         "Password": make_password(cfg["SHORTCODE"], cfg["PASSKEY"], timestamp),
@@ -50,14 +48,13 @@ def initiate_stk_push(phone_number: str, amount: int, account_ref: str, descript
     return stk
 
 
-def query_payment_status(checkout_request_id: str) -> STKResult:
+def query_payment_status(checkout_request_id: str, timestamp: str) -> STKResult:
     """Query the status of an M-PESA payment.
 
     :param checkout_request_id: The M-PESA CheckoutRequestID from the STK push response
+    :param timestamp: The timestamp for the payment in strftime
     :return: QueryResponse object with checkout_id, success, and result_desc
     """
-
-    timestamp = make_timestamp()
     payload = {
         "BusinessShortCode": cfg["SHORTCODE"],
         "Password": make_password(cfg["SHORTCODE"], cfg["PASSKEY"], timestamp),
