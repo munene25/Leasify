@@ -4,7 +4,9 @@ from typing import TYPE_CHECKING
 from common.exceptions import MpesaAPIError
 from payments.models import Payment
 from payments.selectors import payment_get_checkout
-from payments.choices import PaymentStatus, PaymentMode
+from payments.choices import PaymentStatus as PS, PaymentMode
+from billing.choices import BillingStatus as BS
+from rest_framework.exceptions import ValidationError
 from payments.mpesa import initiate_stk_push, query_payment_status, make_timestamp
 
 logger = get_logger("payments")
@@ -24,6 +26,10 @@ def payment_mpesa_initiate(*, billing: "BP", phone_number: str) -> Payment:
     :returns: Payment object created with PENDING status
 
     """
+
+    if pending := billing.payments.filter(status=PS.PENDING).first():
+        return pending
+    
     timestamp = make_timestamp()
     try:
         res = initiate_stk_push(
@@ -44,7 +50,7 @@ def payment_mpesa_initiate(*, billing: "BP", phone_number: str) -> Payment:
     payment = Payment.objects.create(
         billing=billing,
         amount=billing.total_due,
-        status=PaymentStatus.PENDING,
+        status=PS.PENDING,
         payment_mode=PaymentMode.MPESA,
         phone_number=phone_number,
         checkout_id=res.checkout_id,
@@ -63,7 +69,7 @@ def payment_mpesa_initiate(*, billing: "BP", phone_number: str) -> Payment:
 
 
 def payment_alt_create(
-    *, billing: "BP", mode: PaymentMode, recorded_by: "User", status: PaymentStatus = PaymentStatus.SUCCESS
+    *, billing: "BP", mode: PaymentMode, recorded_by: "User", status: PS = PS.SUCCESS
 ):
     """
     Create a manual payment via an alternate mode (CASH/BANK).
@@ -105,7 +111,7 @@ def payment_mpesa_process(stk_result: "STKResult") -> Payment:
     """
     payment = payment_get_checkout(stk_result.checkout_id)
 
-    payment.status = PaymentStatus.SUCCESS if stk_result.success else PaymentStatus.FAILED
+    payment.status = PS.SUCCESS if stk_result.success else PS.FAILED
     payment.receipt_no = stk_result.receipt_no  # Might be there or not
 
     payment.save()
@@ -127,7 +133,7 @@ def payment_mpesa_query(payment: Payment) -> "Payment":
     if not payment.checkout_id or not payment.timestamp:
         raise MpesaAPIError("Only M-PESA payments can be queried")
 
-    if payment.status and payment.status != PaymentStatus.SUCCESS:
+    if payment.status and payment.status != PS.SUCCESS:
         return payment
 
     try:
