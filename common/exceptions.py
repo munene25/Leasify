@@ -11,7 +11,7 @@ class EmailUpdateError(APIException):
 
 class UserLinkMalformedError(APIException):
     """
-    Raised when uidb64 or token segments in a generated URL 
+    Raised when uidb64 or token segments in a generated URL
     cannot be decoded or are structurally invalid.
     """
 
@@ -30,6 +30,7 @@ class RoleAssignmentError(APIException):
     default_detail = "Only one role is allowed per user."
     default_code = "roles_exceeded"
 
+
 class InvalidPeriodError(APIException):
     """
     Raised when a user tries to book an apartment for a period that's already concluded.
@@ -44,22 +45,25 @@ class ApartmentUnavailableError(APIException):
     """
     Raised when a user tries to book an apartment that has an overlapping lease.
     """
+
     status_code = status.HTTP_409_CONFLICT
     default_detail = "Apartment is not available for renting"
     default_code = "apartment_unavailable"
+
 
 class MaxReservationsExceededError(APIException):
     """
     Raised when the number of reservations for an apartment in the past 2 weeks has exceeded the maximum allowed.
     """
+
     status_code = status.HTTP_409_CONFLICT
     default_detail = "Maximum number of reservations for user has been exceeded for the month."
     default_code = "max_reservations_exceeded"
 
 
-class PaymentError(APIException):
-    """Raised when a payment transaction fails or encounters an error."""
+class MpesaAPIError(APIException):
+    """Raised when a payment mpesa api requests fail."""
 
     status_code = status.HTTP_503_SERVICE_UNAVAILABLE
-    default_detail = "Payment could not be completed at this time. Service is unavailable"
+    default_detail = "Action could not be completed at this time. Service is unavailable"
     default_code = "payment_failed"
