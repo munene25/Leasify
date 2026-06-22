@@ -6,6 +6,8 @@ from payments.choices import PaymentStatus, PaymentMode
 from payments.mpesa import initiate_stk_push
 from common.exceptions import PaymentError
 from payments.selectors import payment_get_checkout
+from payments.mpesa import make_timestamp
+
 
 logger = get_logger("payments")
 
@@ -24,13 +26,14 @@ def payment_mpesa_initiate(*, billing: "BP", phone_number: str) -> Payment:
     :returns: Payment object created with PENDING status
 
     """
-
+    timestamp = make_timestamp()
     try:
         res = initiate_stk_push(
             phone_number=phone_number,
             amount=int(billing.total_due),
             account_ref=billing.name[:8],  # example: JAN-2024
             description="Rent Payment",
+            timestamp=timestamp
         )
     except (requests.exceptions.Timeout, requests.exceptions.HTTPError) as e:
         logger.error(
@@ -47,6 +50,7 @@ def payment_mpesa_initiate(*, billing: "BP", phone_number: str) -> Payment:
         payment_mode=PaymentMode.MPESA,
         phone_number=phone_number,
         checkout_id=res.checkout_id,
+        timestamp=timestamp,
     )
 
     logger.info(
