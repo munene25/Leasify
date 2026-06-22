@@ -1,13 +1,11 @@
 import requests
 from structlog import get_logger
 from typing import TYPE_CHECKING
+from common.exceptions import MpesaAPIError
 from payments.models import Payment
-from payments.choices import PaymentStatus, PaymentMode
-from payments.mpesa import initiate_stk_push
-from common.exceptions import PaymentError
 from payments.selectors import payment_get_checkout
-from payments.mpesa import make_timestamp
-
+from payments.choices import PaymentStatus, PaymentMode
+from payments.mpesa import initiate_stk_push, query_payment_status, make_timestamp
 
 logger = get_logger("payments")
 
@@ -33,15 +31,15 @@ def payment_mpesa_initiate(*, billing: "BP", phone_number: str) -> Payment:
             amount=int(billing.total_due),
             account_ref=billing.name[:8],  # example: JAN-2024
             description="Rent Payment",
-            timestamp=timestamp
+            timestamp=timestamp,
         )
     except (requests.exceptions.Timeout, requests.exceptions.HTTPError) as e:
         logger.error(
             "stk_push_failed",
             status_code=getattr(e.response, "status_code", None),
-            response=(e.response.json()),  # type: ignore
+            response=e.response.json() if e.response else str(e.response),
         )
-        raise PaymentError()
+        raise MpesaAPIError()
 
     payment = Payment.objects.create(
         billing=billing,
@@ -112,5 +110,34 @@ def payment_mpesa_process(stk_result: "STKResult") -> Payment:
 
     payment.save()
     # ? Send email notification
-    logger.info("payment_processed", checkout_id=payment.checkout_id, status=payment.status, description=stk_result.result_desc)
+    logger.info(
+        "payment_processed", checkout_id=payment.checkout_id, status=payment.status, description=stk_result.result_desc
+    )
     return payment
+
+
+def payment_mpesa_query(payment: Payment) -> "Payment":
+    """
+    Query the status of an M-Pesa payment via the MPESA endpoint and update the payment.
+
+    :param payment: The payment object to query
+    :returns: Updated Payment object with new status
+
+    """
+    if not payment.checkout_id or not payment.timestamp:
+        raise MpesaAPIError("Only M-PESA payments can be queried")
+
+    if payment.status and payment.status != PaymentStatus.SUCCESS:
+        return payment
+
+    try:
+        stk_result = query_payment_status(checkout_request_id=payment.checkout_id, timestamp=payment.timestamp)
+    except (requests.exceptions.Timeout, requests.exceptions.HTTPError) as e:
+        logger.error(
+            "query_payment_failed",
+            status_code=getattr(e.response, "status_code", None),
+            response=e.response.json() if e.response else str(e.response),
+        )
+        raise MpesaAPIError()
+
+    return payment_mpesa_process(stk_result)
