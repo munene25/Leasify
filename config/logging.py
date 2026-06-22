@@ -52,7 +52,7 @@ DICT_LOG = {
             "propagate": True,
         },
         "django": {
-            "level": "WARNING",
+            "level": "CRITICAL",
             "propagate": False,
         },
         "django.request": {
