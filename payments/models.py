@@ -8,8 +8,10 @@ from users.models import User
 
 class Payment(BaseModel):
     """
+    Payment model for tracking rent payments.
+    
     Two creation paths:
-    - STK push (MPESA): checkout_id and phone_number are populated, recorded_by is null
+    - STK push (MPESA): checkout_id, timestamp, idempotency_key and phone_number are populated, recorded_by is null
     - Manual (CASH/BANK): recorded_by is populated, checkout_id and phone_number are null
 
     Payer identity is resolved via billing -> tenancy -> tenant.
