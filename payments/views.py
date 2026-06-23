@@ -96,7 +96,8 @@ class PaymentDetailView(APIView):
 
 
 class PaymentStatusQueryView(BaseAPIView):
-    """Query and update the status of an M-PESA payment.
+    """
+    Query and update the status of an M-PESA payment.
 
     Queries the current status of an M-PESA transaction via the MPESA endpoint and updates the internal payment record accordingly.
 
@@ -118,7 +119,8 @@ class PaymentStatusQueryView(BaseAPIView):
 
 
 class PaymentMpesaCallbackView(BaseAPIView):
-    """Update payment status based on callback response.
+    """
+    Update payment status based on callback response.
 
     Processes an M-PESA STK push callback and updates the internal payment record with transaction result.
 
@@ -133,7 +135,8 @@ class PaymentMpesaCallbackView(BaseAPIView):
 
 
 class PaymentAltCreateView(BaseAPIView):
-    """Manually create a payment via alternate mode (CASH/BANK).
+    """
+    Manually create a payment via alternate mode (CASH/BANK).
 
     Creates a payment manually through CASH or BANK modes, bypassing the M-PESA STK push flow.
 
