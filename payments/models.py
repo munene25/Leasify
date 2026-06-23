@@ -41,7 +41,7 @@ class Payment(BaseModel):
     checkout_id = models.CharField(unique=True, null=True, blank=True)
     receipt_no = models.CharField(null=True, blank=True)
     timestamp = models.CharField(null=True, blank=True)
-    idemp_key = models.CharField(null=True, blank=True, unique=True)
+    idempotencey_key = models.CharField(null=True, blank=True, unique=True)
 
     # Manual only for cash/bank payments
     recorded_by = models.ForeignKey(
