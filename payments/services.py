@@ -1,11 +1,13 @@
 import requests
 from structlog import get_logger
 from typing import TYPE_CHECKING
+from django.db import transaction, models
 from common.exceptions import MpesaAPIError
 from payments.models import Payment
 from payments.selectors import payment_get_checkout
 from payments.choices import PaymentStatus as PS, PaymentMode
 from billing.choices import BillingStatus as BS
+from billing.models import BillingPeriod as BP
 from rest_framework.exceptions import ValidationError
 from payments.mpesa import initiate_stk_push, query_payment_status, make_timestamp
 
@@ -17,36 +19,37 @@ if TYPE_CHECKING:
     from billing.models import BillingPeriod as BP
 
 
-def payment_mpesa_initiate(*, billing: "BP", phone_number: str) -> Payment:
-    """
-    Initialize a payment via M-Pesa STK push. Depending on status can be updated later on callback.
+@transaction.atomic
+def payment_mpesa_initiate(*, billing: "BP", phone_number: str, idempotency_key: str) -> Payment:
+    """Initialize a payment via M-Pesa STK push."""
+    
+    billing = BP.objects.select_for_update().get(pk=billing.pk)
+    
+    # Prevents CANCELLED OR PAID billings to be processed
+    if billing.status != BS.UNPAID:
+        raise ValidationError(f"Cannot pay {billing.status} billing")
+    
+    # Check for Idempotency
+    if existing := billing.payments.filter(idempotency_key=idempotency_key).first():
+        return existing
 
-    :param billing: The billing period being paid for
-    :param phone_number: Phone number that initiated the transaction
-    :returns: Payment object created with PENDING status
-
-    """
-
+    # Check for Pending
     if pending := billing.payments.filter(status=PS.PENDING).first():
         return pending
     
-    timestamp = make_timestamp()
     try:
+        timestamp = make_timestamp()
         res = initiate_stk_push(
             phone_number=phone_number,
             amount=int(billing.total_due),
-            account_ref=billing.name[:8],  # example: JAN-2024
+            account_ref=billing.name[:8],
             description="Rent Payment",
             timestamp=timestamp,
         )
     except (requests.exceptions.Timeout, requests.exceptions.HTTPError) as e:
-        logger.error(
-            "stk_push_failed",
-            status_code=getattr(e.response, "status_code", None),
-            response=e.response.json() if e.response else str(e.response),
-        )
-        raise MpesaAPIError()
-
+        logger.error("stk_push_failed", status_code=getattr(e.response, "status_code", None))
+        raise MpesaAPIError() from e
+    
     payment = Payment.objects.create(
         billing=billing,
         amount=billing.total_due,
@@ -54,23 +57,15 @@ def payment_mpesa_initiate(*, billing: "BP", phone_number: str) -> Payment:
         payment_mode=PaymentMode.MPESA,
         phone_number=phone_number,
         checkout_id=res.checkout_id,
+        idempotency_key=idempotency_key,
         timestamp=timestamp,
     )
-
-    logger.info(
-        "payment_initiated",
-        tenancy_id=billing.tenancy_id,
-        billing_id=billing.pk,
-        billing=billing.name,
-        amount=billing.total_due,
-        phone=payment.phone_number,
-    )
+    
+    logger.info("payment_initiated", payment_id=payment.pk, billing_id=billing.pk)
     return payment
 
 
-def payment_alt_create(
-    *, billing: "BP", mode: PaymentMode, recorded_by: "User", status: PS = PS.SUCCESS
-):
+def payment_alt_create(*, billing: "BP", mode: PaymentMode, recorded_by: "User", status: PS = PS.SUCCESS):
     """
     Create a manual payment via an alternate mode (CASH/BANK).
 
@@ -81,6 +76,9 @@ def payment_alt_create(
     :returns: Payment object created with specified status
 
     """
+    # Prevents CANCELLED OR PAID billings to be processed
+    if billing.status != BS.UNPAID:
+        raise ValidationError(f"Cannot pay {billing.status} billing")
 
     payment = Payment.objects.create(
         billing=billing,
