@@ -3,10 +3,9 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.exceptions import NotAcceptable
-from django.core.cache import cache
 from common.pagination import get_paginated_response
 from common.permissions import check_perms
-from payments import services as sr, selectors as sl, serializer as sc
+from payments import services as sr, selectors as sl, serializer as sc, models as md
 from common.views import BaseAPIView
 from payments.mpesa import parse_callback_response
 from payments.choices import PaymentStatus as PS
@@ -46,36 +45,22 @@ class PaymentInitiateMpesaView(BaseAPIView):
     serializer_class = sc.PaymentInitiateMpesaSerializer
 
     def post(self, request) -> Response:
+        try: idempotency_key = request.headers["Idempotency-Key"]
+        except KeyError: raise NotAcceptable("'Idempotency-Key' not provided")
 
-        # Raise error if no idemp key is in header
-        try: idem_key = request.headers["Idempotency-Key"]
-        except KeyError: raise NotAcceptable("'Idempotency-Key' header missing")
-        cache_key = f"payments:mpesa:idemp:{idem_key}"
-
-        # Try to set cache immediately to minimize concurency exposure
-        if not cache.add(cache_key, None, timeout=300):
-            cached = cache.get(cache_key)
-            message = {"message":"An M-Pesa transaction is already underway."}
-            message.update({"payment_id": cached}) if cached is not None else {}
-            return Response(data=message, status=200)
-        
         incoming = self.validate_serializer(data=request.data)
         billing = billing_get_for(user=request.user, billing_id=incoming["billing_id"])
-
-        # Service checks for pending payments or if billing status is paid
-        payment = sr.payment_mpesa_initiate(billing=billing, phone_number=incoming["phone_number"])
         
-        # Set cache with correct payment_id
-        cache.set(cache_key, payment.pk, timeout=300)
-            
-        return Response(
-            data={
-                "message": "An M-Pesa transaction has been initiated.", 
-                "payment_id": payment.pk
-            },
-            status=status.HTTP_201_CREATED,
+        payment = sr.payment_mpesa_initiate(
+            billing=billing,
+            phone_number=incoming["phone_number"],
+            idempotency_key=idempotency_key
         )
-    
+        
+        return Response(
+            {"message": "M-Pesa transaction initiated.", "payment_id": payment.pk},
+            status=status.HTTP_201_CREATED,
+    )
 
 
 class PaymentDetailView(APIView):
