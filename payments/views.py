@@ -13,7 +13,13 @@ from billing.selectors import billing_get_for
 
 
 class PaymentListView(BaseAPIView):
-    """List and retrieve all payments accessible by the authenticated user."""
+    """List and retrieve all payments accessible by the authenticated user.
+
+    Filters available: billing_id, status, payment_mode, search query string.
+
+    :param request: The HTTP request containing authentication token and optional query parameters
+    :returns: Paginated list of Payment objects with filtering applied
+    """
 
     class FilterClass(serializers.Serializer):
         billing = serializers.IntegerField()
@@ -39,7 +45,14 @@ class PaymentListView(BaseAPIView):
 
 
 class PaymentInitiateMpesaView(BaseAPIView):
-    """Initiate an M-Pesa payment via STK push"""
+    """Initiate an M-Pesa payment via STK push.
+
+    Initiates a new payment using the M-PESA mobile money service with STK push notification.
+    The user will be prompted to enter their PIN on their device.
+
+    :param request: The HTTP POST request containing billing_id and phone_number in body
+    :returns: Response with payment ID upon successful initiation (201 CREATED)
+    """
 
     permission_classes = [IsAuthenticated]
     serializer_class = sc.PaymentInitiateMpesaSerializer
@@ -64,7 +77,14 @@ class PaymentInitiateMpesaView(BaseAPIView):
 
 
 class PaymentDetailView(APIView):
-    """Retrieve detailed information about a specific payment."""
+    """Retrieve detailed information about a specific payment.
+
+    Retrieves full details of a single payment record accessible by the authenticated user.
+
+    :param request: The HTTP GET request containing authentication token and payment_id in path
+    :param payment_id: The unique identifier of the payment to retrieve (int)
+    :returns: Response with Payment object serialized data (200 OK)
+    """
 
     permission_classes = [IsAuthenticated]
 
@@ -76,7 +96,14 @@ class PaymentDetailView(APIView):
 
 
 class PaymentStatusQueryView(BaseAPIView):
-    """Query and update the status of an M-PESA payment."""
+    """Query and update the status of an M-PESA payment.
+
+    Queries the current status of an M-PESA transaction via the MPESA endpoint and updates the internal payment record accordingly.
+
+    :param request: The HTTP POST request containing authentication token and payment_id in path
+    :param payment_id: The unique identifier of the payment to query (int)
+    :returns: Response with updated Payment object serialized data (200 OK)
+    """
 
     permission_classes = [IsAuthenticated]
 
@@ -91,7 +118,13 @@ class PaymentStatusQueryView(BaseAPIView):
 
 
 class PaymentMpesaCallbackView(BaseAPIView):
-    """Update payment status based on callback response."""
+    """Update payment status based on callback response.
+
+    Processes an M-PESA STK push callback and updates the internal payment record with transaction result.
+
+    :param request: The HTTP POST request containing the MPESA callback JSON data
+    :returns: Response indicating successful processing (200 OK)
+    """
 
     def post(self, request) -> Response:
         stk_result = parse_callback_response(request.data)
@@ -100,7 +133,13 @@ class PaymentMpesaCallbackView(BaseAPIView):
 
 
 class PaymentAltCreateView(BaseAPIView):
-    """Manually create a payment via alternate mode (CASH/BANK)."""
+    """Manually create a payment via alternate mode (CASH/BANK).
+
+    Creates a payment manually through CASH or BANK modes, bypassing the M-PESA STK push flow.
+
+    :param request: The HTTP POST request containing authentication token and payment data in body
+    :returns: Response with Payment object serialized data (201 CREATED)
+    """
 
     permission_classes = [IsAuthenticated]
     serializer_class = sc.PaymentAltCreateSerializer
