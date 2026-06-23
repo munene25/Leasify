@@ -22,7 +22,7 @@ class Payment(BaseModel):
             models.Index(fields=["status"]),
             models.Index(fields=["checkout_id"]),
             models.Index(fields=["receipt_no"]),
-            models.Index(fields=["idemp_key"]),
+            models.Index(fields=["idempotency_key"]),
         ]
         permissions = [
             ("add_payment_manually", "Can manually create a payment"),
@@ -41,7 +41,7 @@ class Payment(BaseModel):
     checkout_id = models.CharField(unique=True, null=True, blank=True)
     receipt_no = models.CharField(null=True, blank=True)
     timestamp = models.CharField(null=True, blank=True)
-    idempotencey_key = models.CharField(null=True, blank=True, unique=True)
+    idempotency_key = models.CharField(null=True, blank=True, unique=True)
 
     # Manual only for cash/bank payments
     recorded_by = models.ForeignKey(
