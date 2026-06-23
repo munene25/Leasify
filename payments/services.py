@@ -61,7 +61,7 @@ def payment_mpesa_initiate(*, billing: "BP", phone_number: str, idempotency_key:
         timestamp=timestamp,
     )
     
-    logger.info("payment_initiated", payment_id=payment.pk, billing_id=billing.pk)
+    logger.info("payment_initiated", payment_id=payment.pk, billing_id=billing.pk, idemp_key=idempotency_key)
     return payment
 
 
