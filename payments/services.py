@@ -21,7 +21,16 @@ if TYPE_CHECKING:
 
 @transaction.atomic
 def payment_mpesa_initiate(*, billing: "BP", phone_number: str, idempotency_key: str) -> Payment:
-    """Initialize a payment via M-Pesa STK push."""
+    """Initialize a payment via M-Pesa STK push.
+
+    Creates a new payment record and initiates an M-PESA STK push transaction to collect payment from the user.
+
+    :param billing: The billing period being paid for (ForeignKey reference)
+    :param phone_number: The mobile phone number of the payer for STK push notification
+    :param idempotency_key: Unique key to prevent duplicate payments (used as cache)
+    :returns: Payment object created or retrieved from cache
+
+    """
     
     billing = BP.objects.select_for_update().get(pk=billing.pk)
     
