@@ -382,7 +382,7 @@ def payment_factory(billing_factory, phone_no, fake) -> Factory[Payment]:
             p = Payment.objects.create(
                 
                 billing=billing,
-                amount=billing.total_due, #type: ignore
+                amount=billing.total_due,
                 status=status,
                 payment_mode=payment_mode,
                 
