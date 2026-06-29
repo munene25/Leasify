@@ -28,14 +28,13 @@
       <tr style="border-bottom: 1px solid #f0f0f0;"><td style="padding: 12px 0; color: #888;">Unit</td><td style="padding: 12px 0; text-align: right;">{{ payment.billing.tenancy.apartment.name }}</td></tr>
       <tr style="border-bottom: 1px solid #f0f0f0;"><td style="padding: 12px 0; color: #888;">Billing period</td><td style="padding: 12px 0; text-align: right;">{{ payment.billing.name }}</td></tr>
       <tr style="border-bottom: 1px solid #f0f0f0;"><td style="padding: 12px 0; color: #888;">Payment mode</td><td style="padding: 12px 0; text-align: right;"><span style="background: #f0fdf4; color: #16a34a; font-size: 11px; padding: 2px 8px; border-radius: 20px; font-weight: 600;">{{ payment.payment_mode }}</span></td></tr>
-      <tr><td style="padding: 12px 0; color: #888;">Reference</td><td style="padding: 12px 0; text-align: right; font-size: 12px;">{{ payment.ref_no }}</td></tr>
-      <tr><td style="padding: 12px 0; color: #888;">Phone number</td><td style="padding: 12px 0; text-align: right;">{{ payment.ref_no }}</td></tr>
+      <tr><td style="padding: 12px 0; color: #888;">Phone number</td><td style="padding: 12px 0; text-align: right;">{{ payment.phone_number }}</td></tr>
     </table>
   </td></tr>
 </table>
 
 <div width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid #e5e5e5; margin-top:12px; padding-top:12px;">
   <div style="font-size:13px; text-align: center;">
-      <p style="margin:0; font-size:11px; color:#888;">Powered by - <strong> {{ app_name }}</strong></p>
+      <p style="margin:0; font-size:11px; color:#888;">Powered by - <strong>{{ app_name }}</strong></p>
 </div></div>
 {% endblock %}

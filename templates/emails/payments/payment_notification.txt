@@ -12,8 +12,7 @@ Date:           {{ payment.created_at }}
 Unit:           {{ payment.billing.tenancy.apartment.name }}
 Billing Period: {{ payment.billing.name }}
 Payment Mode:   {{ payment.payment_mode }}
-Phone:          {{ payment.phone_number }}
-Reference:      {{ payment.ref_no }}
+Phone number:          {{ payment.phone_number }}
 
 — The {{ company_name }} Team
 
