@@ -51,7 +51,3 @@ class Payment(BaseModel):
     )
 
     billing_id: int
-
-    @property
-    def ref_no(self) -> str:
-        return f"{self.payment_mode}-{str(self.pk).upper()}"
