@@ -66,7 +66,7 @@ class TestSTKInitialResponseParse:
 
 class TestInitiateSTKPush:
 
-    def test_success(self, monkeypatch: pytest.MonkeyPatch, stk_initial_response: dict, patch_mpesa_auth: MagicMock):
+    def test_successul_request(self, monkeypatch: pytest.MonkeyPatch, stk_initial_response: dict, patch_mpesa_auth: MagicMock):
         """Test successful STK push initiation."""
         mock_response = MagicMock()
         mock_response.json.return_value = stk_initial_response
@@ -74,7 +74,6 @@ class TestInitiateSTKPush:
         
         mock_post = MagicMock(return_value=mock_response)
         monkeypatch.setattr('payments.mpesa.handlers.requests.post', mock_post)
-
         
         result = initiate_stk_push(
             phone_number="254712345678",
@@ -83,12 +82,28 @@ class TestInitiateSTKPush:
             description="Rent",
             timestamp="20240101120000"
         )
-        
         assert isinstance(result, STKInitialResponse)
         assert result.checkout_id == "ws_CO_12345"
         assert result.success is True
+        
         mock_post.assert_called_once()
         patch_mpesa_auth.assert_called_once()
+
+        # Verify the payload
+        call_args = mock_post.call_args
+        url = call_args.args[0]
+        payload = call_args.kwargs["json"]
+        headers = call_args.kwargs["headers"]
+        
+        assert "https://sandbox.safaricom.co.ke" in url
+        assert "stkpush" in url
+        assert headers["Authorization"] == "Bearer secret_token"
+        assert payload["Amount"] == 1000
+        assert payload["PhoneNumber"] == "254712345678"
+        assert payload["AccountReference"] == "JAN-2024"
+        assert payload["TransactionDesc"] == "Rent"
+        assert payload["Timestamp"] == "20240101120000"
+
     
     def test_account_ref_too_long(self):
         """Test validation of account_ref length."""
@@ -132,36 +147,3 @@ class TestInitiateSTKPush:
                 description="Rent",
                 timestamp="20240101120000"
             )
-    
-    def test_payload_structure(self, monkeypatch: pytest.MonkeyPatch, patch_mpesa_auth: MagicMock, stk_initial_response):
-        """Test that the payload sent is correct."""
-            
-        mock_response = MagicMock()
-        mock_response.json.return_value = stk_initial_response
-        mock_response.raise_for_status.return_value = None
-        
-        mock_post = MagicMock(return_value=mock_response)
-        monkeypatch.setattr('payments.mpesa.handlers.requests.post', mock_post)
-        
-        initiate_stk_push(
-            phone_number="254712345678",
-            amount=1000,
-            account_ref="JAN-2024",
-            description="Rent",
-            timestamp="20240101120000"
-        )
-        
-        # Verify the payload
-        call_args = mock_post.call_args
-        url = call_args.args[0]
-        payload = call_args.kwargs['json']
-        headers = call_args.kwargs["headers"]
-        
-        assert "https://sandbox.safaricom.co.ke" in url
-        assert "stkpush" in url
-        assert headers["Authorization"] == "Bearer secret_token"
-        assert payload["Amount"] == 1000
-        assert payload["PhoneNumber"] == "254712345678"
-        assert payload["AccountReference"] == "JAN-2024"
-        assert payload["TransactionDesc"] == "Rent"
-        assert payload["Timestamp"] == "20240101120000"
