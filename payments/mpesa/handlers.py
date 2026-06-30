@@ -2,10 +2,10 @@ import requests
 from config.settings import MPESA_CONFIG as cfg
 from payments.mpesa.auth import get_access_token
 from payments.mpesa.utils import make_password
-from payments.mpesa.types import STKPushResponse, STKResult
+from payments.mpesa.types import STKInitialResponse, STKResult
 
 
-def initiate_stk_push(phone_number: str, amount: int, account_ref: str, description: str, timestamp: str) -> STKPushResponse:
+def initiate_stk_push(phone_number: str, amount: int, account_ref: str, description: str, timestamp: str) -> STKInitialResponse:
     """Initiate a M-PESA STK push request.
 
     Transaction type is "CustomerPayBillOnline" for PayBill Numbers and "CustomerBuyGoodsOnline" for Till Numbers.
@@ -44,7 +44,7 @@ def initiate_stk_push(phone_number: str, amount: int, account_ref: str, descript
 
     # Normalize and return response
     json = res.json()
-    stk = STKPushResponse(json["CheckoutRequestID"], int(json["ResponseCode"]) == 0)
+    stk = STKInitialResponse(json["CheckoutRequestID"], int(json["ResponseCode"]) == 0)
     return stk
 
 
@@ -68,10 +68,11 @@ def query_payment_status(checkout_request_id: str, timestamp: str) -> STKResult:
     res.raise_for_status()
 
     # Parse and normalize response
-    json_data = res.json()
+    json = res.json()
 
     return STKResult(
         checkout_id=checkout_request_id,
-        success=int(json_data["ResultCode"]) == 0,
-        result_desc=json_data["ResultDesc"],
+        success=int(json["ResultCode"]) == 0,
+        result_desc=json["ResultDesc"],
+        metadata={"merchant_id": json["MerchantRequestID"]},
     )
