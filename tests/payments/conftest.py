@@ -7,7 +7,7 @@ def stk_callback_fail():
         "Body": {
             "stkCallback": {
                 "MerchantRequestID": "f1e2-4b95-a71d-b30d3cdbb7a7942864",
-                "CheckoutRequestID": "ws_CO_21072024125243250722943992",
+                "CheckoutRequestID": "ws_CO_12345",
                 "ResultCode": 1032,
                 "ResultDesc": "Request cancelled by user",
             }
