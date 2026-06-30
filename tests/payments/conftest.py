@@ -1,5 +1,5 @@
 import pytest
-
+from unittest.mock import MagicMock
 
 @pytest.fixture
 def stk_callback_fail():
@@ -21,7 +21,7 @@ def stk_callback_sucess():
         "Body": {
             "stkCallback": {
                 "MerchantRequestID": "29115-34620561-1",
-                "CheckoutRequestID": "ws_CO_191220191020363925",
+                "CheckoutRequestID": "ws_CO_12345",
                 "ResultCode": 0,
                 "ResultDesc": "The service request is processed successfully.",
                 "CallbackMetadata": {
@@ -43,7 +43,7 @@ def stk_query_success():
         "ResponseCode": "0",
         "ResponseDescription": "The service request has been accepted successfully",
         "MerchantRequestID": "22205-34066-1",
-        "CheckoutRequestID": "ws_CO_13012021093521236557",
+        "CheckoutRequestID": "ws_CO_12345",
         "ResultCode": "0",
         "ResultDesc": "The service request is processed successfully.",
     }
@@ -53,8 +53,15 @@ def stk_query_success():
 def stk_initial_response():
     return {
         "MerchantRequestID": "2654-4b64-97ff-b827b542881d3130",
-        "CheckoutRequestID": "ws_CO_1007202409152617172396192",
+        "CheckoutRequestID": "ws_CO_12345",
         "ResponseCode": "0",
         "ResponseDescription": "Success. Request accepted for processing",
         "CustomerMessage": "Success. Request accepted for processing",
     }
+
+
+@pytest.fixture
+def patch_mpesa_auth(monkeypatch: pytest.MonkeyPatch):
+    mock = MagicMock(return_value="secret_token")
+    monkeypatch.setattr("payments.mpesa.auth.get_access_token", mock)
+    yield mock
