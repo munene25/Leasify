@@ -18,7 +18,7 @@ def initiate_stk_push(phone_number: str, amount: int, account_ref: str, descript
     """
 
     # There is a limit on the length of account ref or description
-    if (acc := len(account_ref) > 12) or (desc := len(description) > 13):
+    if (acc := len(account_ref) > 12) or len(description) > 13:
         error = f"Account Reference ({account_ref})" if acc else f"Description ({description})"
         raise ValueError(f"{error} too long")
 
