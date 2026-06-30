@@ -1,8 +1,6 @@
 import requests
 from config.settings import MPESA_CONFIG as cfg
-from payments.mpesa.auth import get_access_token
-from payments.mpesa.utils import make_password
-from payments.mpesa.types import STKInitialResponse, STKResult
+from payments.mpesa import auth, utils, STKInitialResponse, STKResult
 
 
 def initiate_stk_push(phone_number: str, amount: int, account_ref: str, description: str, timestamp: str) -> STKInitialResponse:
@@ -20,11 +18,12 @@ def initiate_stk_push(phone_number: str, amount: int, account_ref: str, descript
     """
 
     # There is a limit on the length of account ref or description
-    if len(account_ref) > 12 or len(description) > 13:
-        raise ValueError(f"Account_ref ({account_ref}) or description ({description}) too long")
+    if (acc := len(account_ref) > 12) or (desc := len(description) > 13):
+        error = f"Account Reference ({account_ref})" if acc else f"Description ({description})"
+        raise ValueError(f"{error} too long")
 
     payload = {
-        "Password": make_password(cfg["SHORTCODE"], cfg["PASSKEY"], timestamp),
+        "Password": utils.make_password(cfg["SHORTCODE"], cfg["PASSKEY"], timestamp),
         "BusinessShortCode": cfg["SHORTCODE"],
         "Timestamp": timestamp,
         "Amount": amount,
@@ -37,7 +36,7 @@ def initiate_stk_push(phone_number: str, amount: int, account_ref: str, descript
         "CallBackURL": cfg["CALLBACK_URL"],
     }
 
-    headers = {"Content-Type": "application/json", "Authorization": f"Bearer {get_access_token()}"}
+    headers = {"Content-Type": "application/json", "Authorization": f"Bearer {auth.get_access_token()}"}
 
     res = requests.post(cfg["INITIATE_URL"], json=payload, headers=headers)
     res.raise_for_status()
@@ -57,12 +56,12 @@ def query_payment_status(checkout_request_id: str, timestamp: str) -> STKResult:
     """
     payload = {
         "BusinessShortCode": cfg["SHORTCODE"],
-        "Password": make_password(cfg["SHORTCODE"], cfg["PASSKEY"], timestamp),
+        "Password": utils.make_password(cfg["SHORTCODE"], cfg["PASSKEY"], timestamp),
         "Timestamp": timestamp,
         "CheckoutRequestID": checkout_request_id,
     }
     # Make the API request to M-PESA
-    headers = {"Content-Type": "application/json", "Authorization": f"Bearer {get_access_token()}"}
+    headers = {"Content-Type": "application/json", "Authorization": f"Bearer {auth.get_access_token()}"}
 
     res = requests.post(cfg["QUERY_URL"], json=payload, headers=headers)
     res.raise_for_status()
