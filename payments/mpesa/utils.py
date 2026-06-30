@@ -23,4 +23,4 @@ def make_timestamp() -> str:
     """
     nairobi = ZoneInfo("Africa/Nairobi")
     dt = datetime.now(tz=nairobi)
-    return dt.strftime("%Y%m%H%d%M%S")
+    return dt.strftime("%Y%m%d%H%M%S")
