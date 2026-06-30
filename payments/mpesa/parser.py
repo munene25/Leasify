@@ -16,6 +16,11 @@ def parse_callback_response(response: dict[str, Any]) -> STKResult:
         result_desc=data["ResultDesc"],
         metadata=metadata,
     )
-    try:cb.receipt_no = metadata["MpesaReceiptNumber"]
-    except KeyError: pass
+    
+    try:
+        meta = {item["Name"]: item["Value"] for item in data["CallbackMetadata"]["Item"]}
+        cb.receipt_no = meta.pop("MpesaReceiptNumber")
+        cb.metadata.update(meta)
+    except KeyError: 
+        pass
     return cb
