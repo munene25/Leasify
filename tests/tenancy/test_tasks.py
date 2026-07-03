@@ -161,7 +161,7 @@ class TestNotifyReservedOnExpiry:
         day_of_expiry = timezone.now() + DEFAULT_RESERVATION_DURATION - timedelta(1)
 
         with freeze_time(day_of_expiry):
-            assert set(notify_reserved_on_expiry()) == {t.pk for t in tenants}
+            assert set(send_expiry_notification()) == {t.pk for t in tenants}
 
     def test_reserved_notify_expiry(self, reserved_tenant: Tenancy, mailoutbox: list[EmailMessage]):
         """We need to check the mail message. Verify apartment_name, tenant_name, max_reservations, payment_url"""
@@ -172,7 +172,7 @@ class TestNotifyReservedOnExpiry:
         reserved_tenant.reservation_expiry = tommorrow
         reserved_tenant.save(update_fields=["reservation_expiry"])
 
-        notify_reserved_on_expiry()
+        send_expiry_notification()
         assert len(mailoutbox) == 1
 
         mail = mailoutbox[0]
