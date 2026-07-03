@@ -1,5 +1,4 @@
 from dataclasses import dataclass, asdict, fields
-from functools import cached_property, lru_cache
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
