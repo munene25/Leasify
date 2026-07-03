@@ -7,9 +7,9 @@ from tenancy.models import Tenancy, MAX_RESERVATIONS_PER_USER
 from billing.choices import BillingStatus as BS
 from billing.models import BillingPeriod as Billings
 from django.db.models import Q
-from common.tasks import email_task
+from common.tasks import email_task, regular_task
 
-@shared_task(retry_kwargs={"max_retries": 5}, retry_backoff=True)
+@regular_task
 def month_start_tasks() -> dict[str, list]:
     """
     Run at start of month:
@@ -27,7 +27,7 @@ def month_start_tasks() -> dict[str, list]:
 @email_task
 def send_expiry_notification(reserved: list[int] = []) -> list[int]:
     from datetime import timedelta
-    from config.emails import send_template_email
+    from common.emails import send_template_email
     from users.tokens import build_user_url
 
     # Get reserved whose expiry is tomorrow
@@ -53,7 +53,7 @@ def send_expiry_notification(reserved: list[int] = []) -> list[int]:
     return affected
 
 
-@shared_task(retry_kwargs={"max_retries": 3}, retry_backoff=True)
+@regular_task
 def reserved_set_terminated() -> list[int | None]:
     """Terminate tenants who are in status RESERVED and set reason to EXPIRED"""
 
