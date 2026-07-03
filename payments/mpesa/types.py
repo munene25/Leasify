@@ -1,8 +1,7 @@
-from dataclasses import dataclass
+from typing import TypedDict
 
 
-@dataclass
-class STKInitialResponse:
+class STKInitialResponse(TypedDict):
     """
     This is immediately returned after initiating, the most important thing is the checkout_id
 
@@ -20,8 +19,7 @@ class STKInitialResponse:
     success: bool
 
 
-@dataclass
-class STKResult:
+class STKResult(TypedDict):
     """
         An M-PESA response giving details of a payment either through Querying status of the response or a callback response
 
@@ -84,4 +82,4 @@ class STKResult:
     success: bool
     result_desc: str
     metadata: dict
-    receipt_no: str | None = None
+    receipt_no: str | None
