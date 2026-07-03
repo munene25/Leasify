@@ -43,8 +43,7 @@ def initiate_stk_push(phone_number: str, amount: int, account_ref: str, descript
 
     # Normalize and return response
     json = res.json()
-    stk = STKInitialResponse(json["CheckoutRequestID"], int(json["ResponseCode"]) == 0)
-    return stk
+    return {"checkout_id": json["CheckoutRequestID"], "success": int(json["ResponseCode"]) == 0}
 
 
 def query_payment_status(checkout_request_id: str, timestamp: str) -> STKResult:
@@ -69,9 +68,10 @@ def query_payment_status(checkout_request_id: str, timestamp: str) -> STKResult:
     # Parse and normalize response
     json = res.json()
 
-    return STKResult(
-        checkout_id=checkout_request_id,
-        success=int(json["ResultCode"]) == 0,
-        result_desc=json["ResultDesc"],
-        metadata={"merchant_id": json["MerchantRequestID"]},
-    )
+    return {
+        "checkout_id": checkout_request_id,
+        "success": int(json["ResultCode"]) == 0,
+        "result_desc": json["ResultDesc"],
+        "metadata": {"merchant_id": json["MerchantRequestID"]},
+        "receipt_no": None,
+    }
