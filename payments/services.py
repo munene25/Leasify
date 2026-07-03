@@ -1,15 +1,16 @@
 import requests
 from structlog import get_logger
 from typing import TYPE_CHECKING
-from django.db import transaction, models
+from django.db import transaction
 from common.exceptions import MpesaAPIError
 from payments.models import Payment
-from payments.selectors import payment_get_checkout
+from payments import selectors as sl
 from payments.choices import PaymentStatus as PS, PaymentMode
 from billing.choices import BillingStatus as BS
 from billing.models import BillingPeriod as BP
 from rest_framework.exceptions import ValidationError
 from payments.mpesa import initiate_stk_push, query_payment_status, make_timestamp
+from payments import tasks
 
 logger = get_logger("payments")
 
@@ -79,7 +80,7 @@ def payment_mpesa_initiate(*, billing: "BP", phone_number: str, idempotency_key:
     return payment
 
 
-def payment_alt_create(*, billing: "BP", mode: PaymentMode, recorded_by: "User", status: PS = PS.SUCCESS):
+def payment_alt_create(*, billing: "BP", mode: PaymentMode, recorded_by: "User", status: PS = PS.SUCCESS) -> Payment:
     """
     Create a manual payment via an alternate mode (CASH/BANK).
 
@@ -116,18 +117,22 @@ def payment_alt_create(*, billing: "BP", mode: PaymentMode, recorded_by: "User",
 def payment_mpesa_process(stk_result: "STKResult") -> Payment:
     """
     Process M-Pesa callback and update payment status accordingly.
+    Sends emails to the user and extra selected recepients
 
     :param stk_result: The payment response containing checkout details and transaction result
     :returns: Updated Payment object with new status
 
     """
-    payment = payment_get_checkout(stk_result["checkout_id"])
+    payment = sl.payment_get_checkout(stk_result["checkout_id"])
 
     payment.status = PS.SUCCESS if stk_result["success"] else PS.FAILED
     payment.receipt_no = stk_result["receipt_no"]
 
     payment.save(update_fields=["status", "receipt_no"])
-    # ? Send email notification
+    
+    extra_recepients = sl.payment_get_extra_recepients()
+    tasks.send_payment_notification.delay(payment.pk, extra_recepients)
+
     logger.info(
         "payment_processed",
         payment_id=payment.pk,
@@ -138,7 +143,7 @@ def payment_mpesa_process(stk_result: "STKResult") -> Payment:
     return payment
 
 
-def payment_mpesa_query(payment: Payment) -> "Payment":
+def payment_mpesa_query(payment: Payment) -> Payment:
     """
     Query the status of an M-Pesa payment via the MPESA endpoint and update the payment.
 
