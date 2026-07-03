@@ -7,12 +7,13 @@ from tenancy.models import Tenancy, MAX_RESERVATIONS_PER_USER
 from billing.choices import BillingStatus as BS
 from billing.models import BillingPeriod as Billings
 from django.db.models import Q
+from common.tasks import email_task
 
 @shared_task(retry_kwargs={"max_retries": 5}, retry_backoff=True)
 def month_start_tasks() -> dict[str, list]:
     """
     Run at start of month:
-    * ** They remain seperate for ease of testing. **
+    * They remain seperate for ease of testing.
     1. Terminate defaulting tenancies (non-payment)
     2. Set active tenancies without paid billing to defaulting
     """
@@ -23,8 +24,8 @@ def month_start_tasks() -> dict[str, list]:
     return {"active_to_terminated": active_terminated, "defaulting": defaulting_terminated}
 
 
-@shared_task(retry_kwargs={"max_retries": 3}, retry_backoff=True)
-def notify_reserved_on_expiry(reserved: list[int] = []) -> list[int]:
+@email_task
+def send_expiry_notification(reserved: list[int] = []) -> list[int]:
     from datetime import timedelta
     from config.emails import send_template_email
     from users.tokens import build_user_url
