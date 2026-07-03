@@ -53,7 +53,7 @@ class TestAccountCreation:
         Test normal mail sending with notify flag set to True.
         Requires always eager for delay calls
         """
-        from config.emails import EmailConfig
+        from common.emails import EmailConfig
 
         config = EmailConfig.load()
 
