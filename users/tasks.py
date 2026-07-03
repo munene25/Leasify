@@ -1,15 +1,9 @@
-import smtplib
-from typing import Callable
-from celery import shared_task, Task
 from config.emails import send_template_email, email_context
 from users.tokens import build_user_url
 from users.selectors import user_get
+from common.tasks import email_task
 
-
-
-auto_retry: Callable[..., Task] = shared_task(autoretry_for=(smtplib.SMTPDataError, ConnectionError), retry_kwargs={'max_retries': 3}, retry_backoff=True, retry_jitter=True) # type: ignore
-
-@auto_retry
+@email_task
 def send_welcome_email(user_id: int):
     user = user_get(user_id)
     context = {
@@ -25,7 +19,7 @@ def send_welcome_email(user_id: int):
     )
     return True
 
-@auto_retry
+@email_task
 def send_token_email(user_id: int, url_path: str, subject: str, action_cta: str):
     user = user_get(user_id)
     context = {
@@ -41,7 +35,7 @@ def send_token_email(user_id: int, url_path: str, subject: str, action_cta: str)
     )
     return True
 
-@auto_retry
+@email_task
 def notify_password_change(user_id: int):
     user = user_get(user_id)
     context = {
