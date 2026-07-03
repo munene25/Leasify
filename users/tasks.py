@@ -1,4 +1,4 @@
-from config.emails import send_template_email, email_context
+from common.emails import send_template_email, email_context
 from users.tokens import build_user_url
 from users.selectors import user_get
 from common.tasks import email_task
