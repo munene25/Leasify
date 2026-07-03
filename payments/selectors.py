@@ -55,3 +55,11 @@ def payment_get_for(*, user: "User", payment_id: int):
 def payment_get_checkout(checkout_id: str) -> Payment:
     """Get a payment by its checkout ID"""
     return Payment.objects.get(checkout_id=checkout_id)
+
+
+
+def payment_get_extra_recepients():
+    """Get additional email recepients for the users"""
+    from users.models import User
+
+    return User.objects.filter(groups__name="manager").values_list("email", flat=True)
