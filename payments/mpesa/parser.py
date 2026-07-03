@@ -10,17 +10,18 @@ def parse_callback_response(response: dict[str, Any]) -> STKResult:
     data = response["Body"]["stkCallback"]
     metadata = {"merchant_id": data["MerchantRequestID"]}
 
-    cb = STKResult(
-        checkout_id=data["CheckoutRequestID"],
-        success=int(data["ResultCode"]) == 0,
-        result_desc=data["ResultDesc"],
-        metadata=metadata,
-    )
+    cb: STKResult = {
+        "checkout_id": data["CheckoutRequestID"],
+        "success": int(data["ResultCode"]) == 0,
+        "result_desc": data["ResultDesc"],
+        "metadata": metadata,
+        "receipt_no": None
+    }
     
     try:
         meta = {item["Name"]: item["Value"] for item in data["CallbackMetadata"]["Item"]}
-        cb.receipt_no = meta.pop("MpesaReceiptNumber")
-        cb.metadata.update(meta)
+        cb["receipt_no"] = meta.pop("MpesaReceiptNumber")
+        cb["metadata"].update(meta)
     except KeyError: 
         pass
     return cb
