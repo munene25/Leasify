@@ -8,7 +8,7 @@ from common.permissions import check_perms
 from payments import services as sr, selectors as sl, serializer as sc, models as md
 from common.views import BaseAPIView
 from payments.mpesa import parse_callback_response
-from payments.choices import PaymentStatus as PS
+from payments import tasks
 from billing.selectors import billing_get_for
 
 
@@ -130,7 +130,7 @@ class PaymentMpesaCallbackView(BaseAPIView):
 
     def post(self, request) -> Response:
         stk_result = parse_callback_response(request.data)
-        sr.payment_mpesa_process(stk_result)
+        tasks.payment_mpesa_process_async.delay(stk_result)
         return Response(status=status.HTTP_200_OK)
 
 
@@ -155,4 +155,3 @@ class PaymentAltCreateView(BaseAPIView):
         payment = sr.payment_alt_create(billing=billing, **incoming)
         outgoing = sc.PaymentDetailSerializer(instance=payment)
         return Response(data=outgoing.data, status=status.HTTP_201_CREATED)
-        return Response(data=outgoing.data, status=status.HTTP_200_OK)
