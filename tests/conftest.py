@@ -1,5 +1,6 @@
 import pytest
 import typing
+from structlog import get_logger
 from unittest.mock import MagicMock
 from tests.types import Factory
 from faker import Faker
@@ -19,6 +20,8 @@ from billing.choices import BillingStatus as BS
 from common.period import DateRange
 from payments.models import Payment
 from payments.choices import PaymentMode as PM, PaymentStatus as PS
+
+logger = get_logger("tests.conftest")
 
 # ------------------------------------------------------ Globals  ------------------------------------------------------ #
 
@@ -289,13 +292,15 @@ def tenancy_patch_validators(monkeypatch: pytest.MonkeyPatch) -> dict[str, Magic
 
 @pytest.fixture(scope="session")
 def tenancy_factory(
-    apartment_factory: Factory[Apartment], user_factory: Factory[User], today: date, get_role
+    apartment_factory: Factory[Apartment], user_factory: Factory[User], today: date, get_role: typing.Callable[..., Group]
 ) -> Factory[Tenancy]:
     """Tenancy generator - creates lease-based tenancies"""
     from tenancy.choices import TenancyStatus
 
     def create(
-        quantity=1, users: list[User] | None = None, apartments: list[Apartment] | None = None, **kwargs
+        quantity=1,
+        users: list[User] | None = None,
+        apartments: list[Apartment] | None = None, **kwargs
     ) -> list[Tenancy]:
         tenancies = []
 
@@ -368,31 +373,50 @@ def billing_factory(today: date, request, tenancy_factory: Factory[Tenancy]) -> 
 
 # ------------------------------------------------ Payment  ------------------------------------------------
 @pytest.fixture(scope="session")
-def payment_factory(billing_factory, phone_no, fake) -> Factory[Payment]:
+def payment_factory(billing_factory: Factory[BP], phone_no: typing.Callable[..., str], fake: Faker, user_factory: Factory[User]) -> Factory[Payment]:
 
-    def create(quantity=1, billing: BP | None = None, statuses: list[PS] | None = None, phone_number: str | None = None, payment_mode: PM = PM.MPESA, recorded_by: User | None = None) -> list[Payment]:
-        """A payment creation factory, creates payments for a given billing period"""
+    def create(
+        quantity=1, 
+        billing: BP | None = None,
+        statuses: list[PS] | None = None,
+        payment_mode: PM = PM.MPESA,
+        **kwargs: typing.Any
+    ) -> list[Payment]:
         
-        billing = billing or billing_factory(quantity)[0]
-        statuses = statuses or [PS.SUCCESS] * quantity
+        """A payment creation factory, creates payments for a given billing period"""
+        from payments.mpesa import make_timestamp
 
+        billing = billing or billing_factory()[0]
+        statuses = statuses or [PS.SUCCESS] * quantity
+        if payment_mode == PM.MPESA:
+            kwargs.setdefault("phone_number", phone_no())
+            kwargs.setdefault("checkout_id", fake.unique.uuid4())
+            kwargs.setdefault("idempotency_key", fake.unique.uuid4())
+            kwargs.setdefault("receipt_no", fake.unique.uuid4())
+            kwargs.setdefault("timestamp", make_timestamp())
+        else:
+            kwargs.setdefault("recorded_by", user_factory(1)[0])
         payments = []
-        phone_number = phone_no()
         for status in statuses:
             p = Payment.objects.create(
-                
+                # Required
                 billing=billing,
                 amount=billing.total_due,
                 status=status,
                 payment_mode=payment_mode,
                 
-                phone_number=phone_number,
-                checkout_id=fake.unique.uuid4(),
-                receipt_no=None,
-
-                recorded_by=recorded_by
+                # Mpesa
+                phone_number=kwargs.get("phone_number"),
+                checkout_id=kwargs.get("checkout_id"),
+                idempotency_key=kwargs.get("idempotency_key"),
+                receipt_no=kwargs.get("receipt_no"),
+                timestamp=kwargs.get("timestamp"),
+                
+                # Manual
+                recorded_by=kwargs.get("recorded_by")
             )
             payments.append(p)
+            logger.info("payment_created", billing_id=p.billing_id, status=p.status, mode=p.payment_mode, name=p.billing.tenancy.user.full_name)
         return payments
 
     return create
