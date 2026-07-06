@@ -31,9 +31,7 @@ class Payment(BaseModel):
         ]
 
     # Required
-    billing = models.ForeignKey(
-        BillingPeriod, null=False, blank=False, on_delete=models.PROTECT, related_name="payments"
-    )
+    billing = models.ForeignKey(BillingPeriod, null=False, blank=False, on_delete=models.PROTECT, related_name="payments")
     amount = models.DecimalField(decimal_places=2, max_digits=10, blank=False, null=False)
     status = models.CharField(null=False, blank=False, choices=PaymentStatus, default=PaymentStatus.PENDING)
     payment_mode = models.CharField(null=False, blank=False, choices=PaymentMode)
@@ -51,3 +49,7 @@ class Payment(BaseModel):
     )
 
     billing_id: int
+
+def __str__(self):
+    """Human readable representation of the payment"""
+    return f"Payment[{self.payment_mode}][{self.pk}]:Billing[{self.billing_id}]"
