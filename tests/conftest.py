@@ -390,12 +390,14 @@ def payment_factory(billing_factory: Factory[BP], phone_no: typing.Callable[...,
         statuses = statuses or [PS.SUCCESS] * quantity
         if payment_mode == PM.MPESA:
             kwargs.setdefault("phone_number", phone_no())
-            kwargs.setdefault("checkout_id", fake.unique.uuid4())
-            kwargs.setdefault("idempotency_key", fake.unique.uuid4())
             kwargs.setdefault("receipt_no", fake.unique.uuid4())
             kwargs.setdefault("timestamp", make_timestamp())
+            checkout = fake.unique.uuid4
+            idemp_key = fake.unique.uuid4
         else:
             kwargs.setdefault("recorded_by", user_factory(1)[0])
+            checkout = lambda: None
+            idemp_key = lambda: None
         payments = []
         for status in statuses:
             p = Payment.objects.create(
@@ -407,8 +409,8 @@ def payment_factory(billing_factory: Factory[BP], phone_no: typing.Callable[...,
                 
                 # Mpesa
                 phone_number=kwargs.get("phone_number"),
-                checkout_id=kwargs.get("checkout_id"),
-                idempotency_key=kwargs.get("idempotency_key"),
+                checkout_id=checkout(),
+                idempotency_key=idemp_key(),
                 receipt_no=kwargs.get("receipt_no"),
                 timestamp=kwargs.get("timestamp"),
                 
