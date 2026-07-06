@@ -392,12 +392,10 @@ def payment_factory(billing_factory: Factory[BP], phone_no: typing.Callable[...,
             kwargs.setdefault("phone_number", phone_no())
             kwargs.setdefault("receipt_no", fake.unique.uuid4())
             kwargs.setdefault("timestamp", make_timestamp())
-            checkout = fake.unique.uuid4
-            idemp_key = fake.unique.uuid4
+            checkout = idemp_key = fake.unique.uuid4
         else:
             kwargs.setdefault("recorded_by", user_factory(1)[0])
-            checkout = lambda: None
-            idemp_key = lambda: None
+            checkout = idemp_key = lambda: None
         payments = []
         for status in statuses:
             p = Payment.objects.create(
