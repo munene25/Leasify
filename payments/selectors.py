@@ -1,16 +1,13 @@
-
-from typing import TYPE_CHECKING, Any
+from typing import Any
 from django.db.models import Q, QuerySet
 from django.http import QueryDict
 from common.helpers import raise_not_found
 from common.domain import FilteringPolicy
+from users.models import User
 from payments.models import Payment
 import django_filters
 
-if TYPE_CHECKING:
-    from users.models import User
-
-BASE_QS = Payment.objects.select_related("billing__tenancy__user").all()
+BASE_QS = Payment.objects.select_related("billing__tenancy__user")
 
 
 class PaymentFilteringPolicy(FilteringPolicy):
@@ -21,7 +18,16 @@ class PaymentFilteringPolicy(FilteringPolicy):
     REGULAR = Q(pk=0)
 
 
-def payment_list_for(*, user: "User", filters: dict[str, Any] | QueryDict = {}) -> QuerySet[Payment]:
+def payment_list_for(*, user: User,filters: dict[str, Any] | QueryDict = {}) -> QuerySet[Payment]:
+    """
+    Retrieves a list of payments for the given user with optional filtering.
+
+    Returns all payments viewable by the user.
+
+    :param user: The authenticated user viewing the payments
+    :param filters: Optional dictionary of filter parameters or query dict
+    :return: A QuerySet containing Payment objects visible by the given user and filters
+    """
 
     class F(django_filters.FilterSet):
         class Meta:
@@ -47,19 +53,38 @@ def payment_list_for(*, user: "User", filters: dict[str, Any] | QueryDict = {}) 
 
 
 @raise_not_found("payment", "Payment not found")
-def payment_get_for(*, user: "User", payment_id: int):
+def payment_get_for(*, user: User, payment_id: int) -> Payment:
+    """Retrieves a specific payment by its ID for the given user.
+
+    Returns a single Payment object matching both the provided `payment_id` and the authenticated user's permissions. If no matching payment is found, a 404 error will be raised.
+
+    :param user: The authenticated user whose payments are being retrieved
+    :param payment_id: The primary key of the payment to retrieve
+    :return: A Payment object matching the given ID for the provided user
+    """
+
     u_filters = PaymentFilteringPolicy.for_user(user)
     return BASE_QS.filter(u_filters).get(pk=payment_id)
 
-@raise_not_found("payment", "Checkout id is non existent")
+
+@raise_not_found("checkout", "Checkout id is non existent")
 def payment_get_checkout(checkout_id: str) -> Payment:
-    """Get a payment by its checkout ID"""
+    """Retrieves a specific payment by its checkout ID.
+
+    Returns a single Payment object matching the provided `checkout_id`. If no matching payment is found, a 404 error will be raised.
+
+    :param checkout_id: The checkout identifier to search for
+    :return: A Payment object with the given checkout ID
+    """
     return Payment.objects.get(checkout_id=checkout_id)
 
 
+def payment_get_extra_recepients() -> list[str]:
+    """Retrieves a list of additional email recipients for payment notifications.
 
-def payment_get_extra_recepients():
-    """Get additional email recepients for the users"""
-    from users.models import User
+    Returns the email addresses of all users with the "manager" group, used to notify them about payments.
 
-    return User.objects.filter(groups__name="manager").values_list("email", flat=True)
+    :return: A list of email address strings
+    """
+    emails = User.objects.filter(groups__name="manager").values_list("email", flat=True).all()
+    return list(emails)
