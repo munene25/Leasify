@@ -1,4 +1,5 @@
 import pytest
+import typing
 from functools import partial
 from rest_framework.exceptions import NotFound
 from tests.types import Factory
@@ -9,6 +10,7 @@ from tenancy.models import Tenancy
 from payments.models import Payment
 from payments.selectors import *
 from payments.choices import PaymentMode as PM, PaymentStatus as PS
+from django.contrib.auth.models import Group
 
 class TestBaseQS:
     def test_no_queries(self, payment_factory: Factory[Payment], django_assert_num_queries):
@@ -103,3 +105,24 @@ class TestPaymentGetFor:
             payment_get_for(user=user2, payment_id=1)
     
             
+class TestPaymentGetCheckout:
+    def test_returns_correct_payment(self, payment_factory: Factory[Payment]):
+        p = payment_factory()[0]
+        assert payment_get_checkout(checkout_id=p.checkout_id) == p 
+    
+    def test_raises_not_found(self):
+        """should raise if no checkout id exists"""
+        with pytest.raises(NotFound, match="non existent"):
+            payment_get_checkout(checkout_id="xyz")
+
+class TestPaymentGetExtraEmailRecepients:
+    def test_returns_a_list_of_manager_emails(self, user_factory: Factory[User], get_role: typing.Callable[..., Group]):
+        """Only manager emails should be returned as a list of str"""
+
+        u1 = user_factory(email="edmune@gmail.com")[0]
+        u2 = user_factory(email="kmbape@yahoo.com")[0]
+        manager = get_role("manager")
+        u1.groups.add(manager)
+        u2.groups.add(manager)
+
+        assert set(payment_get_extra_recepients()) == {"edmune@gmail.com", "kmbape@yahoo.com"}
