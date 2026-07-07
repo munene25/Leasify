@@ -58,11 +58,10 @@ def payment_mpesa_initiate(*, billing: "BP", phone_number: str, idempotency_key:
             timestamp=timestamp,
         )
     except (requests.exceptions.Timeout, requests.exceptions.HTTPError) as e:
-        logger.error(
-            "stk_push_failed",
-            status_code=getattr(e.response, "status_code", None),
-            response=e.response.json() if e.response else str(e.response),
-        )
+        if e.response:
+            status_code = e.response.status_code
+            message = e.response.json()
+        logger.error("stk_push_failed", status_code=status_code or None, response=message)
         raise MpesaAPIError() from e
 
     payment = Payment.objects.create(
@@ -129,7 +128,7 @@ def payment_mpesa_process(stk_result: "STKResult") -> Payment:
     payment.receipt_no = stk_result["receipt_no"]
 
     payment.save(update_fields=["status", "receipt_no"])
-    
+
     extra_recepients = sl.payment_get_extra_recepients()
     tasks.send_payment_notification.delay(payment.pk, extra_recepients)
 
@@ -160,11 +159,10 @@ def payment_mpesa_query(payment: Payment) -> Payment:
     try:
         stk_result = query_payment_status(checkout_request_id=payment.checkout_id, timestamp=payment.timestamp)
     except (requests.exceptions.Timeout, requests.exceptions.HTTPError) as e:
-        logger.error(
-            "payment_query_failed",
-            status_code=getattr(e.response, "status_code", None),
-            response=e.response.json() if e.response else str(e.response),
-        )
-        raise MpesaAPIError()
+        if e.response:
+            status_code = e.response.status_code
+            message = e.response.json()
+        logger.error("payment_query_failed", status_code=status_code or None, response=message)
+        raise MpesaAPIError() from e
 
     return payment_mpesa_process(stk_result)
