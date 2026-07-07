@@ -5,7 +5,7 @@ from django.db import transaction
 from common.exceptions import MpesaAPIError
 from payments.models import Payment
 from payments import selectors as sl
-from payments.choices import PaymentStatus as PS, PaymentMode
+from payments.choices import PaymentStatus as PS, PaymentMode as PM
 from billing.choices import BillingStatus as BS
 from billing.models import BillingPeriod as BP
 from rest_framework.exceptions import ValidationError
@@ -29,7 +29,7 @@ def payment_mpesa_initiate(*, billing: "BP", phone_number: str, idempotency_key:
 
     :param billing: The billing period being paid for (ForeignKey reference)
     :param phone_number: The mobile phone number of the payer for STK push notification
-    :param idempotency_key: Unique key to prevent duplicate payments (used as cache)
+    :param idempotency_key: Unique key to prevent duplicate payments
     :returns: Payment object created or retrieved from cache
 
     """
@@ -38,7 +38,7 @@ def payment_mpesa_initiate(*, billing: "BP", phone_number: str, idempotency_key:
 
     # Prevents CANCELLED OR PAID billings to be processed
     if billing.status != BS.UNPAID:
-        raise ValidationError(f"Cannot pay {billing.status} billing")
+        raise ValidationError(f"Payment not allowed for {billing.status} billing")
 
     # Check for Idempotency
     if existing := billing.payments.filter(idempotency_key=idempotency_key).first():
@@ -69,7 +69,7 @@ def payment_mpesa_initiate(*, billing: "BP", phone_number: str, idempotency_key:
         billing=billing,
         amount=billing.total_due,
         status=PS.PENDING,
-        payment_mode=PaymentMode.MPESA,
+        payment_mode=PM.MPESA,
         phone_number=phone_number,
         checkout_id=res["checkout_id"],
         idempotency_key=idempotency_key,
@@ -80,7 +80,7 @@ def payment_mpesa_initiate(*, billing: "BP", phone_number: str, idempotency_key:
     return payment
 
 
-def payment_alt_create(*, billing: "BP", mode: PaymentMode, recorded_by: "User", status: PS = PS.SUCCESS) -> Payment:
+def payment_alt_create(*, billing: "BP", mode: PM, recorded_by: "User", status: PS = PS.SUCCESS) -> Payment:
     """
     Create a manual payment via an alternate mode (CASH/BANK).
 
