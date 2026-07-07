@@ -20,6 +20,8 @@ from billing.choices import BillingStatus as BS
 from common.period import DateRange
 from payments.models import Payment
 from payments.choices import PaymentMode as PM, PaymentStatus as PS
+from structlog.testing import capture_logs
+from structlog.types import EventDict
 
 logger = get_logger("tests.conftest")
 
@@ -32,6 +34,10 @@ logger = get_logger("tests.conftest")
 # def pytest_configure(config):
 #     warnings.filterwarnings("error", category=RuntimeWarning)
 
+@pytest.fixture
+def caplog() -> typing.Generator[list[EventDict], None, None]:
+    with capture_logs() as caplog:
+        yield caplog
 
 @pytest.fixture(scope="session")
 def django_db_setup(django_db_setup, django_db_blocker):
