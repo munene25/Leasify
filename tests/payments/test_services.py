@@ -5,6 +5,7 @@ from unittest.mock import MagicMock
 from rest_framework.exceptions import ValidationError
 from common.exceptions import MpesaAPIError
 from tests.types import Factory
+from users.models import User
 from payments.models import Payment
 from payments.choices import PaymentMode as PM, PaymentStatus as PS
 from payments.services import payment_mpesa_query, payment_alt_create, payment_mpesa_initiate, payment_mpesa_process
@@ -107,4 +108,31 @@ class TestPaymentMpesaInitiate:
             payment_mpesa_initiate(billing=billing, phone_number="0000", idempotency_key="XYZ")
 
         
+
+class TestPaymentAltCreate:
+    def test_payment_created(self, billing_factory: Factory[BP], manager_user: User):
+        """Should default to paid status"""
+        billing = billing_factory(statuses=[BS.UNPAID])[0]
+        payment = payment_alt_create(billing=billing, mode=PM.BANK, recorded_by=manager_user)
+        assert payment.status == PS.SUCCESS
+        assert payment.recorded_by == manager_user
+        assert payment.payment_mode == PM.BANK
+        assert billing.payments.filter(status="success").count() == 1
+    
+    def test_billing_needs_to_be_unpaid(self, billing_factory: Factory[BP], manager_user: User):
+        """Should raise if billing period is paid or cancelled"""
+        bills = billing_factory(statuses=[BS.PAID, BS.CANCELLED])
         
+        with pytest.raises(ValidationError, match="cancelled"):
+            payment_alt_create(billing=bills[1], mode=PM.CASH, recorded_by=manager_user)
+
+        with pytest.raises(ValidationError, match="paid"):
+            payment_alt_create(billing=bills[0], mode=PM.BANK, recorded_by=manager_user)
+    
+    def test_number_of_queries(self, django_assert_num_queries, billing_factory: Factory[BP], manager_user: User):
+        """
+        1. Creating the payment
+        """
+        bill = billing_factory(statuses=[BS.UNPAID])[0]
+        with django_assert_num_queries(1):
+            payment_alt_create(billing=bill, recorded_by=manager_user, mode=PM.CASH)
