@@ -90,3 +90,21 @@ class TestPaymentMpesaInitiate:
         assert log["event"] == "stk_push_failed"
         assert log["status_code"] == 409
         assert log["response"] == stk_callback_fail
+
+
+    def test_query_count(self, monkeypatch: pytest.MonkeyPatch, django_assert_num_queries, billing_factory: Factory[BP]):
+        """
+        1. Strart transaction
+        2. Lock billing
+        3. Check for idemp key
+        4. Check for pending
+        5. Create payment
+        6. End transaction
+        """
+        monkeypatch.setattr("payments.services.initiate_stk_push", lambda *args, **kwargs: {"checkout_id": "unique_checkout"})
+        billing = billing_factory(statuses=[BS.UNPAID])[0]
+        with django_assert_num_queries(6):
+            payment_mpesa_initiate(billing=billing, phone_number="0000", idempotency_key="XYZ")
+
+        
+        
