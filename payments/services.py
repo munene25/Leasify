@@ -92,7 +92,7 @@ def payment_alt_create(*, billing: "BP", mode: PM, recorded_by: "User", status: 
     """
     # Prevents CANCELLED OR PAID billings to be processed
     if billing.status != BS.UNPAID:
-        raise ValidationError(f"Cannot pay {billing.status} billing")
+        raise ValidationError(f"Payment not allowed for {billing.status} billing")
 
     payment = Payment.objects.create(
         billing=billing,
@@ -104,9 +104,8 @@ def payment_alt_create(*, billing: "BP", mode: PM, recorded_by: "User", status: 
 
     logger.info(
         "payment_alt_created",
-        payment_pk=payment.pk,
-        billing=billing.name,
-        amount=billing.total_due,
+        payment_id=payment.pk,
+        billing_id=billing.pk,
         payment_mode=mode,
     )
 
