@@ -80,7 +80,7 @@ class TestPaymentMpesaInitiate:
         raises = MagicMock(side_effect=error)
         monkeypatch.setattr("payments.services.initiate_stk_push", raises)
 
-    billing = billing_factory(statuses=[BS.UNPAID])[0]
+        billing = billing_factory(statuses=[BS.UNPAID])[0]
 
     with pytest.raises(MpesaAPIError, match="Service is unavailable"):
         payment_mpesa_initiate(billing=billing, phone_number="0000", idempotency_key="XYZ")
