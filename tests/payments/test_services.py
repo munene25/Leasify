@@ -45,7 +45,7 @@ class TestPaymentMpesaInitiate:
         """
         billings = billing_factory(statuses=[BS.PAID, BS.CANCELLED, BS.UNPAID])
 
-        monkeypatch.setattr("payments.services.initiate_stk_push", {"checkout_id": "unique_checkout"})
+        monkeypatch.setattr("payments.services.initiate_stk_push", lambda: {"checkout_id": "unique_checkout"})
         initiate = partial(payment_mpesa_initiate, phone_number="0000")
 
         with pytest.raises(ValidationError, match="paid billing"):
