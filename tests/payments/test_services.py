@@ -82,11 +82,11 @@ class TestPaymentMpesaInitiate:
 
         billing = billing_factory(statuses=[BS.UNPAID])[0]
 
-    with pytest.raises(MpesaAPIError, match="Service is unavailable"):
-        payment_mpesa_initiate(billing=billing, phone_number="0000", idempotency_key="XYZ")
-    assert Payment.objects.count() == 0 
+        with pytest.raises(MpesaAPIError, match="Service is unavailable"):
+            payment_mpesa_initiate(billing=billing, phone_number="0000", idempotency_key="XYZ")
+        assert Payment.objects.count() == 0 
 
-    log = caplog[-1]
-    assert log["event"] == "stk_push_failed"
-    assert log["status_code"] == 409
-    assert log["response"] == stk_callback_fail
+        log = caplog[-1]
+        assert log["event"] == "stk_push_failed"
+        assert log["status_code"] == 409
+        assert log["response"] == stk_callback_fail
