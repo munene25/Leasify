@@ -67,18 +67,18 @@ class TestPaymentMpesaInitiate:
         pending = payment_factory(statuses=[PS.PENDING], billing=billings[2])[0]
         assert initiate(billing=billings[2], idempotency_key="XYZ3") == pending
 
-def test_stk_push_raises_exception(monkeypatch: pytest.MonkeyPatch, stk_callback_fail: dict, billing_factory: Factory[BP], caplog: list[EventDict]):
-    """
-    Cases where the stk initiation raises an error. 
-    It should be caught, logged and raise an MPESA API error.
-    """
-    error = requests.exceptions.HTTPError("Something went wrong")
-    error.response = MagicMock()
-    error.response.json.return_value = stk_callback_fail
-    error.response.status_code = 409
-    
-    raises = MagicMock(side_effect=error)
-    monkeypatch.setattr("payments.services.initiate_stk_push", raises)
+    def test_stk_push_raises_exception(self, monkeypatch: pytest.MonkeyPatch, stk_callback_fail: dict, billing_factory: Factory[BP], caplog: list[EventDict]):
+        """
+        Cases where the stk initiation raises an error. 
+        It should be caught, logged and raise an MPESA API error.
+        """
+        error = requests.exceptions.HTTPError("Something went wrong")
+        error.response = MagicMock()
+        error.response.json.return_value = stk_callback_fail
+        error.response.status_code = 409
+        
+        raises = MagicMock(side_effect=error)
+        monkeypatch.setattr("payments.services.initiate_stk_push", raises)
 
     billing = billing_factory(statuses=[BS.UNPAID])[0]
 
