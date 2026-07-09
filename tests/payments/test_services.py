@@ -1,18 +1,19 @@
 import pytest
 import requests
 from datetime import date
+from functools import partial
 from unittest.mock import MagicMock
-from rest_framework.exceptions import ValidationError
+from structlog.types import EventDict
+from rest_framework.exceptions import ValidationError, NotFound
 from common.exceptions import MpesaAPIError
 from tests.types import Factory
 from users.models import User
 from payments.models import Payment
 from payments.choices import PaymentMode as PM, PaymentStatus as PS
 from payments.services import payment_mpesa_query, payment_alt_create, payment_mpesa_initiate, payment_mpesa_process
+from payments.mpesa import STKResult
 from billing.models import BillingPeriod as BP
 from billing.choices import BillingStatus as BS
-from functools import partial
-from structlog.types import EventDict
 
 class TestPaymentMpesaInitiate:
     def test_stk_push_called(self, monkeypatch: pytest.MonkeyPatch, billing_factory: Factory[BP]):
@@ -136,3 +137,42 @@ class TestPaymentAltCreate:
         bill = billing_factory(statuses=[BS.UNPAID])[0]
         with django_assert_num_queries(1):
             payment_alt_create(billing=bill, recorded_by=manager_user, mode=PM.CASH)
+        
+class TestPaymentMpesaProcess:
+    def test_payment_update_based_on_result(self, monkeypatch: pytest.MonkeyPatch, payment_factory: Factory[Payment], stk_result_failed: STKResult, stk_result_success: STKResult):
+        "A payment needs to be updated to success or fail based on stk_result"
+        
+        monkeypatch.setattr("payments.tasks.send_payment_notification.delay", lambda *args: None)
+        pending = payment_factory(statuses=[PS.PENDING, PS.PENDING])
+        
+        # Set checkout id on stk result
+        assert pending[0].checkout_id is not None
+        assert pending[1].checkout_id is not None
+        stk_result_success["checkout_id"] = pending[0].checkout_id
+        stk_result_failed["checkout_id"] = pending[1].checkout_id
+
+        # Successful Payment
+        payment = payment_mpesa_process(stk_result_success)
+        assert payment == pending[0]
+        payment.refresh_from_db()
+        assert payment.status == PS.SUCCESS
+        assert payment.receipt_no == stk_result_success["receipt_no"]
+
+        # For failed payment
+        payment2 = payment_mpesa_process(stk_result_failed)
+        assert payment2 == pending[1]
+        payment2.refresh_from_db()
+        assert payment2.status == PS.FAILED
+        assert payment2.receipt_no == None
+
+
+    def test_checkout_not_found_raises(self, stk_result_failed: STKResult):
+        """It should raise a not found"""
+        with pytest.raises(NotFound, match="checkout_id does not exist"):
+            payment_mpesa_process(stk_result_failed)
+
+    def test_extra_recepients_called(self, monkeypatch: pytest.MonkeyPatch, payment_factory: Factory[Payment], stk_result_success: STKResult):
+        pass
+
+    def test_sending_notification_called(self, monkeypatch: pytest.MonkeyPatch, payment_factory: Factory[Payment], stk_result_success: STKResult):
+        pass
