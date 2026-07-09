@@ -172,7 +172,28 @@ class TestPaymentMpesaProcess:
             payment_mpesa_process(stk_result_failed)
 
     def test_extra_recepients_called(self, monkeypatch: pytest.MonkeyPatch, payment_factory: Factory[Payment], stk_result_success: STKResult):
-        pass
+        """Extra recepients should be called"""
+        mock = MagicMock()
+        monkeypatch.setattr("payments.selectors.payment_get_extra_recepients", mock)
+        
+        # mock to avoid sending email
+        monkeypatch.setattr("payments.tasks.send_payment_notification.delay", lambda *args: None)
+        payment = payment_factory(statues=[PS.PENDING])[0]
+        
+        assert payment.checkout_id is not None
+        stk_result_success["checkout_id"] = payment.checkout_id
+        payment_mpesa_process(stk_result_success)
+        mock.assert_called_once()
 
-    def test_sending_notification_called(self, monkeypatch: pytest.MonkeyPatch, payment_factory: Factory[Payment], stk_result_success: STKResult):
-        pass
+    def test_sending_notification_called(self, manager_user: User, monkeypatch: pytest.MonkeyPatch, payment_factory: Factory[Payment], stk_result_success: STKResult):
+        """Notification task should be called with the correct parameters"""
+        patch_notify = MagicMock()
+        monkeypatch.setattr("payments.tasks.send_payment_notification.delay", patch_notify)
+        
+        # Setup
+        payment = payment_factory(statuses=[PS.PENDING])[0]
+        assert payment.checkout_id is not None
+        stk_result_success["checkout_id"] = payment.checkout_id
+        
+        payment_mpesa_process(stk_result_success)
+        patch_notify.assert_called_once_with(payment.pk, [manager_user.email])
