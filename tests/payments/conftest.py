@@ -1,6 +1,10 @@
 import pytest
+import typing
 from unittest.mock import MagicMock
 from payments.mpesa import STKResult
+from payments.models import Payment
+from payments.choices import PaymentStatus as PS
+from tests.types import Factory
 
 @pytest.fixture
 def stk_callback_fail():
@@ -67,23 +71,22 @@ def patch_mpesa_auth(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr("payments.mpesa.auth.get_access_token", mock)
     yield mock
 
+@pytest.fixture(scope="session")
+def stk_result() -> typing.Callable[[bool, str], STKResult]:
+    """Return an stk result dict for for either success or failed based on a checkout_id"""
+
+    def stk_from_payment(success: bool, checkout_id: str | None = None) -> STKResult:
+        return {
+            "checkout_id": checkout_id or "ws_CO_1234",
+            "receipt_no": "574001",
+            "result_desc": "Payment successful" if success else "Payment could not be completed",
+            "success": success,
+            "metadata": {"merchant_id": "MERCHANT-1234"},
+        }
+
+    return stk_from_payment
 
 @pytest.fixture
-def stk_result_failed() -> STKResult:
-    return {
-        "checkout_id": "ws_CO_1234",
-        "receipt_no": None,
-        "result_desc": "User failed to respond",
-        "success": False,
-        "metadata": {"merchant_id": "MERCHANT-1234"}
-    }
-
-@pytest.fixture
-def stk_result_success() -> STKResult:
-    return {
-        "checkout_id": "ws_CO_1234",
-        "receipt_no": "574001",
-        "result_desc": "Payment successful",
-        "success": True,
-        "metadata": {"merchant_id": "MERCHANT-1234"}
-    }
+def pending_payment(payment_factory: Factory[Payment]) -> Payment:
+    "Returns a pending payment"
+    return payment_factory(statuses=[PS.PENDING])[0]
