@@ -152,11 +152,11 @@ def payment_mpesa_query(payment: Payment) -> Payment:
     if not payment.checkout_id or not payment.timestamp:
         raise MpesaAPIError("Only M-PESA payments can be queried")
 
-    if payment.status and payment.status != PS.SUCCESS:
+    if payment.status != PS.PENDING:
         return payment
 
     try:
-        stk_result = query_payment_status(checkout_request_id=payment.checkout_id, timestamp=payment.timestamp)
+        stk_result = query_payment_status(checkout_id=payment.checkout_id, timestamp=payment.timestamp)
     except (requests.exceptions.Timeout, requests.exceptions.HTTPError) as e:
         if e.response:
             status_code = e.response.status_code
