@@ -67,7 +67,7 @@ def payment_get_for(*, user: User, payment_id: int) -> Payment:
     return BASE_QS.filter(u_filters).get(pk=payment_id)
 
 
-@raise_not_found("checkout", "Checkout id is non existent")
+@raise_not_found("checkout", "Payment with checkout_id does not exist")
 def payment_get_checkout(checkout_id: str) -> Payment:
     """Retrieves a specific payment by its checkout ID.
 
