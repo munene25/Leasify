@@ -78,7 +78,7 @@ def stk_result() -> typing.Callable[[bool, str], STKResult]:
     def stk_from_payment(success: bool, checkout_id: str | None = None) -> STKResult:
         return {
             "checkout_id": checkout_id or "ws_CO_1234",
-            "receipt_no": "574001",
+            "receipt_no": "RCPT-1234" if success else None,
             "result_desc": "Payment successful" if success else "Payment could not be completed",
             "success": success,
             "metadata": {"merchant_id": "MERCHANT-1234"},
