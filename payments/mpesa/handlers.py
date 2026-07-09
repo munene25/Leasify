@@ -46,7 +46,7 @@ def initiate_stk_push(phone_number: str, amount: int, account_ref: str, descript
     return {"checkout_id": json["CheckoutRequestID"], "success": int(json["ResponseCode"]) == 0}
 
 
-def query_payment_status(checkout_request_id: str, timestamp: str) -> STKResult:
+def query_payment_status(checkout_id: str, timestamp: str) -> STKResult:
     """Query the status of an M-PESA payment.
 
     :param checkout_request_id: The M-PESA CheckoutRequestID from the STK push response
@@ -57,7 +57,7 @@ def query_payment_status(checkout_request_id: str, timestamp: str) -> STKResult:
         "BusinessShortCode": cfg["SHORTCODE"],
         "Password": utils.make_password(cfg["SHORTCODE"], cfg["PASSKEY"], timestamp),
         "Timestamp": timestamp,
-        "CheckoutRequestID": checkout_request_id,
+        "CheckoutRequestID": checkout_id,
     }
     # Make the API request to M-PESA
     headers = {"Content-Type": "application/json", "Authorization": f"Bearer {auth.get_access_token()}"}
@@ -69,7 +69,7 @@ def query_payment_status(checkout_request_id: str, timestamp: str) -> STKResult:
     json = res.json()
 
     return {
-        "checkout_id": checkout_request_id,
+        "checkout_id": checkout_id,
         "success": int(json["ResultCode"]) == 0,
         "result_desc": json["ResultDesc"],
         "metadata": {"merchant_id": json["MerchantRequestID"]},
