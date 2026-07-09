@@ -139,17 +139,13 @@ class TestPaymentAltCreate:
             payment_alt_create(billing=bill, recorded_by=manager_user, mode=PM.CASH)
         
 class TestPaymentMpesaProcess:
-    def test_payment_update_based_on_result(self, monkeypatch: pytest.MonkeyPatch, payment_factory: Factory[Payment], stk_result_failed: STKResult, stk_result_success: STKResult):
+    def test_payment_update_based_on_result(self, monkeypatch: pytest.MonkeyPatch, payment_factory: Factory[Payment], stk_result):
         "A payment needs to be updated to success or fail based on stk_result"
         
         monkeypatch.setattr("payments.tasks.send_payment_notification.delay", lambda *args: None)
         pending = payment_factory(statuses=[PS.PENDING, PS.PENDING])
-        
-        # Set checkout id on stk result
-        assert pending[0].checkout_id is not None
-        assert pending[1].checkout_id is not None
-        stk_result_success["checkout_id"] = pending[0].checkout_id
-        stk_result_failed["checkout_id"] = pending[1].checkout_id
+        stk_result_success = stk_result(True, pending[0].checkout_id)
+        stk_result_failed = stk_result(False, pending[1].checkout_id)
 
         # Successful Payment
         payment = payment_mpesa_process(stk_result_success)
@@ -166,22 +162,19 @@ class TestPaymentMpesaProcess:
         assert payment2.receipt_no == None
 
 
-    def test_checkout_not_found_raises(self, stk_result_failed: STKResult):
+    def test_checkout_not_found_raises(self, stk_result):
         """It should raise a not found"""
         with pytest.raises(NotFound, match="checkout_id does not exist"):
-            payment_mpesa_process(stk_result_failed)
+            payment_mpesa_process(stk_result(False))
 
-    def test_extra_recepients_called(self, monkeypatch: pytest.MonkeyPatch, payment_factory: Factory[Payment], stk_result_success: STKResult):
+    def test_extra_recepients_called(self, monkeypatch: pytest.MonkeyPatch, pending_payment: Payment, stk_result):
         """Extra recepients should be called"""
         mock = MagicMock()
         monkeypatch.setattr("payments.selectors.payment_get_extra_recepients", mock)
         
         # mock to avoid sending email
         monkeypatch.setattr("payments.tasks.send_payment_notification.delay", lambda *args: None)
-        payment = payment_factory(statues=[PS.PENDING])[0]
-        
-        assert payment.checkout_id is not None
-        stk_result_success["checkout_id"] = payment.checkout_id
+        stk_result_success = stk_result(True, pending_payment.checkout_id)
         payment_mpesa_process(stk_result_success)
         mock.assert_called_once()
 
