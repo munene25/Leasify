@@ -188,11 +188,29 @@ class TestPaymentMpesaProcess:
         payment_mpesa_process(stk_result_success)
         patch_notify.assert_called_once_with(pending_payment.pk, [manager_user.email])
 
-    def test_no_queries(self, pending_payment: Payment, stk_result, django_assert_num_queries):
+    def test_no_queries(self, monkeypatch: pytest.MonkeyPatch, pending_payment: Payment, stk_result, django_assert_num_queries):
         """
         1. Get checkout
         2. Update payment status
+        3. Get extra recepients
+        4. Get payment in delayed task[Optional]
         """
-        with django_assert_num_queries(2):
+        monkeypatch.setattr("payments.tasks.send_payment_notification.delay", lambda *args, **kwargs: None)
+        with django_assert_num_queries(3):
             payment_mpesa_process(stk_result=stk_result(False, pending_payment.checkout_id))
 
+class TestPaymentMpesaQuery:
+    def test_raises_for_non_mpesa_queries(self, payment_factory: Factory[Payment]):
+        """Non Mpesa payments should raise validation Errors"""
+
+    def test_query_count(self, payment_factory: Factory[Payment], django_assert_num_queries):
+        """Based on the type of payment, Either calls made in payment processing or none"""
+    
+    def test_stk_query_called_once_with_correct_params(self, monkeypatch: pytest.MonkeyPatch, pending_payment: Payment):
+        """The kwargs should be the checkout_id and timestamp"""
+
+    def test_stk_fails(self, monkeypatch: pytest.MonkeyPatch, pending_payment):
+        """If fails, it should throw an MPESA API Error and log the error"""
+
+    def test_payment_mpesa_process_called_and_return_value(self, monkeypatch: pytest.MonkeyPatch, pending_payment: Payment):
+        """Should return a payment, after calling process"""
