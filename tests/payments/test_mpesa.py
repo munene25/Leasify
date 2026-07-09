@@ -47,22 +47,21 @@ class TestSTKInitialResponseParse:
     def test_parse_callback_response(self, stk_callback_fail: dict, stk_callback_sucess: dict):
         """Parsing the mpesa response for a payment"""
         # test with failed response
-        test1 = parser.parse_callback_response(stk_callback_fail)
-        assert isinstance(test1, STKResult)
-        assert test1.checkout_id == "ws_CO_12345"
-        assert test1.success == False
-        assert test1.result_desc == "Request cancelled by user"
-        assert test1.receipt_no == None
-        assert test1.metadata == {"merchant_id": "f1e2-4b95-a71d-b30d3cdbb7a7942864"}
+        test1: STKResult = parser.parse_callback_response(stk_callback_fail)
+        
+        assert test1["checkout_id"] == "ws_CO_12345"
+        assert test1["success"] == False
+        assert test1["result_desc"] == "Request cancelled by user"
+        assert test1["receipt_no"] == None
+        assert test1["metadata"] == {"merchant_id": "f1e2-4b95-a71d-b30d3cdbb7a7942864"}
 
         # Test with successful response
-        test2 = parser.parse_callback_response(stk_callback_sucess)
-        assert isinstance(test2, STKResult)
-        assert test2.checkout_id == "ws_CO_12345"
-        assert test2.success == True
-        assert test2.result_desc == "The service request is processed successfully."
-        assert test2.receipt_no == "NLJ7RT61SV"
-        assert len(test2.metadata) == 4
+        test2: STKResult = parser.parse_callback_response(stk_callback_sucess)
+        assert test2["checkout_id"] == "ws_CO_12345"
+        assert test2["success"] == True
+        assert test2["result_desc"] == "The service request is processed successfully."
+        assert test2["receipt_no"] == "NLJ7RT61SV"
+        assert len(test2["metadata"]) == 4
 
 class TestInitiateSTKPush:
 
@@ -75,16 +74,16 @@ class TestInitiateSTKPush:
         mock_post = MagicMock(return_value=mock_response)
         monkeypatch.setattr('payments.mpesa.handlers.requests.post', mock_post)
         
-        result = initiate_stk_push(
+        result: STKInitialResponse = initiate_stk_push(
             phone_number="254712345678",
             amount=1000,
             account_ref="JAN-2024",
             description="Rent",
             timestamp="20240101120000"
         )
-        assert isinstance(result, STKInitialResponse)
-        assert result.checkout_id == "ws_CO_12345"
-        assert result.success is True
+        
+        assert result["checkout_id"] == "ws_CO_12345"
+        assert result["success"] == True
         
         mock_post.assert_called_once()
         patch_mpesa_auth.assert_called_once()
