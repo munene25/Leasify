@@ -1,5 +1,6 @@
 import pytest
 from unittest.mock import MagicMock
+from payments.mpesa import STKResult
 
 @pytest.fixture
 def stk_callback_fail():
@@ -65,3 +66,24 @@ def patch_mpesa_auth(monkeypatch: pytest.MonkeyPatch):
     mock = MagicMock(return_value="secret_token")
     monkeypatch.setattr("payments.mpesa.auth.get_access_token", mock)
     yield mock
+
+
+@pytest.fixture
+def stk_result_failed() -> STKResult:
+    return {
+        "checkout_id": "ws_CO_1234",
+        "receipt_no": None,
+        "result_desc": "User failed to respond",
+        "success": False,
+        "metadata": {"merchant_id": "MERCHANT-1234"}
+    }
+
+@pytest.fixture
+def stk_result_success() -> STKResult:
+    return {
+        "checkout_id": "ws_CO_1234",
+        "receipt_no": "574001",
+        "result_desc": "Payment successful",
+        "success": True,
+        "metadata": {"merchant_id": "MERCHANT-1234"}
+    }
