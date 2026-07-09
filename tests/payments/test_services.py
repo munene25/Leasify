@@ -178,15 +178,21 @@ class TestPaymentMpesaProcess:
         payment_mpesa_process(stk_result_success)
         mock.assert_called_once()
 
-    def test_sending_notification_called(self, manager_user: User, monkeypatch: pytest.MonkeyPatch, payment_factory: Factory[Payment], stk_result_success: STKResult):
+    def test_sending_notification_called(self, manager_user: User, monkeypatch: pytest.MonkeyPatch, pending_payment: Payment, stk_result):
         """Notification task should be called with the correct parameters"""
         patch_notify = MagicMock()
         monkeypatch.setattr("payments.tasks.send_payment_notification.delay", patch_notify)
-        
-        # Setup
-        payment = payment_factory(statuses=[PS.PENDING])[0]
-        assert payment.checkout_id is not None
-        stk_result_success["checkout_id"] = payment.checkout_id
+    
+        stk_result_success = stk_result(True, pending_payment.checkout_id)
         
         payment_mpesa_process(stk_result_success)
-        patch_notify.assert_called_once_with(payment.pk, [manager_user.email])
+        patch_notify.assert_called_once_with(pending_payment.pk, [manager_user.email])
+
+    def test_no_queries(self, pending_payment: Payment, stk_result, django_assert_num_queries):
+        """
+        1. Get checkout
+        2. Update payment status
+        """
+        with django_assert_num_queries(2):
+            payment_mpesa_process(stk_result=stk_result(False, pending_payment.checkout_id))
+
