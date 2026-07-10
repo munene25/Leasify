@@ -147,10 +147,9 @@ def payment_mpesa_query(payment: Payment) -> Payment:
 
     :param payment: The payment object to query
     :returns: Updated Payment object with new status
-
     """
     if not payment.checkout_id or not payment.timestamp:
-        raise MpesaAPIError("Only M-PESA payments can be queried")
+        raise ValidationError("Only M-PESA payments can be queried")
 
     if payment.status != PS.PENDING:
         return payment
