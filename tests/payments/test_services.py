@@ -237,10 +237,21 @@ class TestPaymentMpesaQuery:
         with pytest.raises(MpesaAPIError, match="Service is unavailable"):
             payment_mpesa_query(pending_payment)
         
+        pending_payment.refresh_from_db()
+        assert pending_payment.status == PS.PENDING
+
         log = caplog[-1]
         assert log["event"] == "payment_query_failed"
         assert log["status_code"] == 409
         assert log["response"] == message
 
-    def test_payment_mpesa_process_called_and_return_value(self, monkeypatch: pytest.MonkeyPatch, pending_payment: Payment):
+    def test_payment_mpesa_process_called_and_return_value(self, monkeypatch: pytest.MonkeyPatch, pending_payment: Payment, stk_result):
         """Should return a payment, after calling process"""
+        stk = stk_result(True, pending_payment.checkout_id)
+        mock_query = MagicMock(return_value = stk)
+        mock_payment_process = MagicMock()
+        monkeypatch.setattr("payments.services.query_payment_status", mock_query)
+        monkeypatch.setattr("payments.services.payment_mpesa_process", mock_payment_process)
+
+        payment_mpesa_query(pending_payment)
+        mock_payment_process.assert_called_once_with(stk)
