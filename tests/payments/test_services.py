@@ -224,8 +224,23 @@ class TestPaymentMpesaQuery:
             timestamp=pending_payment.timestamp
         )
 
-    def test_stk_fails(self, monkeypatch: pytest.MonkeyPatch, pending_payment):
+    def test_stk_fails(self, monkeypatch: pytest.MonkeyPatch, pending_payment: Payment, caplog):
         """If fails, it should throw an MPESA API Error and log the error"""
+        exception = requests.exceptions.Timeout()
+        exception.response = MagicMock()
+        exception.response.status_code = 409
+        message = {"ResponseCode": "409"}
+        exception.response.json.return_value = message
+        mock = MagicMock(side_effect=exception)
+        monkeypatch.setattr("payments.services.query_payment_status", mock)
+
+        with pytest.raises(MpesaAPIError, match="Service is unavailable"):
+            payment_mpesa_query(pending_payment)
+        
+        log = caplog[-1]
+        assert log["event"] == "payment_query_failed"
+        assert log["status_code"] == 409
+        assert log["response"] == message
 
     def test_payment_mpesa_process_called_and_return_value(self, monkeypatch: pytest.MonkeyPatch, pending_payment: Payment):
         """Should return a payment, after calling process"""
