@@ -202,12 +202,27 @@ class TestPaymentMpesaProcess:
 class TestPaymentMpesaQuery:
     def test_raises_for_non_mpesa_queries(self, payment_factory: Factory[Payment]):
         """Non Mpesa payments should raise validation Errors"""
+        payment = payment_factory(payment_mode=PM.CASH)[0]
+        with pytest.raises(ValidationError, match="M-PESA"):
+            payment_mpesa_query(payment)        
 
     def test_query_count(self, payment_factory: Factory[Payment], django_assert_num_queries):
         """Based on the type of payment, Either calls made in payment processing or none"""
+        payments = payment_factory(statuses=[PS.SUCCESS])
+        with django_assert_num_queries(0):
+            payment_mpesa_query(payments[0])
     
-    def test_stk_query_called_once_with_correct_params(self, monkeypatch: pytest.MonkeyPatch, pending_payment: Payment):
+    def test_stk_query_called_once_with_correct_params(self, monkeypatch: pytest.MonkeyPatch, pending_payment: Payment, stk_result):
         """The kwargs should be the checkout_id and timestamp"""
+        result = stk_result(True, pending_payment.checkout_id)
+        mock = MagicMock(return_value=result)
+        monkeypatch.setattr("payments.services.query_payment_status", mock)
+        payment = payment_mpesa_query(pending_payment)
+        assert payment == pending_payment
+        mock.assert_called_with(
+            checkout_id=pending_payment.checkout_id,
+            timestamp=pending_payment.timestamp
+        )
 
     def test_stk_fails(self, monkeypatch: pytest.MonkeyPatch, pending_payment):
         """If fails, it should throw an MPESA API Error and log the error"""
