@@ -13,7 +13,7 @@ from billing.choices import BillingStatus as BS
 from payments import models as p_models, selectors as p_selectors, services as p_services
 from users import services as u_services, models as u_models, selectors as u_selectors
 from payments.tasks import send_payment_notification
-from tenancy.tasks import notify_reserved_on_expiry
+# from tenancy.tasks import notify_reserved_on_expiry
 
 def run():
     # user = u_selectors.user_get(18)
@@ -21,8 +21,10 @@ def run():
     # tenant = t_services.tenancy_create(user=user, apartment=apartment, start_date=date.today(), duration_months=2)
     # tenant.reservation_expiry = tenant.reservation_expiry - timedelta(1)
     # tenant.save()
-    tenant = t_models.Tenancy.objects.get(pk=17)
-    tenant.reservation_expiry = date.today() + timedelta(1)
-    tenant.save()
-    # send_payment_notification(1)
-    notify_reserved_on_expiry()
+    # tenant = t_models.Tenancy.objects.get(pk=17)
+    # tenant.reservation_expiry = date.today() + timedelta(1)
+    # tenant.save()
+    # # send_payment_notification(1)
+    # notify_reserved_on_expiry()
+
+    send_payment_notification(payment_id=1, additional_recepients=["edmune25@gmail.com"])
