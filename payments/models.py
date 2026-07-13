@@ -9,7 +9,7 @@ from users.models import User
 class Payment(BaseModel):
     """
     Payment model for tracking rent payments.
-    
+
     Two creation paths:
     - STK push (MPESA): checkout_id, timestamp, idempotency_key and phone_number are populated, recorded_by is null
     - Manual (CASH/BANK): recorded_by is populated, checkout_id and phone_number are null
@@ -34,7 +34,7 @@ class Payment(BaseModel):
     billing = models.ForeignKey(BillingPeriod, null=False, blank=False, on_delete=models.PROTECT, related_name="payments")
     amount = models.DecimalField(decimal_places=2, max_digits=10, blank=False, null=False)
     status = models.CharField(null=False, blank=False, choices=PaymentStatus, default=PaymentStatus.PENDING)
-    payment_mode = models.CharField(null=False, blank=False, choices=PaymentMode)
+    mode = models.CharField(null=False, blank=False, choices=PaymentMode)
 
     # MPESA only
     phone_number = PhoneNumberModelField(null=True, blank=True)
@@ -50,6 +50,7 @@ class Payment(BaseModel):
 
     billing_id: int
 
+
 def __str__(self):
     """Human readable representation of the payment"""
-    return f"Payment[{self.payment_mode}][{self.pk}]:Billing[{self.billing_id}]"
+    return f"Payment[{self.mode}][{self.pk}]:Billing[{self.billing_id}]"
