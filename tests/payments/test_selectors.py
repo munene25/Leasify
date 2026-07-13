@@ -12,6 +12,7 @@ from payments.selectors import *
 from payments.choices import PaymentMode as PM, PaymentStatus as PS
 from django.contrib.auth.models import Group
 
+
 class TestBaseQS:
     def test_no_queries(self, payment_factory: Factory[Payment], django_assert_num_queries):
         """
@@ -27,7 +28,6 @@ class TestBaseQS:
             assert fetched.billing.tenancy.user is not None
 
 
-
 class TestPaymentListFor:
     def test_role_based_filtering(
         self,
@@ -37,7 +37,7 @@ class TestPaymentListFor:
         user_factory: Factory[User],
         billing_factory: Factory[BP],
         payment_factory: Factory[Payment],
-        tenancy_factory: Factory[Tenancy]
+        tenancy_factory: Factory[Tenancy],
     ):
         """Role based filtering based on user"""
         users = user_factory(3)
@@ -54,7 +54,14 @@ class TestPaymentListFor:
         assert payment_list_for(user=users[0]).count() == 2
         assert payment_list_for(user=users[1]).count() == 1
 
-    def test_filtering(self, superuser: User, user_factory: Factory[User], payment_factory: Factory[Payment], tenancy_factory: Factory[Tenancy], billing_factory: Factory[BP]):
+    def test_filtering(
+        self,
+        superuser: User,
+        user_factory: Factory[User],
+        payment_factory: Factory[Payment],
+        tenancy_factory: Factory[Tenancy],
+        billing_factory: Factory[BP],
+    ):
         """Test filtering based on query params"""
         user1 = user_factory(first_name="Adam", last_name="Kuria")
         user2 = user_factory(first_name="Janice", last_name="Akinyi")
@@ -63,17 +70,17 @@ class TestPaymentListFor:
         billing2 = billing_factory(tenancy=tenancy_factory(users=user2)[0])[0]
         payment_factory(billing=billing1, statuses=[PS.FAILED, PS.SUCCESS, PS.PENDING], phone_number="0710 130 000")
         payment_factory(billing=billing2, statuses=[PS.SUCCESS, PS.PENDING])
-        payment_factory(payment_mode=PM.CASH, recorded_by=user3[0], receipt_no="XYZ2040")
+        payment_factory(mode=PM.CASH, recorded_by=user3[0], receipt_no="XYZ2040")
 
         payment_list = partial(payment_list_for, user=superuser)
         # Filter on billing
-        assert payment_list(filters={"billing": 1}).count() ==  3
-        assert payment_list(filters={"billing": 2}).count() ==  2
+        assert payment_list(filters={"billing": 1}).count() == 3
+        assert payment_list(filters={"billing": 2}).count() == 2
         # Filter on status
         assert payment_list(filters={"status": PS.SUCCESS}).count() == 3
-        # Filter on payment_mode
-        assert payment_list(filters={"payment_mode": PM.CASH}).count() == 1
-        assert payment_list(filters={"payment_mode": PM.MPESA}).count() == 5
+        # Filter on mode
+        assert payment_list(filters={"mode": PM.CASH}).count() == 1
+        assert payment_list(filters={"mode": PM.MPESA}).count() == 5
         # Filter on phone_number
         assert payment_list(filters={"search": "710130000"}).count() == 3
         # Filter on receipt_no
@@ -103,17 +110,18 @@ class TestPaymentGetFor:
             payment_get_for(user=user1, payment_id=2)
         with pytest.raises(NotFound, match="Payment not found"):
             payment_get_for(user=user2, payment_id=1)
-    
-            
+
+
 class TestPaymentGetCheckout:
     def test_returns_correct_payment(self, payment_factory: Factory[Payment]):
         p = payment_factory()[0]
-        assert payment_get_checkout(checkout_id=p.checkout_id) == p 
-    
+        assert payment_get_checkout(checkout_id=p.checkout_id) == p
+
     def test_raises_not_found(self):
         """should raise if no checkout id exists"""
         with pytest.raises(NotFound, match="non existent"):
             payment_get_checkout(checkout_id="xyz")
+
 
 class TestPaymentGetExtraEmailRecepients:
     def test_returns_a_list_of_manager_emails(self, user_factory: Factory[User], get_role: typing.Callable[..., Group]):
