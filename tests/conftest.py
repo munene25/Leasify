@@ -34,10 +34,12 @@ logger = get_logger("tests.conftest")
 # def pytest_configure(config):
 #     warnings.filterwarnings("error", category=RuntimeWarning)
 
+
 @pytest.fixture
 def caplog() -> typing.Generator[list[EventDict], None, None]:
     with capture_logs() as caplog:
         yield caplog
+
 
 @pytest.fixture(scope="session")
 def django_db_setup(django_db_setup, django_db_blocker):
@@ -352,7 +354,7 @@ def mock_serializer():
 
 # ------------------------------------------------ BillingPeriod  ------------------------------------------------
 @pytest.fixture(scope="session")
-def billing_factory(today: date, request, tenancy_factory: Factory[Tenancy]) -> Factory[BP]:
+def billing_factory(today: date, tenancy_factory: Factory[Tenancy]) -> Factory[BP]:
     def create(
         quantity=1,
         tenancy: Tenancy | None = None,
@@ -382,19 +384,18 @@ def billing_factory(today: date, request, tenancy_factory: Factory[Tenancy]) -> 
 def payment_factory(billing_factory: Factory[BP], phone_no: typing.Callable[..., str], fake: Faker, user_factory: Factory[User]) -> Factory[Payment]:
 
     def create(
-        quantity=1, 
+        quantity=1,
         billing: BP | None = None,
         statuses: list[PS] | None = None,
-        payment_mode: PM = PM.MPESA,
-        **kwargs: typing.Any
+        mode: PM = PM.MPESA,
+        **kwargs: typing.Any,
     ) -> list[Payment]:
-        
         """A payment creation factory, creates payments for a given billing period"""
         from payments.mpesa import make_timestamp
 
         billing = billing or billing_factory()[0]
         statuses = statuses or [PS.SUCCESS] * quantity
-        if payment_mode == PM.MPESA:
+        if mode == PM.MPESA:
             kwargs.setdefault("phone_number", phone_no())
             kwargs.setdefault("receipt_no", fake.unique.uuid4())
             kwargs.setdefault("timestamp", make_timestamp())
@@ -409,20 +410,24 @@ def payment_factory(billing_factory: Factory[BP], phone_no: typing.Callable[...,
                 billing=billing,
                 amount=billing.total_due,
                 status=status,
-                payment_mode=payment_mode,
-                
+                mode=mode,
                 # Mpesa
                 phone_number=kwargs.get("phone_number"),
                 checkout_id=checkout(),
                 idempotency_key=idemp_key(),
                 receipt_no=kwargs.get("receipt_no"),
                 timestamp=kwargs.get("timestamp"),
-                
                 # Manual
-                recorded_by=kwargs.get("recorded_by")
+                recorded_by=kwargs.get("recorded_by"),
             )
             payments.append(p)
-            logger.info("payment_created", billing_id=p.billing_id, status=p.status, mode=p.payment_mode, name=p.billing.tenancy.user.full_name)
+            logger.info(
+                "payment_created",
+                billing_id=p.billing_id,
+                status=p.status,
+                mode=p.mode,
+                name=p.billing.tenancy.user.full_name,
+            )
         return payments
 
     return create
