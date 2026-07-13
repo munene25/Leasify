@@ -15,7 +15,7 @@ from billing.selectors import billing_get_for
 class PaymentListView(BaseAPIView):
     """List and retrieve all payments accessible by the authenticated user.
 
-    Filters available: billing_id, status, payment_mode, search query string.
+    Filters available: billing_id, status, mode, search query string.
 
     :param request: The HTTP request containing authentication token and optional query parameters
     :returns: Paginated list of Payment objects with filtering applied
@@ -24,7 +24,7 @@ class PaymentListView(BaseAPIView):
     class FilterClass(serializers.Serializer):
         billing = serializers.IntegerField()
         status = serializers.CharField()
-        payment_mode = serializers.CharField()
+        mode = serializers.CharField()
         search = serializers.CharField()
 
     permission_classes = [IsAuthenticated]
@@ -58,22 +58,22 @@ class PaymentInitiateMpesaView(BaseAPIView):
     serializer_class = sc.PaymentInitiateMpesaSerializer
 
     def post(self, request) -> Response:
-        try: idempotency_key = request.headers["Idempotency-Key"]
-        except KeyError: raise NotAcceptable("'Idempotency-Key' not provided")
+        try:
+            idempotency_key = request.headers["Idempotency-Key"]
+        except KeyError:
+            raise NotAcceptable("'Idempotency-Key' not provided")
 
         incoming = self.validate_serializer(data=request.data)
         billing = billing_get_for(user=request.user, billing_id=incoming["billing_id"])
-        
+
         payment = sr.payment_mpesa_initiate(
-            billing=billing,
-            phone_number=incoming["phone_number"],
-            idempotency_key=idempotency_key
+            billing=billing, phone_number=incoming["phone_number"], idempotency_key=idempotency_key
         )
-        
+
         return Response(
             {"message": "M-Pesa transaction initiated.", "payment_id": payment.pk},
             status=status.HTTP_201_CREATED,
-    )
+        )
 
 
 class PaymentDetailView(APIView):
