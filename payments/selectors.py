@@ -18,7 +18,7 @@ class PaymentFilteringPolicy(FilteringPolicy):
     REGULAR = Q(pk=0)
 
 
-def payment_list_for(*, user: User,filters: dict[str, Any] | QueryDict = {}) -> QuerySet[Payment]:
+def payment_list_for(*, user: User, filters: dict[str, Any] | QueryDict = {}) -> QuerySet[Payment]:
     """
     Retrieves a list of payments for the given user with optional filtering.
 
@@ -32,7 +32,7 @@ def payment_list_for(*, user: User,filters: dict[str, Any] | QueryDict = {}) -> 
     class F(django_filters.FilterSet):
         class Meta:
             model = Payment
-            fields = ("billing", "status", "payment_mode")
+            fields = ("billing", "status", "mode")
 
         search = django_filters.CharFilter(method="search_fields")
 
