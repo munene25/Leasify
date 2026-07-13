@@ -68,7 +68,7 @@ def payment_mpesa_initiate(*, billing: "BP", phone_number: str, idempotency_key:
         billing=billing,
         amount=billing.total_due,
         status=PS.PENDING,
-        payment_mode=PM.MPESA,
+        mode=PM.MPESA,
         phone_number=phone_number,
         checkout_id=res["checkout_id"],
         idempotency_key=idempotency_key,
@@ -98,7 +98,7 @@ def payment_alt_create(*, billing: "BP", mode: PM, recorded_by: "User", status: 
         billing=billing,
         amount=billing.total_due,
         status=status,
-        payment_mode=mode,
+        mode=mode,
         recorded_by=recorded_by,
     )
 
@@ -106,7 +106,7 @@ def payment_alt_create(*, billing: "BP", mode: PM, recorded_by: "User", status: 
         "payment_alt_created",
         payment_id=payment.pk,
         billing_id=billing.pk,
-        payment_mode=mode,
+        mode=mode,
     )
 
     return payment
@@ -128,8 +128,10 @@ def payment_mpesa_process(stk_result: "STKResult") -> Payment:
 
     payment.save(update_fields=["status", "receipt_no"])
 
-    extra_recepients = sl.payment_get_extra_recepients()
-    tasks.send_payment_notification.delay(payment.pk, extra_recepients)
+    
+    if payment.status == PS.SUCCESS:
+        extra_recepients = sl.payment_get_extra_recepients()
+        tasks.send_payment_notification.delay(payment.pk, extra_recepients)
 
     logger.info(
         "payment_processed",
