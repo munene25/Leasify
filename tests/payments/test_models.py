@@ -18,7 +18,7 @@ class TestPaymentModel:
             billing=billing,
             amount=billing.total_due,
             status=PS.SUCCESS,
-            payment_mode=PM.MPESA,
+            mode=PM.MPESA,
             phone_number=phone_no(),
             timestamp="20202022",
             receipt_no="Reciept2020-22",
@@ -41,7 +41,7 @@ class TestPaymentModel:
             billing=billing,
             amount=billing.total_due,  # type: ignore
             status=PS.SUCCESS,
-            payment_mode=PM.CASH,
+            mode=PM.CASH,
             recorded_by=user,  # Required for manual payments
         )
 
@@ -54,7 +54,7 @@ class TestPaymentModel:
             billing=billing,
             amount=billing.total_due,
             status=PS.SUCCESS,
-            payment_mode=PM.CASH,
+            mode=PM.CASH,
             checkout_id="uniquecheckoutid",
         )
         with pytest.raises(IntegrityError):
@@ -62,7 +62,7 @@ class TestPaymentModel:
                 billing=billing,
                 amount=billing.total_due,
                 status=PS.SUCCESS,
-                payment_mode=PM.MPESA,
+                mode=PM.MPESA,
                 checkout_id=p.checkout_id,
             )
 
@@ -73,7 +73,7 @@ class TestPaymentModel:
             billing=billing,
             amount=billing.total_due,
             status=PS.SUCCESS,
-            payment_mode=PM.CASH,
+            mode=PM.CASH,
             idempotency_key="unique_idemp_key",
         )
         # Duplicate IDEMPOTENCY_KEY should fail
@@ -82,6 +82,6 @@ class TestPaymentModel:
                 billing=billing,
                 amount=billing.total_due,
                 status=PS.SUCCESS,
-                payment_mode=PM.MPESA,
+                mode=PM.MPESA,
                 idempotency_key=p.idempotency_key,
             )
