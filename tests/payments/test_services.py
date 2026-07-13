@@ -255,3 +255,4 @@ class TestPaymentMpesaQuery:
 
         payment_mpesa_query(pending_payment)
         mock_payment_process.assert_called_once_with(stk)
+
