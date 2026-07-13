@@ -3,7 +3,7 @@
 {% block body %}
 Payment Confirmed
 Greetings,
-Good news, we've received a payment of KES {{ payment.amount }} for {{ payment.billing.tenancy.apartment.name }} covering {{ payment.billing.name }}.
+Good news, we've received a payment of KES {{ payment.amount }}. The receipt below is for your records.
 
 Receipt Details
 ---------------
@@ -11,7 +11,7 @@ Receipt No:     {{ payment.receipt_no }}
 Date:           {{ payment.created_at }}
 Unit:           {{ payment.billing.tenancy.apartment.name }}
 Billing Period: {{ payment.billing.name }}
-Payment Mode:   {{ payment.payment_mode }}
+Payment Mode:   {{ payment.mode }}
 Phone number:          {{ payment.phone_number }}
 
 — The {{ company_name }} Team
