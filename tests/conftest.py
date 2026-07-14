@@ -1,27 +1,31 @@
 import pytest
 import typing
-from structlog import get_logger
-from unittest.mock import MagicMock
-from tests.types import Factory
 from faker import Faker
-from django.core.management import call_command
+from datetime import date
+from unittest.mock import MagicMock
+from structlog import get_logger
+from structlog.testing import capture_logs
+from structlog.types import EventDict
+from django.core import management as django_management, cache
 from django.contrib.auth.models import Group
-from users.models import User
-from users.services import user_account_create, user_set_role
 from rest_framework.test import APIClient
-from django.core.cache import cache
+
+from tests.types import Factory
+from common.period import DateRange
+from users.models import User
+from users.selectors import get_group
+from users.services import user_account_create, user_set_role
+
 from apartments.services import apartment_create
 from apartments.models import Apartment
+
 from tenancy.models import Tenancy
-from datetime import date, timedelta
 from billing.models import BillingPeriod as BP
 from billing.services import billing_period_create
 from billing.choices import BillingStatus as BS
-from common.period import DateRange
+
 from payments.models import Payment
 from payments.choices import PaymentMode as PM, PaymentStatus as PS
-from structlog.testing import capture_logs
-from structlog.types import EventDict
 
 logger = get_logger("tests.conftest")
 
@@ -44,7 +48,7 @@ def caplog() -> typing.Generator[list[EventDict], None, None]:
 @pytest.fixture(scope="session")
 def django_db_setup(django_db_setup, django_db_blocker):
     with django_db_blocker.unblock():
-        call_command("loaddata", "fixtures/roles.json")
+        django_management.call_command("loaddata", "fixtures/roles.json")
 
 
 @pytest.fixture
@@ -82,9 +86,9 @@ def enable_db_access(db):
 
 @pytest.fixture
 def cache_clear():
-    cache.clear()
+    cache.cache.clear()
     yield
-    cache.clear()
+    cache.cache.clear()
 
 
 @pytest.fixture(autouse=True)
@@ -155,15 +159,6 @@ def roles_list() -> list[Group]:
     return list(Group.objects.all())
 
 
-@pytest.fixture(scope="session")
-def get_role() -> typing.Callable[[str], Group]:
-    """
-    Callable to return a specific group
-    Pass in the str value of the group
-    """
-    from users.selectors import get_group
-
-    return lambda name: get_group(name)
 
 
 @pytest.fixture
@@ -175,21 +170,21 @@ def superuser(user_factory: Factory[User]):
 
 
 @pytest.fixture
-def manager_user(user_factory: Factory[User], get_role: typing.Callable[[str], Group]) -> User:
+def manager_user(user_factory: Factory[User]) -> User:
     u = user_factory()[0]
-    return user_set_role(user=u, role=get_role("manager"))
+    return user_set_role(user=u, role=get_group("manager"))
 
 
 @pytest.fixture
-def caretaker_user(user_factory: Factory[User], get_role) -> User:
+def caretaker_user(user_factory: Factory[User]) -> User:
     u = user_factory()[0]
-    return user_set_role(user=u, role=get_role("caretaker"))
+    return user_set_role(user=u, role=get_group("caretaker"))
 
 
 @pytest.fixture
-def tenant_user(user_factory: Factory[User], get_role) -> User:
+def tenant_user(user_factory: Factory[User]) -> User:
     u = user_factory()[0]
-    return user_set_role(user=u, role=get_role("tenant"))
+    return user_set_role(user=u, role=get_group("tenant"))
 
 
 @pytest.fixture(scope="session")
@@ -299,16 +294,12 @@ def tenancy_patch_validators(monkeypatch: pytest.MonkeyPatch) -> dict[str, Magic
 
 
 @pytest.fixture(scope="session")
-def tenancy_factory(
-    apartment_factory: Factory[Apartment], user_factory: Factory[User], today: date, get_role: typing.Callable[..., Group]
-) -> Factory[Tenancy]:
+def tenancy_factory(apartment_factory: Factory[Apartment], user_factory: Factory[User], today: date) -> Factory[Tenancy]:
     """Tenancy generator - creates lease-based tenancies"""
     from tenancy.choices import TenancyStatus
 
     def create(
-        quantity=1,
-        users: list[User] | None = None,
-        apartments: list[Apartment] | None = None, **kwargs
+        quantity=1, users: list[User] | None = None, apartments: list[Apartment] | None = None, **kwargs
     ) -> list[Tenancy]:
         tenancies = []
 
@@ -325,7 +316,7 @@ def tenancy_factory(
                 date_joined=start_date,
                 status=status,
             )
-            user_set_role(user=user, role=get_role("tenant"))
+            user_set_role(user=user, role=get_group("tenant"))
             tenancies.append(t)
 
         return tenancies
