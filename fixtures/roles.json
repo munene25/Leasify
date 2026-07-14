@@ -291,7 +291,7 @@
     "model": "auth.permission",
     "pk": 33,
     "fields": {
-        "name": "Can manually create a payment with status outside of PENDING",
+        "name": "Can manually create a payment",
         "content_type": 8,
         "codename": "add_payment_manually"
     }
@@ -436,7 +436,6 @@
             44,
             47,
             46,
-            29,
             33,
             32,
             40,
@@ -475,6 +474,7 @@
         "permissions": [
             44,
             46,
+            32,
             39,
             40,
             42
