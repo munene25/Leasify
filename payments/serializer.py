@@ -7,7 +7,7 @@ class PaymentListSerializer(serializers.Serializer):
     """Serializer for listing payments"""
 
     payment_id = serializers.IntegerField(source="pk")
-    ref_no = serializers.CharField()
+    mode = serializers.CharField()
     billing_id = serializers.IntegerField()
     billing = serializers.CharField(source="billing.name")
     amount = serializers.DecimalField(max_digits=10, decimal_places=2)
@@ -18,7 +18,7 @@ class PaymentDetailSerializer(serializers.Serializer):
     """Serializer for payment detail"""
 
     payment_id = serializers.IntegerField(source="pk")
-    ref_no = serializers.CharField()
+    mode = serializers.CharField()
     billing_id = serializers.IntegerField()
     tenant_name = serializers.CharField(source="billing.tenancy.user.full_name")
     amount = serializers.DecimalField(max_digits=10, decimal_places=2)
