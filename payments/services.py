@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 
 
 @transaction.atomic
-def payment_mpesa_initiate(*, billing: "BP", phone_number: str, idempotency_key: str) -> Payment:
+def payment_mpesa_initiate(*, billing: "BP", phone_number: str, idempotency_key: str | None) -> Payment:
     """
     Initialize a payment via M-Pesa STK push.
 
@@ -41,7 +41,7 @@ def payment_mpesa_initiate(*, billing: "BP", phone_number: str, idempotency_key:
         raise ValidationError(f"Payment not allowed for {billing.status} billing")
 
     # Check for Idempotency
-    if existing := billing.payments.filter(idempotency_key=idempotency_key).first():
+    if idempotency_key and (existing := billing.payments.filter(idempotency_key=idempotency_key).first()):
         return existing
 
     # Check for Pending
