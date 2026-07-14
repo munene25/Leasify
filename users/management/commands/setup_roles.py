@@ -1,7 +1,6 @@
-from django.core.management import BaseCommand
+from django.core.management import BaseCommand, call_command
 from django.contrib.auth.models import Group, Permission
 from django.contrib.contenttypes.models import ContentType
-
 
 ROLE_PERMISSIONS = {
     "manager": [
@@ -30,6 +29,8 @@ class Command(BaseCommand):
     help = "Seed groups and permissions"
 
     def handle(self, *args, **options):
+        print("🗄️  Seeding database...")
+
         for role_name, model_permissions_list in ROLE_PERMISSIONS.items():
             group, _ = Group.objects.get_or_create(name=role_name)
 
@@ -48,4 +49,11 @@ class Command(BaseCommand):
                         )
 
                     group.permissions.add(*role_perms)
-        print("✅ Roles and permissions successfully seeded")
+
+        print("📂 Loading fixtures...")
+        fixture_dir = "fixtures/roles.json"
+
+        with open(fixture_dir, "w") as f:
+            call_command("dumpdata", "auth.Permission", "auth.Group", indent=4, stdout=f)
+
+        print(f"✅ Roles setup successfully. Fixtures at '{fixture_dir}'")
