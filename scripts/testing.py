@@ -10,6 +10,7 @@ from apartments import models as a_models, selectors as a_selectors, services as
 from tenancy import models as t_models, selectors as t_selectors, services as t_services
 from tenancy.choices import TenancyStatus as TS, TerminationReason as TR
 from billing.choices import BillingStatus as BS
+from billing.models import BillingPeriod as BP
 from payments import models as p_models, selectors as p_selectors, services as p_services
 from users import services as u_services, models as u_models, selectors as u_selectors
 from payments.tasks import send_payment_notification
@@ -27,4 +28,7 @@ def run():
     # # send_payment_notification(1)
     # notify_reserved_on_expiry()
 
-    send_payment_notification(payment_id=1, additional_recepients=["edmune25@gmail.com"])
+    # send_payment_notification(payment_id=1, additional_recepients=["edmune25@gmail.com"])
+
+
+    t_services.tenancy_lease_extend(t_models.Tenancy.objects.get(pk=7), 1)
