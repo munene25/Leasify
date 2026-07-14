@@ -17,10 +17,7 @@ from django.db.models import QuerySet
 
 
 class TestPaymentListView:
-    # authentication and authorization(perms)
-    # pagination
-    # selector mock - filtering and role based
-    # response structure
+
     path = "/payments/"
 
     @pytest.mark.parametrize(
