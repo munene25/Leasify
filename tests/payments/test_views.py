@@ -66,3 +66,15 @@ class TestPaymentListView:
             user=manager_client.user,
             filters=filters
         )
+
+    def test_response_structure(self, payment_factory: Factory[Payment], superuser_client: IsClient):
+        """All details and searchable fields should be included"""
+
+        payment = payment_factory(1)[0]
+        res = parse_paginated_response(superuser_client.get(self.path), 1)
+        results = res["results"][0]
+        assert results["payment_id"] == payment.pk
+        assert results["billing_id"] == payment.billing_id
+        assert results["billing_name"] == payment.billing.name
+        assert results["amount"] == str(payment.amount)
+        assert results["status"] == payment.status
