@@ -9,6 +9,7 @@ from users.models import User, EMAIL_COOLDOWN
 from freezegun import freeze_time
 from users import services as s
 from tests.types import UserCreatePayload
+from users.selectors import get_group
 
 
 class TestAccountCreation:
@@ -202,16 +203,16 @@ class TestAccountCreation:
 
 
 class TestRoleAssignment:
-    def test_role_assignment_succeeds(self, user: User, get_role):
+    def test_role_assignment_succeeds(self, user: User):
         """
         A single role should be successfully added to a user
         It also should reflect in the user.role property
         """
         assert user.groups.count() == 0
-        role = get_role("manager")
+        role = get_group("manager")
         s.user_set_role(user=user, role=role)
 
-        user.refresh_from_db() #type: ignore
+        user.refresh_from_db()  # type: ignore
 
         groups = user.groups
 
@@ -265,7 +266,7 @@ class TestAccountUnsubscribe:
         """
 
         mod_acc = s.account_update_mailing_status(user.account, status)
-        mod_acc.refresh_from_db() #type: ignore
+        mod_acc.refresh_from_db()  # type: ignore
         assert mod_acc == mod_acc == user.account
         assert mod_acc.can_receive_emails == status
 
@@ -280,7 +281,7 @@ class TestRoleRemoval:
         assert first_role is not None
         s.user_remove_role(user=manager_user)
 
-        manager_user.refresh_from_db() #type: ignore
+        manager_user.refresh_from_db()  # type: ignore
 
         assert manager_user.role == "regular"
         assert not manager_user.groups.exists()
@@ -360,7 +361,7 @@ class TestUserEmailVerifyConfirmation:
         Verified status should reflect
         """
         mod_user = s.user_email_verify(user)
-        mod_user.refresh_from_db() #type: ignore
+        mod_user.refresh_from_db()  # type: ignore
         assert mod_user == user
         assert mod_user.verified == True
 

@@ -10,8 +10,7 @@ from tenancy.models import Tenancy
 from payments.models import Payment
 from payments.selectors import *
 from payments.choices import PaymentMode as PM, PaymentStatus as PS
-from django.contrib.auth.models import Group
-
+from users.selectors import get_group
 
 class TestBaseQS:
     def test_no_queries(self, payment_factory: Factory[Payment], django_assert_num_queries):
@@ -124,12 +123,12 @@ class TestPaymentGetCheckout:
 
 
 class TestPaymentGetExtraEmailRecepients:
-    def test_returns_a_list_of_manager_emails(self, user_factory: Factory[User], get_role: typing.Callable[..., Group]):
+    def test_returns_a_list_of_manager_emails(self, user_factory: Factory[User]):
         """Only manager emails should be returned as a list of str"""
         user_factory(1)
         u1 = user_factory(email="edmune@gmail.com")[0]
         u2 = user_factory(email="kmbape@yahoo.com")[0]
-        manager = get_role("manager")
+        manager = get_group("manager")
         u1.groups.add(manager)
         u2.groups.add(manager)
         emails = payment_get_extra_recepients()

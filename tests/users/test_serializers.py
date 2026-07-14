@@ -2,8 +2,7 @@ import pytest
 from zoneinfo import ZoneInfo
 from rest_framework.exceptions import ValidationError
 from users import serializer, models
-
-
+from users.selectors import get_group
 
 class TestUserListSerializer:
     def test_user_list_serializer_resolves_related_fields(self, user: models.User):
@@ -110,12 +109,11 @@ class TestUserRoleDetialSerializer:
 
 
 class TestUserRoleCreateSerializer:
-    def test_role_is_retrieved_correctly(self, get_role):
+    def test_role_is_retrieved_correctly(self):
         """Serializer data should be converted to a role instance"""
-        role = get_role("tenant")
+        role = get_group("tenant")
         instance = serializer.AdminRoleUpdateSerializer(data={"role": "tenant"})
         assert instance.is_valid()
         s = instance.validated_data
         assert isinstance(s, dict)
         assert s["role"] == role
-
