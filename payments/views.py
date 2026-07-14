@@ -32,7 +32,7 @@ class PaymentListView(BaseAPIView):
     filter_class = FilterClass
 
     def get(self, request) -> Response:
-        check_perms(request.user, "payment.view_payment")
+        check_perms(request.user, "payments.view_payment")
         filters = self.validate_filter(data=request.query_params)
         payments_qs = sl.payment_list_for(user=request.user, filters=filters)
 
