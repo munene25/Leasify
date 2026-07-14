@@ -58,11 +58,9 @@ class PaymentInitiateMpesaView(BaseAPIView):
     serializer_class = sc.PaymentInitiateMpesaSerializer
 
     def post(self, request) -> Response:
-        try:
-            idempotency_key = request.headers["Idempotency-Key"]
-        except KeyError:
-            raise NotAcceptable("'Idempotency-Key' not provided")
-
+        
+        idempotency_key = request.headers.get("Idempotency-Key", None)
+        
         incoming = self.validate_serializer(data=request.data)
         billing = billing_get_for(user=request.user, billing_id=incoming["billing_id"])
 
