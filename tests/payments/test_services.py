@@ -39,16 +39,14 @@ class TestPaymentMpesaInitiate:
             timestamp=timestamp,
         )
 
-    def test_protection_against_duplicate_payments(self, monkeypatch: pytest.MonkeyPatch, billing_factory: Factory[BP], payment_factory: Factory[Payment]):
+    def test_billing_validation(self, monkeypatch: pytest.MonkeyPatch, billing_factory: Factory[BP]):
         """
         Idempotency and Duplicate payments should not be allowed
-        1. For billing that is already paid
-        2. For a pending payment that is already underway.
-        3. For a duplicate payment with the same idemp-key
+        For billing that is already paid or cancelled
         """
-        billings = billing_factory(statuses=[BS.PAID, BS.CANCELLED, BS.UNPAID])
+        billings = billing_factory(statuses=[BS.PAID, BS.CANCELLED])
 
-        monkeypatch.setattr("payments.services.initiate_stk_push", lambda: {"checkout_id": "unique_checkout"})
+        monkeypatch.setattr("payments.services.initiate_stk_push", lambda **kwargs: {"checkout_id": "unique_checkout"})
         initiate = partial(payment_mpesa_initiate, phone_number="0000")
 
         with pytest.raises(ValidationError, match="paid billing"):
@@ -57,18 +55,32 @@ class TestPaymentMpesaInitiate:
         with pytest.raises(ValidationError, match="cancelled billing"):
             initiate(billing=billings[1], idempotency_key="XYZ2")
 
-        # For same idempotency key
-        unpaid_billing = billing_factory(statuses=[BS.UNPAID])[0]
-        processed = payment_factory(billing=unpaid_billing)[0]
+    def test_idempotency(self, monkeypatch: pytest.MonkeyPatch, billing_factory: Factory[BP], payment_factory: Factory[Payment]):
+        """For idempotency. We need to check:
+        1. For a pending payment that is already underway.
+        2. For a duplicate payment with the same idemp-key
+        3. Missing idemp should ignore.
+        """
+        initiate = partial(payment_mpesa_initiate, phone_number="000")
+        monkeypatch.setattr("payments.services.initiate_stk_push", lambda **kwargs: {"checkout_id": "unique_checkout"})
 
+        # Create a payment with an idempotency key
+        bill1= billing_factory(statuses=[BS.UNPAID])[0]
+        processed = payment_factory(billing=bill1)[0]
         idemp_key = processed.idempotency_key
         assert idemp_key is not None
 
-        assert initiate(idempotency_key=idemp_key, billing=processed.billing) == processed
+        assert initiate(idempotency_key=idemp_key, billing=bill1) == processed
+
+        # Without an idempotency key should allow for new payment
+        initiate(idempotency_key=None, billing=bill1)
+        assert bill1.payments.count() == 2
 
         # For pending payment on billing
-        pending = payment_factory(statuses=[PS.PENDING], billing=billings[2])[0]
-        assert initiate(billing=billings[2], idempotency_key="XYZ3") == pending
+        bill2 = billing_factory(statuses=[BS.UNPAID])[0]
+        pending = payment_factory(statuses=[PS.PENDING], billing=bill2)[0]
+        assert initiate(billing=bill2, idempotency_key="XYZ3") == pending
+
 
     def test_stk_push_raises_exception(
         self,
@@ -263,3 +275,4 @@ class TestPaymentMpesaQuery:
 
         payment_mpesa_query(pending_payment)
         mock_payment_process.assert_called_once_with(stk)
+
