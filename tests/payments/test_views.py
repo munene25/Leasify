@@ -39,7 +39,7 @@ class TestPaymentListView:
     
     def test_pagination(self, payment_factory: Factory[Payment], manager_client: IsClient, override_pagination: int):
         """Should be paginated"""
-        payments = payment_factory(3)
+        payment_factory(3)
         res = parse_paginated_response(manager_client.get(self.path), 3)
         assert len(res["results"]) == override_pagination
 
