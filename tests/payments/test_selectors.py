@@ -118,7 +118,7 @@ class TestPaymentGetCheckout:
 
     def test_raises_not_found(self):
         """should raise if no checkout id exists"""
-        with pytest.raises(NotFound, match="non existent"):
+        with pytest.raises(NotFound, match="checkout_id"):
             payment_get_checkout(checkout_id="xyz")
 
 
