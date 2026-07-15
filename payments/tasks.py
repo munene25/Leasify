@@ -30,23 +30,18 @@ def send_payment_notification(payment_id: int, additional_recepients: list[str] 
 
 @critical_task
 @transaction.atomic
-def payment_mpesa_process_async(stk_result: STKResult) -> dict[str, bool | str]:
+def payment_mpesa_process_async(stk_result: STKResult) -> dict[str, str]:
     """This is an async processor for mpesa callbacks"""
 
     payment = sr.payment_mpesa_process(stk_result)
 
     if payment.status == PS.SUCCESS:
-        billing = billing_period_complete(payment.billing)
+        billing_period_complete(payment.billing)
         extra_recepients = sl.payment_get_extra_recepients()
         send_payment_notification.delay(payment.pk, extra_recepients)
-        notification = True
-    else:
-        billing = payment.billing
-        notification = False
 
     return {
         "payment": payment.status,
-        "billing": billing.status,
-        "tenancy": billing.tenancy.status,
-        "notify": notification,
+        "billing": payment.billing.status,
+        "tenancy": payment.billing.tenancy.status,
     }
