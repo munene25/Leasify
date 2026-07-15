@@ -81,11 +81,12 @@ def payment_alt_create(*, billing: "BP", mode: PM, recorded_by: "User", status: 
     """
     Create a manual payment via an alternate mode (CASH/BANK).
 
-    :param billing: The billing period being paid for
-    :param mode: The payment mode (CASH/BANK)
-    :param recorded_by: The user who created this manual payment
-    :param status: Initial status of the payment
-    :returns: Payment object created with specified status
+    :param billing: The billing period being paid for. Must have status UNPAID or CANCELLED.
+    :param mode: The payment mode, either CASH or BANK.
+    :param recorded_by: The user who created this manual payment record. Required for tracking accountability.
+    :param status: Initial status of the payment, default is SUCCESS. Can be PENDING, SUCCESS, or FAILED.
+    :returns: Payment object created with the specified billing and mode
+    :raises ValidationError: If the billing status is not UNPAID or CANCELLED
 
     """
     # Prevents CANCELLED OR PAID billings to be processed
@@ -113,11 +114,10 @@ def payment_alt_create(*, billing: "BP", mode: PM, recorded_by: "User", status: 
 def payment_mpesa_process(stk_result: "STKResult") -> Payment:
     """
     Process M-Pesa callback and update payment status accordingly.
-    Sends emails to the user and extra selected recepients
 
-    :param stk_result: The payment response containing checkout details and transaction result
-    :returns: Updated Payment object with new status
-
+    :param stk_result: The M-Pesa response containing checkout_id, success status, receipt_no, and result_desc
+    :returns: Updated Payment object with new status (SUCCESS or FAILED)
+    
     """
     payment = sl.payment_get_checkout(stk_result["checkout_id"])
 
@@ -135,12 +135,14 @@ def payment_mpesa_process(stk_result: "STKResult") -> Payment:
     return payment
 
 
-def payment_mpesa_query(payment: Payment) -> None:
+def payment_mpesa_query(payment: Payment) -> STKResult:
     """
-    Query the status of an M-Pesa payment via the MPESA endpoint and update the payment.
+    Query the status of an M-Pesa payment via the MPESA endpoint.
 
-    :param payment: The payment object to query
-    :returns: Updated Payment object with new status
+    :param payment: The Payment object with a valid checkout_id and timestamp set for MPESA payments
+    :returns: STKResult containing the payment status, receipt_no, and result_desc from M-Pesa
+    :raises ValidationError: If the payment is not an M-PESA payment or has already completed (non-PENDING status)
+
     """
     if not payment.checkout_id or not payment.timestamp:
         raise ValidationError("Only M-PESA payments can be queried")
@@ -155,11 +157,10 @@ def payment_mpesa_query(payment: Payment) -> None:
         logger.error("payment_query_failed", status_code=status_code, response=message)
         raise MpesaAPIError() from e
 
-    tasks.payment_mpesa_process_async.delay(stk_result)
     logger.info(
         "payment_queried",
         payment_id=payment.pk,
-        status=payment.status,
         description=stk_result["result_desc"],
     )
+    return stk_result
 
