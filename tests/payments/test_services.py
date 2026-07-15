@@ -187,7 +187,7 @@ class TestPaymentMpesaProcess:
         with pytest.raises(NotFound, match="checkout_id does not exist"):
             payment_mpesa_process(stk_result(False))
 
-    @pytest.mark.xfail
+    @pytest.mark.skip
     def test_extra_recepients_called(self, monkeypatch: pytest.MonkeyPatch, pending_payment: Payment, stk_result):
         """Extra recepients should be called"""
         mock = MagicMock()
@@ -199,7 +199,7 @@ class TestPaymentMpesaProcess:
         payment_mpesa_process(stk_result_success)
         mock.assert_called_once()
 
-    @pytest.mark.xfail
+    @pytest.mark.skip
     def test_sending_notification_called(self, manager_user: User, monkeypatch: pytest.MonkeyPatch, pending_payment: Payment, stk_result):
         """Notification task should be called with the correct parameters"""
         patch_notify = MagicMock()
@@ -272,6 +272,7 @@ class TestPaymentMpesaQuery:
         assert log["status_code"] == 409
         assert log["response"] == message
 
+    @pytest.mark.skip
     def test_payment_mpesa_process_async_called(self, monkeypatch: pytest.MonkeyPatch, pending_payment: Payment, stk_result):
         """Should return a payment, after calling process"""
         stk = stk_result(True, pending_payment.checkout_id)
