@@ -135,7 +135,7 @@ def payment_mpesa_process(stk_result: "STKResult") -> Payment:
     return payment
 
 
-def payment_mpesa_query(payment: Payment) -> STKResult:
+def payment_mpesa_query(payment: Payment) -> "STKResult":
     """
     Query the status of an M-Pesa payment via the MPESA endpoint.
 
