@@ -9,7 +9,7 @@ from payments.choices import PaymentStatus as PS, PaymentMode as PM
 from billing.choices import BillingStatus as BS
 from billing.models import BillingPeriod as BP
 from rest_framework.exceptions import ValidationError
-from payments.mpesa import initiate_stk_push, query_payment_status, make_timestamp
+from payments.mpesa import initiate_stk_push, query_payment_status, make_timestamp, parse_error
 from payments import tasks
 
 logger = get_logger("payments")
@@ -57,11 +57,9 @@ def payment_mpesa_initiate(*, billing: "BP", phone_number: str, idempotency_key:
             description="Rent Payment",
             timestamp=timestamp,
         )
-    except (requests.exceptions.Timeout, requests.exceptions.HTTPError) as e:
-        if e.response:
-            status_code = e.response.status_code
-            message = e.response.json()
-        logger.error("stk_push_failed", status_code=status_code or None, response=message)
+    except (requests.exceptions.RequestException) as e:
+        status_code, message = parse_error(e)
+        logger.error("stk_push_failed", status_code=status_code, response=message)
         raise MpesaAPIError() from e
 
     payment = Payment.objects.create(
@@ -128,11 +126,6 @@ def payment_mpesa_process(stk_result: "STKResult") -> Payment:
 
     payment.save(update_fields=["status", "receipt_no"])
 
-    
-    if payment.status == PS.SUCCESS:
-        extra_recepients = sl.payment_get_extra_recepients()
-        tasks.send_payment_notification.delay(payment.pk, extra_recepients)
-
     logger.info(
         "payment_processed",
         payment_id=payment.pk,
@@ -143,7 +136,7 @@ def payment_mpesa_process(stk_result: "STKResult") -> Payment:
     return payment
 
 
-def payment_mpesa_query(payment: Payment) -> Payment:
+def payment_mpesa_query(payment: Payment) -> None:
     """
     Query the status of an M-Pesa payment via the MPESA endpoint and update the payment.
 
@@ -154,15 +147,21 @@ def payment_mpesa_query(payment: Payment) -> Payment:
         raise ValidationError("Only M-PESA payments can be queried")
 
     if payment.status != PS.PENDING:
-        return payment
-
+        raise ValidationError(f"'{payment.status.capitalize}' payment cannot be queried")
+    
     try:
         stk_result = query_payment_status(checkout_id=payment.checkout_id, timestamp=payment.timestamp)
-    except (requests.exceptions.Timeout, requests.exceptions.HTTPError) as e:
-        if e.response:
-            status_code = e.response.status_code
-            message = e.response.json()
-        logger.error("payment_query_failed", status_code=status_code or None, response=message)
+    except (requests.exceptions.RequestException) as e:
+        status_code, message = parse_error(e)
+        logger.error("payment_query_failed", status_code=status_code, response=message)
         raise MpesaAPIError() from e
 
-    return payment_mpesa_process(stk_result)
+    tasks.payment_mpesa_process_async.delay(stk_result)
+    logger.info(
+        "payment_querried",
+        payment_id=payment.pk,
+        checkout_id=payment.checkout_id,
+        status=payment.status,
+        description=stk_result["result_desc"],
+    )
+
