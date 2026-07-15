@@ -1,3 +1,4 @@
+from django.views.decorators.csrf import csrf_exempt
 from rest_framework import status, serializers
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -10,7 +11,6 @@ from common.views import BaseAPIView
 from payments.mpesa import parse_callback_response
 from payments import tasks
 from billing.selectors import billing_get_for
-
 
 class PaymentListView(BaseAPIView):
     """List and retrieve all payments accessible by the authenticated user.
@@ -111,9 +111,9 @@ class PaymentStatusQueryView(BaseAPIView):
 
         # Get the payment for the user to verify access (raises if not found)
         selected = sl.payment_get_for(user=request.user, payment_id=payment_id)
-        payment = sr.payment_mpesa_query(selected)
-        outgoing = sc.PaymentDetailSerializer(instance=payment)
-        return Response(data=outgoing.data, status=status.HTTP_200_OK)
+        result = sr.payment_mpesa_query(selected)
+        tasks.payment_mpesa_process_async.delay(result)
+        return Response(data={"message": "Query in progress"}, status=status.HTTP_200_OK)
 
 
 class PaymentMpesaCallbackView(BaseAPIView):
@@ -126,6 +126,7 @@ class PaymentMpesaCallbackView(BaseAPIView):
     :returns: Response indicating successful processing (200 OK)
     """
 
+    @csrf_exempt
     def post(self, request) -> Response:
         stk_result = parse_callback_response(request.data)
         tasks.payment_mpesa_process_async.delay(stk_result)
