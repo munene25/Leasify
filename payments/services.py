@@ -129,7 +129,6 @@ def payment_mpesa_process(stk_result: "STKResult") -> Payment:
     logger.info(
         "payment_processed",
         payment_id=payment.pk,
-        checkout_id=payment.checkout_id,
         status=payment.status,
         description=stk_result["result_desc"],
     )
@@ -147,7 +146,7 @@ def payment_mpesa_query(payment: Payment) -> None:
         raise ValidationError("Only M-PESA payments can be queried")
 
     if payment.status != PS.PENDING:
-        raise ValidationError(f"'{payment.status.capitalize}' payment cannot be queried")
+        raise ValidationError(f"'{payment.status.capitalize()}' payment cannot be queried")
     
     try:
         stk_result = query_payment_status(checkout_id=payment.checkout_id, timestamp=payment.timestamp)
@@ -158,9 +157,8 @@ def payment_mpesa_query(payment: Payment) -> None:
 
     tasks.payment_mpesa_process_async.delay(stk_result)
     logger.info(
-        "payment_querried",
+        "payment_queried",
         payment_id=payment.pk,
-        checkout_id=payment.checkout_id,
         status=payment.status,
         description=stk_result["result_desc"],
     )
