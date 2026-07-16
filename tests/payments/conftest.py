@@ -90,3 +90,10 @@ def stk_result() -> typing.Callable[[bool, str], STKResult]:
 def pending_payment(payment_factory: Factory[Payment]) -> Payment:
     "Returns a pending payment"
     return payment_factory(statuses=[PS.PENDING])[0]
+
+@pytest.fixture()
+def patch_payment_get_for(monkeypatch: pytest.MonkeyPatch, payment_factory: Factory[Payment]):
+    billing = payment_factory(1, statuses=[PS.SUCCESS])[0]
+    mock = MagicMock(return_value=billing)
+    monkeypatch.setattr("payments.selectors.payment_get_for", mock)
+    yield mock
