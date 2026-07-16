@@ -369,6 +369,13 @@ def billing_factory(today: date, tenancy_factory: Factory[Tenancy]) -> Factory[B
 
     return create
 
+@pytest.fixture()
+def patch_billing_get_for(monkeypatch: pytest.MonkeyPatch, billing_factory: Factory[BP]):
+    billing = billing_factory(1, statuses=[BS.UNPAID])[0]
+    mock = MagicMock(return_value=billing)
+    monkeypatch.setattr("billing.selectors.billing_get_for", mock)
+    yield mock
+
 
 # ------------------------------------------------ Payment  ------------------------------------------------
 @pytest.fixture(scope="session")
