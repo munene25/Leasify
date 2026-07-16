@@ -39,6 +39,18 @@ class PaymentListView(BaseAPIView):
         )
 
 
+class PaymentDetailView(APIView):
+    """Retrieve details about a specific payment."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, payment_id: int) -> Response:
+        check_perms(request.user, "payments.view_payment")
+        selected = sl.payment_get_for(user=request.user, payment_id=payment_id)
+        outgoing = sc.PaymentDetailSerializer(instance=selected)
+        return Response(data=outgoing.data, status=status.HTTP_200_OK)
+    
+
 class PaymentInitiateMpesaView(BaseAPIView):
     """Initiates an M-Pesa payment via STK push."""
 
@@ -46,7 +58,6 @@ class PaymentInitiateMpesaView(BaseAPIView):
     serializer_class = sc.PaymentInitiateMpesaSerializer
 
     def post(self, request) -> Response:
-
         idempotency_key = request.headers.get("Idempotency-Key", None)
 
         incoming = self.validate_serializer(data=request.data)
@@ -60,19 +71,6 @@ class PaymentInitiateMpesaView(BaseAPIView):
             {"message": "M-Pesa transaction initiated.", "payment_id": payment.pk},
             status=status.HTTP_201_CREATED,
         )
-
-
-class PaymentDetailView(APIView):
-    """Retrieve details about a specific payment."""
-
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request, payment_id: int) -> Response:
-        check_perms(request.user, "payment.view_payment")
-        selected = sl.payment_get_for(user=request.user, payment_id=payment_id)
-        outgoing = sc.PaymentDetailSerializer(instance=selected)
-        return Response(data=outgoing.data, status=status.HTTP_200_OK)
-
 
 class PaymentStatusQueryView(BaseAPIView):
     """Queries the status of an M-PESA payment."""
