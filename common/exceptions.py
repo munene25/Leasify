@@ -64,6 +64,6 @@ class MaxReservationsExceededError(APIException):
 class MpesaAPIError(APIException):
     """Raised when a payment mpesa api requests fail."""
 
-    status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+    status_code = status.HTTP_424_FAILED_DEPENDENCY
     default_detail = "Action could not be completed at this time. Service is unavailable"
     default_code = "payment_failed"
