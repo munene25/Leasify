@@ -3,9 +3,10 @@ from datetime import date
 from functools import partial
 from unittest.mock import MagicMock
 from rest_framework.exceptions import ValidationError, NotFound
+from rest_framework import status
 from common.exceptions import MpesaAPIError
 from tests.types import Factory, IsClient
-from tests.helpers import parse_paginated_response, parse_response, parse_error
+from tests.helpers import parse_paginated_response, parse_message, parse_error
 from users.models import User
 from payments.models import Payment
 from payments.choices import PaymentMode as PM, PaymentStatus as PS
@@ -75,3 +76,50 @@ class TestPaymentListView:
         assert results["billing_name"] == payment.billing.name
         assert results["amount"] == str(payment.amount)
         assert results["status"] == payment.status
+
+    
+class TestPaymentDetailView:
+
+    def path(self, payment_id: int) -> str:
+        return f"/payments/{payment_id}/"
+
+    @pytest.mark.parametrize(
+        "_client,expected_status",
+        [
+            ("superuser_client", 200),
+            ("manager_client", 200),
+            ("caretaker_client", 200),
+            ("tenant_client", 200),
+            ("user_client", 403),
+            ("client", 401),
+        ],
+    )
+    def test_authentication_and_authorization(self, _client: str, expected_status: int, request: pytest.FixtureRequest, patch_payment_get_for: MagicMock):
+        """Test auth and authorization for detail view across different client types"""
+        client: IsClient = request.getfixturevalue(_client)
+        response = client.get(self.path(1))
+        assert response.status_code == expected_status
+
+    def test_selector_called_correctly(self, manager_client: IsClient, patch_payment_get_for: MagicMock,):
+        """Verify selector is called with correct user and payment_id"""
+        manager_client.get(self.path(1))
+        patch_payment_get_for.assert_called_once_with(
+            user=manager_client.user,
+            payment_id=1,
+        )
+
+    def test_response_structure(self, superuser_client: IsClient, payment_factory: Factory[Payment]):
+        """Verify response has correct payment detail structure"""
+        payment = payment_factory(1)[0]
+        response = superuser_client.get(self.path(payment.pk))
+        data = parse_message(response, status.HTTP_200_OK)
+
+        assert data["payment_id"] == payment.pk
+        assert data["billing_id"] == payment.billing_id
+        assert data["billing_name"] == payment.billing.name
+        assert data["tenant_name"] == payment.billing.tenancy.user.full_name
+        assert data["mode"] == payment.mode
+        assert data["amount"] == str(payment.amount)
+        assert data["status"] == payment.status
+        assert data["receipt_no"] == payment.receipt_no
+        assert data["phone_number"] == str(payment.phone_number)
