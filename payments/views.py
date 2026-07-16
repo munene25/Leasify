@@ -58,6 +58,7 @@ class PaymentInitiateMpesaView(BaseAPIView):
     serializer_class = sc.PaymentInitiateMpesaSerializer
 
     def post(self, request) -> Response:
+        check_perms(request.user, "payments.add_payment")
         idempotency_key = request.headers.get("Idempotency-Key", None)
 
         incoming = self.validate_serializer(data=request.data)
