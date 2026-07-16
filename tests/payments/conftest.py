@@ -97,3 +97,11 @@ def patch_payment_get_for(monkeypatch: pytest.MonkeyPatch, payment_factory: Fact
     mock = MagicMock(return_value=billing)
     monkeypatch.setattr("payments.selectors.payment_get_for", mock)
     yield mock
+
+
+@pytest.fixture
+def patch_payment_mpesa_initiate(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
+    mock = MagicMock()
+    mock.return_value.pk = 1
+    monkeypatch.setattr("payments.services.payment_mpesa_initiate", mock)
+    return mock
