@@ -123,3 +123,79 @@ class TestPaymentDetailView:
         assert data["status"] == payment.status
         assert data["receipt_no"] == payment.receipt_no
         assert data["phone_number"] == str(payment.phone_number)
+
+
+class TestPaymentInitiateMpesaView:
+
+    path = "/payments/mpesa/initiate/"
+
+    @pytest.mark.parametrize(
+        "_client,expected_status",
+        [
+            ("superuser_client", 201),
+            ("manager_client", 201),
+            ("tenant_client", 201),
+            ("caretaker", 403),
+            ("user_client", 403),
+            ("client", 401),
+        ],
+    )
+    def test_authentication_and_authorization(self, _client: str, expected_status: int, request: pytest.FixtureRequest, patch_payment_mpesa_initiate: MagicMock, patch_billing_get_for: MagicMock,):
+        """Test auth and authorization for different client types"""
+        client: IsClient = request.getfixturevalue(_client)
+        response = client.post(self.path, {"billing_id": 1, "phone_number": "254712345678"})
+        assert response.status_code == expected_status
+
+    def test_selector_called_correctly(self, manager_client: IsClient, patch_billing_get_for: MagicMock, patch_payment_mpesa_initiate: MagicMock,):
+        """Verify billing selector is called with correct args"""
+        manager_client.post(self.path, {"billing_id": 1, "phone_number": "254712345678"})
+        patch_billing_get_for.assert_called_once_with(
+            user=manager_client.user,
+            billing_id=1,
+        )
+
+    def test_service_called_correctly(self, manager_client: IsClient, patch_billing_get_for: MagicMock, patch_payment_mpesa_initiate: MagicMock,):
+        """Verify service is called with correct args"""
+        manager_client.post(
+            self.path,
+            {"billing_id": 1, "phone_number": "254712345678"},
+            HTTP_IDEMPOTENCY_KEY="test-idem-key",
+        )
+        patch_payment_mpesa_initiate.assert_called_once_with(
+            billing=patch_billing_get_for.return_value,
+            phone_number="254712345678",
+            idempotency_key="test-idem-key",
+        )
+
+    def test_idempotency_key_optional(self, manager_client: IsClient, patch_billing_get_for: MagicMock, patch_payment_mpesa_initiate: MagicMock,):
+        """Verify idempotency key is optional"""
+        manager_client.post(self.path, {"billing_id": 1, "phone_number": "254712345678"})
+        patch_payment_mpesa_initiate.assert_called_once_with(
+            billing=patch_billing_get_for.return_value,
+            phone_number="254712345678",
+            idempotency_key=None,
+        )
+
+    def test_response_structure(self, manager_client: IsClient, patch_billing_get_for: MagicMock, patch_payment_mpesa_initiate: MagicMock,):
+        """Verify response structure"""
+        response = manager_client.post(self.path, {"billing_id": 1, "phone_number": "254712345678"})
+        data = parse_message(response, status.HTTP_201_CREATED)
+
+        assert data["message"] == "M-Pesa transaction initiated."
+        assert data["payment_id"] == patch_payment_mpesa_initiate.return_value.pk
+
+    def test_invalid_phone_number(self, manager_client: IsClient, patch_billing_get_for: MagicMock, patch_payment_mpesa_initiate: MagicMock,):
+        """Verify invalid phone number returns 400"""
+        response = manager_client.post(self.path, {"billing_id": 1, "phone_number": "invalid"})
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_missing_billing_id(self, manager_client: IsClient, patch_payment_mpesa_initiate: MagicMock,):
+        """Verify missing billing_id returns 400"""
+        response = manager_client.post(self.path, {"phone_number": "254712345678"})
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_mpesa_api_error(self, manager_client: IsClient, patch_billing_get_for: MagicMock, patch_payment_mpesa_initiate: MagicMock,):
+        """Verify MpesaAPIError returns correct status"""
+        patch_payment_mpesa_initiate.side_effect = MpesaAPIError("Service unavailable")
+        response = manager_client.post(self.path, {"billing_id": 1, "phone_number": "254712345678"})
+        assert response.status_code == status.HTTP_424_FAILED_DEPENDENCY
