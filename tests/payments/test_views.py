@@ -135,7 +135,7 @@ class TestPaymentInitiateMpesaView:
             ("superuser_client", 201),
             ("manager_client", 201),
             ("tenant_client", 201),
-            ("caretaker", 403),
+            ("caretaker_client", 403),
             ("user_client", 403),
             ("client", 401),
         ],
@@ -146,35 +146,26 @@ class TestPaymentInitiateMpesaView:
         response = client.post(self.path, {"billing_id": 1, "phone_number": "254712345678"})
         assert response.status_code == expected_status
 
-    def test_selector_called_correctly(self, manager_client: IsClient, patch_billing_get_for: MagicMock, patch_payment_mpesa_initiate: MagicMock,):
+    def test_mock_calls(self, manager_client: IsClient, patch_billing_get_for: MagicMock, patch_payment_mpesa_initiate: MagicMock,):
         """Verify billing selector is called with correct args"""
-        manager_client.post(self.path, {"billing_id": 1, "phone_number": "254712345678"})
+        idemp = "test-idemp-key"
+        manager_client.post(self.path, {"billing_id": 1, "phone_number": "254712345678"}, HTTP_IDEMPOTENCY_KEY=idemp)
         patch_billing_get_for.assert_called_once_with(
             user=manager_client.user,
             billing_id=1,
         )
-
-    def test_service_called_correctly(self, manager_client: IsClient, patch_billing_get_for: MagicMock, patch_payment_mpesa_initiate: MagicMock,):
-        """Verify service is called with correct args"""
-        manager_client.post(
-            self.path,
-            {"billing_id": 1, "phone_number": "254712345678"},
-            HTTP_IDEMPOTENCY_KEY="test-idem-key",
-        )
         patch_payment_mpesa_initiate.assert_called_once_with(
             billing=patch_billing_get_for.return_value,
             phone_number="254712345678",
-            idempotency_key="test-idem-key",
+            idempotency_key=idemp,
         )
 
     def test_idempotency_key_optional(self, manager_client: IsClient, patch_billing_get_for: MagicMock, patch_payment_mpesa_initiate: MagicMock,):
         """Verify idempotency key is optional"""
-        manager_client.post(self.path, {"billing_id": 1, "phone_number": "254712345678"})
-        patch_payment_mpesa_initiate.assert_called_once_with(
-            billing=patch_billing_get_for.return_value,
-            phone_number="254712345678",
-            idempotency_key=None,
-        )
+        response = manager_client.post(self.path, {"billing_id": 1, "phone_number": "254712345678"})
+        kwargs = patch_payment_mpesa_initiate.call_args.kwargs
+        assert kwargs["idempotency_key"] == None
+        assert response.status_code == 201
 
     def test_response_structure(self, manager_client: IsClient, patch_billing_get_for: MagicMock, patch_payment_mpesa_initiate: MagicMock,):
         """Verify response structure"""
