@@ -53,15 +53,17 @@ class PaymentDetailView(APIView):
 
 class PaymentInitiateMpesaView(BaseAPIView):
     """Initiates an M-Pesa payment via STK push."""
+    # ? Need to add throttle class?
 
     permission_classes = [IsAuthenticated]
     serializer_class = sc.PaymentInitiateMpesaSerializer
 
     def post(self, request) -> Response:
-        check_perms(request.user, "payments.add_payment")
+        check_perms(request.user, "payments.initiate_payment")
         idempotency_key = request.headers.get("Idempotency-Key", None)
 
         incoming = self.validate_serializer(data=request.data)
+        # Billing needs to be obtained via selector to filter viewable billings.
         billing = billing_get_for(user=request.user, billing_id=incoming["billing_id"])
 
         payment = sr.payment_mpesa_initiate(
