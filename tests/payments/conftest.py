@@ -105,3 +105,16 @@ def patch_payment_mpesa_initiate(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
     mock.return_value.pk = 1
     monkeypatch.setattr("payments.services.payment_mpesa_initiate", mock)
     return mock
+
+@pytest.fixture
+def patch_payment_mpesa_process_async(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
+    mock = MagicMock()
+    mock.delay = MagicMock(return_value=None)
+    monkeypatch.setattr("payments.tasks.payment_mpesa_process_async", mock)
+    return mock
+
+@pytest.fixture
+def patch_payment_mpesa_query(monkeypatch: pytest.MonkeyPatch, stk_result) -> MagicMock:
+    mock = MagicMock(return_value=stk_result(True, None))
+    monkeypatch.setattr("payments.services.payment_mpesa_query", mock)
+    return mock
