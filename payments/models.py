@@ -28,6 +28,7 @@ class Payment(BaseModel):
         ]
         permissions = [
             ("add_payment_manually", "Can manually create a payment"),
+            ("initiate_payment", "Can initiate an payment via third party"),
         ]
 
     # Required
