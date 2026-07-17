@@ -79,7 +79,7 @@ class PaymentStatusQueryView(BaseAPIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, payment_id: int) -> Response:
-        check_perms(request.user, "payment.view_payment")
+        check_perms(request.user, "payments.view_payment")
 
         # Get the payment for the user to verify access (raises if not found)
         selected = sl.payment_get_for(user=request.user, payment_id=payment_id)
@@ -105,7 +105,7 @@ class PaymentAltCreateView(BaseAPIView):
     serializer_class = sc.PaymentAltCreateSerializer
 
     def post(self, request) -> Response:
-        check_perms(request.user, "add_payment_manually")
+        check_perms(request.user, "payments.add_payment_manually")
         incoming = self.validate_serializer(data=request.data)
         billing_id = incoming.pop("billing_id")
         billing = billing_get_for(request.user, billing_id=billing_id)
