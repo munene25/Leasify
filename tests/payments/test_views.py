@@ -199,3 +199,56 @@ class TestPaymentInitiateMpesaView:
         patch_payment_mpesa_initiate.side_effect = MpesaAPIError("Service unavailable")
         response = manager_client.post(self.path, {"billing_id": 1, "phone_number": "254712345678"})
         assert response.status_code == status.HTTP_424_FAILED_DEPENDENCY
+    
+
+class TestPaymentMpesaQueryView:
+
+    def path(self, payment_id: int) -> str:
+        return f"/payments/{payment_id}/query/"
+
+    @pytest.mark.parametrize(
+        "_client,expected_status",
+        [
+            ("superuser_client", 200),
+            ("manager_client", 200),
+            ("caretaker_client", 200),
+            ("tenant_client", 200),
+            ("user_client", 403),
+            ("client", 401),
+        ],
+    )
+    def test_authentication_and_authorization(self, _client: str, expected_status: int, request: pytest.FixtureRequest, patch_payment_get_for: MagicMock, patch_payment_mpesa_query: MagicMock, patch_payment_mpesa_process_async: MagicMock,):
+        """Test auth and authorization for different client types"""
+        client: IsClient = request.getfixturevalue(_client)
+        response = client.post(self.path(1), {})
+        assert response.status_code == expected_status
+
+    def test_mocks_called_with_correct_args(self, manager_client: IsClient, patch_payment_get_for: MagicMock, patch_payment_mpesa_query: MagicMock, patch_payment_mpesa_process_async: MagicMock,):
+        """Verify selector is called with correct args"""
+        user = manager_client.user
+        pk = 1
+
+        manager_client.post(self.path(pk), {})
+        patch_payment_get_for.assert_called_once_with(user=user, payment_id=pk)
+        patch_payment_mpesa_query.assert_called_once_with(patch_payment_get_for.return_value)
+        
+        stk = patch_payment_mpesa_query.return_value
+        patch_payment_mpesa_process_async.delay.assert_called_once_with(stk)
+
+    def test_response_structure(self, manager_client: IsClient, patch_payment_get_for: MagicMock, patch_payment_mpesa_query: MagicMock, patch_payment_mpesa_process_async: MagicMock,):
+        """Verify response structure"""
+        response = manager_client.post(self.path(1), {})
+        data = parse_message(response, status.HTTP_200_OK)
+        assert "query in progress" in data["message"] 
+
+    def test_mpesa_api_error(self, manager_client: IsClient, patch_payment_get_for: MagicMock, patch_payment_mpesa_query: MagicMock, patch_payment_mpesa_process_async: MagicMock,):
+        """Verify MpesaAPIError returns 424"""
+        patch_payment_mpesa_query.side_effect = MpesaAPIError("M-Pesa unavailable")
+        response = manager_client.post(self.path(1), {})
+        assert response.status_code == status.HTTP_424_FAILED_DEPENDENCY
+
+    def test_task_not_scheduled_on_error(self, manager_client: IsClient, patch_payment_get_for: MagicMock, patch_payment_mpesa_query: MagicMock, patch_payment_mpesa_process_async: MagicMock,):
+        """Verify task is not scheduled if query fails"""
+        patch_payment_mpesa_query.side_effect = MpesaAPIError("M-Pesa unavailable")
+        manager_client.post(self.path(1), {})
+        patch_payment_mpesa_process_async.delay.assert_not_called()
