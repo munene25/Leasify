@@ -85,7 +85,7 @@ class PaymentStatusQueryView(BaseAPIView):
         selected = sl.payment_get_for(user=request.user, payment_id=payment_id)
         result = sr.payment_mpesa_query(selected)
         tasks.payment_mpesa_process_async.delay(result)
-        return Response(data={"message": "Query in progress"}, status=status.HTTP_200_OK)
+        return Response(data={"message": "Payment query in progress"}, status=status.HTTP_200_OK)
 
 
 class PaymentMpesaCallbackView(BaseAPIView):
