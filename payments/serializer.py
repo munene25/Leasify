@@ -39,6 +39,5 @@ class PaymentAltCreateSerializer(serializers.Serializer):
     """Serializer for manual payment creation (alternate mode: CASH/BANK)"""
 
     billing_id = serializers.IntegerField()
-    mode = serializers.ChoiceField(choices=PaymentMode.choices, required=False)
+    mode = serializers.ChoiceField(choices=PaymentMode.choices)
     status = serializers.ChoiceField(choices=PaymentStatus.choices)
-    recorded_by = serializers.CharField()
