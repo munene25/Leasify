@@ -24,20 +24,20 @@ class TestPaymentListView:
     @pytest.mark.parametrize(
         "_client,expected_status",
         [
-            ("superuser_client", 200), 
-            ("manager_client", 200), 
-            ("caretaker_client", 200), 
-            ("tenant_client", 200), 
-            ("user_client", 403), 
-            ("client", 401), 
-        ]
+            ("superuser_client", 200),
+            ("manager_client", 200),
+            ("caretaker_client", 200),
+            ("tenant_client", 200),
+            ("user_client", 403),
+            ("client", 401),
+        ],
     )
     def test_authentication_and_authorization(self, _client: str, expected_status: int, request: pytest.FixtureRequest):
         """Test for auth and permissions, response status varies based on clients"""
         client: IsClient = request.getfixturevalue(_client)
         res = client.get(self.path)
         assert res.status_code == expected_status
-    
+
     def test_pagination(self, payment_factory: Factory[Payment], manager_client: IsClient, override_pagination: int):
         """Should be paginated"""
         payment_factory(3)
@@ -52,18 +52,17 @@ class TestPaymentListView:
             ({"mode": PM.MPESA}),
             ({"search": "0700"}),
             ({"search": "0700", "status": "pen"}),
-        ]
+        ],
     )
-    def test_selector_called_with_correct_args(self, filters: dict, manager_client: IsClient, monkeypatch: pytest.MonkeyPatch):
+    def test_selector_called_with_correct_args(
+        self, filters: dict, manager_client: IsClient, monkeypatch: pytest.MonkeyPatch
+    ):
         """Patch selector and check args"""
         mock = MagicMock(return_value=QuerySet(Payment))
         monkeypatch.setattr("payments.selectors.payment_list_for", mock)
         res = manager_client.get(self.path, filters)
         parse_paginated_response(res, 0)
-        mock.assert_called_once_with(
-            user=manager_client.user,
-            filters=filters
-        )
+        mock.assert_called_once_with(user=manager_client.user, filters=filters)
 
     def test_response_structure(self, payment_factory: Factory[Payment], superuser_client: IsClient):
         """All details and searchable fields should be included"""
@@ -77,7 +76,7 @@ class TestPaymentListView:
         assert results["amount"] == str(payment.amount)
         assert results["status"] == payment.status
 
-    
+
 class TestPaymentDetailView:
 
     def path(self, payment_id: int) -> str:
@@ -94,13 +93,19 @@ class TestPaymentDetailView:
             ("client", 401),
         ],
     )
-    def test_authentication_and_authorization(self, _client: str, expected_status: int, request: pytest.FixtureRequest, patch_payment_get_for: MagicMock):
+    def test_authentication_and_authorization(
+        self, _client: str, expected_status: int, request: pytest.FixtureRequest, patch_payment_get_for: MagicMock
+    ):
         """Test auth and authorization for detail view across different client types"""
         client: IsClient = request.getfixturevalue(_client)
         response = client.get(self.path(1))
         assert response.status_code == expected_status
 
-    def test_selector_called_correctly(self, manager_client: IsClient, patch_payment_get_for: MagicMock,):
+    def test_selector_called_correctly(
+        self,
+        manager_client: IsClient,
+        patch_payment_get_for: MagicMock,
+    ):
         """Verify selector is called with correct user and payment_id"""
         manager_client.get(self.path(1))
         patch_payment_get_for.assert_called_once_with(
@@ -140,13 +145,25 @@ class TestPaymentInitiateMpesaView:
             ("client", 401),
         ],
     )
-    def test_authentication_and_authorization(self, _client: str, expected_status: int, request: pytest.FixtureRequest, patch_payment_mpesa_initiate: MagicMock, patch_billing_get_for: MagicMock,):
+    def test_authentication_and_authorization(
+        self,
+        _client: str,
+        expected_status: int,
+        request: pytest.FixtureRequest,
+        patch_payment_mpesa_initiate: MagicMock,
+        patch_billing_get_for: MagicMock,
+    ):
         """Test auth and authorization for different client types"""
         client: IsClient = request.getfixturevalue(_client)
         response = client.post(self.path, {"billing_id": 1, "phone_number": "254712345678"})
         assert response.status_code == expected_status
 
-    def test_mock_calls(self, manager_client: IsClient, patch_billing_get_for: MagicMock, patch_payment_mpesa_initiate: MagicMock,):
+    def test_mocks_called_with_correct_args(
+        self,
+        manager_client: IsClient,
+        patch_billing_get_for: MagicMock,
+        patch_payment_mpesa_initiate: MagicMock,
+    ):
         """Verify billing selector is called with correct args"""
         idemp = "test-idemp-key"
         manager_client.post(self.path, {"billing_id": 1, "phone_number": "254712345678"}, HTTP_IDEMPOTENCY_KEY=idemp)
@@ -160,14 +177,24 @@ class TestPaymentInitiateMpesaView:
             idempotency_key=idemp,
         )
 
-    def test_idempotency_key_optional(self, manager_client: IsClient, patch_billing_get_for: MagicMock, patch_payment_mpesa_initiate: MagicMock,):
+    def test_idempotency_key_optional(
+        self,
+        manager_client: IsClient,
+        patch_billing_get_for: MagicMock,
+        patch_payment_mpesa_initiate: MagicMock,
+    ):
         """Verify idempotency key is optional"""
         response = manager_client.post(self.path, {"billing_id": 1, "phone_number": "254712345678"})
         kwargs = patch_payment_mpesa_initiate.call_args.kwargs
         assert kwargs["idempotency_key"] == None
         assert response.status_code == 201
 
-    def test_response_structure(self, manager_client: IsClient, patch_billing_get_for: MagicMock, patch_payment_mpesa_initiate: MagicMock,):
+    def test_response_structure(
+        self,
+        manager_client: IsClient,
+        patch_billing_get_for: MagicMock,
+        patch_payment_mpesa_initiate: MagicMock,
+    ):
         """Verify response structure"""
         response = manager_client.post(self.path, {"billing_id": 1, "phone_number": "254712345678"})
         data = parse_message(response, status.HTTP_201_CREATED)
@@ -175,22 +202,36 @@ class TestPaymentInitiateMpesaView:
         assert data["message"] == "M-Pesa transaction initiated."
         assert data["payment_id"] == patch_payment_mpesa_initiate.return_value.pk
 
-    def test_invalid_phone_number(self, manager_client: IsClient, patch_billing_get_for: MagicMock, patch_payment_mpesa_initiate: MagicMock,):
+    def test_invalid_phone_number(
+        self,
+        manager_client: IsClient,
+        patch_billing_get_for: MagicMock,
+        patch_payment_mpesa_initiate: MagicMock,
+    ):
         """Verify invalid phone number returns 400"""
         response = manager_client.post(self.path, {"billing_id": 1, "phone_number": "invalid"})
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
-    def test_missing_billing_id(self, manager_client: IsClient, patch_payment_mpesa_initiate: MagicMock,):
+    def test_missing_billing_id(
+        self,
+        manager_client: IsClient,
+        patch_payment_mpesa_initiate: MagicMock,
+    ):
         """Verify missing billing_id returns 400"""
         response = manager_client.post(self.path, {"phone_number": "254712345678"})
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
-    def test_mpesa_api_error(self, manager_client: IsClient, patch_billing_get_for: MagicMock, patch_payment_mpesa_initiate: MagicMock,):
+    def test_mpesa_api_error(
+        self,
+        manager_client: IsClient,
+        patch_billing_get_for: MagicMock,
+        patch_payment_mpesa_initiate: MagicMock,
+    ):
         """Verify MpesaAPIError returns correct status"""
         patch_payment_mpesa_initiate.side_effect = MpesaAPIError("Service unavailable")
         response = manager_client.post(self.path, {"billing_id": 1, "phone_number": "254712345678"})
         assert response.status_code == status.HTTP_424_FAILED_DEPENDENCY
-    
+
 
 class TestPaymentMpesaQueryView:
 
@@ -208,37 +249,67 @@ class TestPaymentMpesaQueryView:
             ("client", 401),
         ],
     )
-    def test_authentication_and_authorization(self, _client: str, expected_status: int, request: pytest.FixtureRequest, patch_payment_get_for: MagicMock, patch_payment_mpesa_query: MagicMock, patch_payment_mpesa_process_async: MagicMock,):
+    def test_authentication_and_authorization(
+        self,
+        _client: str,
+        expected_status: int,
+        request: pytest.FixtureRequest,
+        patch_payment_get_for: MagicMock,
+        patch_payment_mpesa_query: MagicMock,
+        patch_payment_mpesa_process_async: MagicMock,
+    ):
         """Test auth and authorization for different client types"""
         client: IsClient = request.getfixturevalue(_client)
         response = client.post(self.path(1), {})
         assert response.status_code == expected_status
 
-    def test_mocks_called_with_correct_args(self, manager_client: IsClient, patch_payment_get_for: MagicMock, patch_payment_mpesa_query: MagicMock, patch_payment_mpesa_process_async: MagicMock,):
+    def test_mocks_called_with_correct_args(
+        self,
+        manager_client: IsClient,
+        patch_payment_get_for: MagicMock,
+        patch_payment_mpesa_query: MagicMock,
+        patch_payment_mpesa_process_async: MagicMock,
+    ):
         """Verify selector is called with correct args"""
         user = manager_client.user
-        pk = 1
-
-        manager_client.post(self.path(pk), {})
-        patch_payment_get_for.assert_called_once_with(user=user, payment_id=pk)
+        manager_client.post(self.path(1), {})
+        patch_payment_get_for.assert_called_once_with(user=user, payment_id=1)
         patch_payment_mpesa_query.assert_called_once_with(patch_payment_get_for.return_value)
-        
+
         stk = patch_payment_mpesa_query.return_value
         patch_payment_mpesa_process_async.delay.assert_called_once_with(stk)
 
-    def test_response_structure(self, manager_client: IsClient, patch_payment_get_for: MagicMock, patch_payment_mpesa_query: MagicMock, patch_payment_mpesa_process_async: MagicMock,):
+    def test_response_structure(
+        self,
+        manager_client: IsClient,
+        patch_payment_get_for: MagicMock,
+        patch_payment_mpesa_query: MagicMock,
+        patch_payment_mpesa_process_async: MagicMock,
+    ):
         """Verify response structure"""
         response = manager_client.post(self.path(1), {})
         data = parse_message(response, status.HTTP_200_OK)
-        assert "query in progress" in data["message"] 
+        assert "query in progress" in data["message"]
 
-    def test_mpesa_api_error(self, manager_client: IsClient, patch_payment_get_for: MagicMock, patch_payment_mpesa_query: MagicMock, patch_payment_mpesa_process_async: MagicMock,):
+    def test_mpesa_api_error(
+        self,
+        manager_client: IsClient,
+        patch_payment_get_for: MagicMock,
+        patch_payment_mpesa_query: MagicMock,
+        patch_payment_mpesa_process_async: MagicMock,
+    ):
         """Verify MpesaAPIError returns 424"""
         patch_payment_mpesa_query.side_effect = MpesaAPIError("M-Pesa unavailable")
         response = manager_client.post(self.path(1), {})
         assert response.status_code == status.HTTP_424_FAILED_DEPENDENCY
 
-    def test_task_not_scheduled_on_error(self, manager_client: IsClient, patch_payment_get_for: MagicMock, patch_payment_mpesa_query: MagicMock, patch_payment_mpesa_process_async: MagicMock,):
+    def test_task_not_scheduled_on_error(
+        self,
+        manager_client: IsClient,
+        patch_payment_get_for: MagicMock,
+        patch_payment_mpesa_query: MagicMock,
+        patch_payment_mpesa_process_async: MagicMock,
+    ):
         """Verify task is not scheduled if query fails"""
         patch_payment_mpesa_query.side_effect = MpesaAPIError("M-Pesa unavailable")
         manager_client.post(self.path(1), {})
