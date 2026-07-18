@@ -10,7 +10,7 @@ from payments import services as sr, selectors as sl, serializer as sc, models a
 from common.views import BaseAPIView
 from payments.mpesa import parse_callback_response
 from payments import tasks
-from billing.selectors import billing_get_for
+from billing import selectors as billing_sl
 
 
 class PaymentListView(BaseAPIView):
@@ -64,7 +64,7 @@ class PaymentInitiateMpesaView(BaseAPIView):
 
         incoming = self.validate_serializer(data=request.data)
         # Billing needs to be obtained via selector to filter viewable billings.
-        billing = billing_get_for(user=request.user, billing_id=incoming["billing_id"])
+        billing = billing_sl.billing_get_for(user=request.user, billing_id=incoming["billing_id"])
 
         payment = sr.payment_mpesa_initiate(
             billing=billing, phone_number=incoming["phone_number"], idempotency_key=idempotency_key
@@ -110,7 +110,7 @@ class PaymentAltCreateView(BaseAPIView):
         check_perms(request.user, "payments.add_payment_manually")
         incoming = self.validate_serializer(data=request.data)
         billing_id = incoming.pop("billing_id")
-        billing = billing_get_for(request.user, billing_id=billing_id)
-        payment = sr.payment_alt_create(billing=billing, **incoming)
+        billing = billing_sl.billing_get_for(user=request.user, billing_id=billing_id)
+        payment = sr.payment_alt_create(billing=billing, recorded_by=request.user, **incoming)
         outgoing = sc.PaymentDetailSerializer(instance=payment)
         return Response(data=outgoing.data, status=status.HTTP_201_CREATED)
