@@ -314,3 +314,72 @@ class TestPaymentMpesaQueryView:
         patch_payment_mpesa_query.side_effect = MpesaAPIError("M-Pesa unavailable")
         manager_client.post(self.path(1), {})
         patch_payment_mpesa_process_async.delay.assert_not_called()
+
+
+class TestPaymentMpesaCallbackView:
+    path = "/payments/mpesa/callback"
+
+    # csrf_exemption
+    # test_mocks_called_with correct args: patch_callback_response, patch_mpesa_process_async
+    # 200 0k response
+    # No auth as of yet.
+
+
+class TestPaymentAltCreateView:
+
+    path = "/payments/alt/"
+
+    @pytest.mark.parametrize(
+        "_client,expected_status",
+        [
+            ("superuser_client", 201),
+            ("manager_client", 201),
+            ("caretaker_client", 403),  # no add_payment_manually perm
+            ("tenant_client", 403),
+            ("user_client", 403),
+            ("client", 401),
+        ],
+    )
+    def test_authentication_and_authorization(
+        self,
+        _client: str,
+        expected_status: int,
+        patch_billing_get_for: MagicMock,
+        patch_payment_alt_create: MagicMock,
+        request: pytest.FixtureRequest,
+    ):
+        """Test auth and authorization for different client types"""
+        client: IsClient = request.getfixturevalue(_client)
+        response = client.post(self.path, {"billing_id": 1, "mode": PM.CASH, "status": PS.SUCCESS})
+        parse_message(response, expected_status)
+
+    def test_calls(self, manager_client: IsClient, patch_billing_get_for: MagicMock, patch_payment_alt_create: MagicMock):
+        """Verify selectors and services are called with correct args"""
+        manager_client.post(self.path, {"billing_id": 1, "mode": PM.CASH, "status": PS.SUCCESS})
+        
+        patch_billing_get_for.assert_called_once_with(
+            user=manager_client.user,
+            billing_id=1,
+        )
+        patch_payment_alt_create.assert_called_once_with(
+            billing=patch_billing_get_for.return_value,
+            recorded_by=manager_client.user,
+            mode=PM.CASH,
+            status=PS.SUCCESS,
+        )
+
+    def test_response_structure(self, manager_client: IsClient, patch_billing_get_for: MagicMock, patch_payment_alt_create: MagicMock):
+        """Verify response has correct payment detail structure"""
+        response = manager_client.post(self.path, {"billing_id": 1, "mode": PM.CASH, "status": PS.SUCCESS})
+        data = parse_message(response, status.HTTP_201_CREATED)
+
+        payment = patch_payment_alt_create.return_value
+        assert data["payment_id"] == payment.pk
+        assert data["amount"] == str(payment.amount)
+        assert data["status"] == payment.status
+        assert data["mode"] == payment.mode
+
+    def test_missing_required_fields(self, manager_client: IsClient):
+        """Verify missing fields returns 400"""
+        response = manager_client.post(self.path, {})
+        response = parse_error(response, 400, "validation_error", 3)
