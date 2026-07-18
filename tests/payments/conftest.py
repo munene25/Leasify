@@ -3,7 +3,7 @@ import typing
 from unittest.mock import MagicMock
 from payments.mpesa import STKResult
 from payments.models import Payment
-from payments.choices import PaymentStatus as PS
+from payments.choices import PaymentStatus as PS, PaymentMode as PM
 from tests.types import Factory
 
 @pytest.fixture
@@ -117,4 +117,11 @@ def patch_payment_mpesa_process_async(monkeypatch: pytest.MonkeyPatch) -> MagicM
 def patch_payment_mpesa_query(monkeypatch: pytest.MonkeyPatch, stk_result) -> MagicMock:
     mock = MagicMock(return_value=stk_result(True, None))
     monkeypatch.setattr("payments.services.payment_mpesa_query", mock)
+    return mock
+
+@pytest.fixture
+def patch_payment_alt_create(monkeypatch: pytest.MonkeyPatch, payment_factory: Factory[Payment]) -> MagicMock:
+    payment = payment_factory(mode=PM.CASH)[0]
+    mock = MagicMock(return_value=payment)
+    monkeypatch.setattr("payments.services.payment_alt_create", mock)
     return mock
