@@ -79,7 +79,7 @@ def payment_get_checkout(checkout_id: str) -> Payment:
     return Payment.objects.get(checkout_id=checkout_id)
 
 
-def payment_get_extra_recepients() -> list[str]:
+def payment_get_extra_recipients() -> list[str]:
     """Retrieves a list of additional email recipients for payment notifications.
 
     Returns the email addresses of all users with the "manager" group, used to notify them about payments.
