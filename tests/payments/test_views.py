@@ -311,13 +311,40 @@ class TestPaymentMpesaQueryView:
 
 
 class TestPaymentMpesaCallbackView:
-    path = "/payments/mpesa/callback"
+    path = "/payments/mpesa/callback/"
 
-    # csrf_exemption
-    # test_mocks_called_with correct args: patch_callback_response, patch_mpesa_process_async
-    # 200 0k response
-    # No auth as of yet.
+    def test_csrf_exemption_and_authentication(
+        self,
+        csrf_client: IsClient,
+        client: IsClient,
+        stk_callback_fail: dict,
+        stk_callback_sucess: dict,
+        patch_payment_mpesa_process_async: MagicMock
+    ):
+        """Unauthenticated clients should be able to call api as well as non csrf clients"""
+        response1 = csrf_client.post(self.path, stk_callback_fail, format="json")
+        parse_message(response1, status.HTTP_200_OK)
 
+        response2 = client.post(self.path, stk_callback_sucess, format="json")
+        parse_message(response2, status.HTTP_200_OK)
+
+    def test_mock_calls_with_correct_args(
+        self,
+        client: IsClient,
+        stk_callback_fail: dict,
+        patch_payment_parse_callback_response: MagicMock,
+        patch_payment_mpesa_process_async: MagicMock
+    ):
+        """Processing should be delayed and response should be parsed"""
+        response = client.post(self.path, stk_callback_fail, format="json")
+        parse_message(response, status.HTTP_200_OK)
+       
+        patch_payment_parse_callback_response.assert_called_once_with(
+            stk_callback_fail
+        )
+        patch_payment_mpesa_process_async.delay.assert_called_once_with(
+            patch_payment_parse_callback_response.return_value
+        )
 
 class TestPaymentAltCreateView:
 

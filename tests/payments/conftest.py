@@ -124,3 +124,10 @@ def patch_payment_alt_create(monkeypatch: pytest.MonkeyPatch, payment_factory: F
     mock = MagicMock(return_value=payment)
     monkeypatch.setattr("payments.services.payment_alt_create", mock)
     yield mock
+
+@pytest.fixture
+def patch_payment_parse_callback_response(monkeypatch: pytest.MonkeyPatch, stk_result):
+    mock = MagicMock(return_value=stk_result(True, None))
+    monkeypatch.setattr("payments.views.parse_callback_response", mock)
+    yield mock
+    

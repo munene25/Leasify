@@ -1,9 +1,9 @@
 import pytest
 import random
+from decimal import Decimal
 from rest_framework.exceptions import ValidationError
 from apartments.services import *
 from apartments.models import Apartment
-from decimal import Decimal
 
 
 class TestApartmentCreateService:

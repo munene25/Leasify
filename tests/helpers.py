@@ -67,7 +67,5 @@ def check_links_in_mail(user: User, mail: EmailMessage, path: str) -> None:
     uidb64 = params[0]
     u = get_user_from_uidb64(uidb64)
     assert u == user
-    try:
-        token_validate(user=u, token=params[1])
-    except KeyError:
-        pass
+    try: token_validate(user=u, token=params[1])
+    except IndexError: pass

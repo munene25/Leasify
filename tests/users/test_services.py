@@ -5,7 +5,7 @@ from unittest.mock import patch
 from django.utils import timezone
 from django.core.mail import EmailMessage
 from rest_framework.exceptions import ValidationError, AuthenticationFailed
-from users.models import User, EMAIL_COOLDOWN
+from users.models import User, Account, EMAIL_COOLDOWN
 from freezegun import freeze_time
 from users import services as s
 from tests.types import UserCreatePayload
@@ -19,7 +19,7 @@ class TestAccountCreation:
         """
         s.user_account_create(**user_create_payload)
         user = User.objects.get(email=user_create_payload["email"])
-        account = user.account
+        account = Account.objects.earliest("pk")
         # Assert reverse relationship
         assert user == account.user
         assert user.first_name == user_create_payload["first_name"]
