@@ -10,10 +10,37 @@ from tests.types import Factory
 from apartments.choices import Block
 
 
-def test_tenancy_list_for_query_filters(manager_user: User, tenancy_factory: Factory[Tenancy], user_factory: Factory[User], apartment_factory: Factory[Apartment], tenancy_patch_validators):
-        """
-        Test that the query filters work as expected.
-        """
+class TestTenancyListFor:
+    def test_filters_queryset_based_on_user_role(self, manager_user: User, caretaker_user: User, user: User, tenancy_factory: Factory[Tenancy]):
+        """Managers and caretakers see all tenancies; tenants see only their own."""
+
+        t1 = tenancy_factory()[0]
+        t2 = tenancy_factory()[0]
+
+        # Manager sees all
+        manager_qs = sl.tenancy_list_for(user=manager_user)
+        assert set(manager_qs) >= {t1, t2}
+
+        # Caretaker sees all
+        caretaker_qs = sl.tenancy_list_for(user=caretaker_user)
+        assert set(caretaker_qs) >= {t1, t2}
+
+        # Tenant sees only their own tenancy
+        tenant_qs = sl.tenancy_list_for(user=t1.user)
+
+        assert t1 in tenant_qs
+        assert t2 not in tenant_qs
+
+        # And vice versa
+        tenant2_qs = sl.tenancy_list_for(user=t2.user)
+
+        # For random user
+        assert sl.tenancy_list_for(user=user).count() == 0 
+        assert t2 in tenant2_qs
+        assert t1 not in tenant2_qs
+
+    def test_filters_based_on_query_filters(self, manager_user: User, tenancy_factory: Factory[Tenancy], user_factory: Factory[User], apartment_factory: Factory[Apartment], tenancy_patch_validators):
+        """Query filters should filter down the Tenancy QuerySet based on inputs"""
         user1 = user_factory(first_name="John", last_name="Doe")
         user2 = user_factory(first_name="Alex", last_name="Smith")
         apartment1 = apartment_factory(block=Block.A, unit_number=101, rentable=True)
@@ -22,26 +49,26 @@ def test_tenancy_list_for_query_filters(manager_user: User, tenancy_factory: Fac
         tenancy_factory(users=user1, apartments=apartment1, status=TS.ACTIVE, start_date= date(2026, 7, 1))
         tenancy_factory(users=user2, apartments=apartment2, status=TS.ACTIVE, start_date= date(2026, 6, 1))
 
-        def query(q: dict[str, str | int], expected) -> None:
+        def assert_query(q: dict[str, str | int], expected) -> None:
             qs = sl.tenancy_list_for(user=manager_user, filters=q)
             assert qs.count() == expected, f"Expected {expected} results {qs.all()}"
 
         # -- search on apartment --
-        query({"apartment": 2}, 1)
+        assert_query({"apartment": 2}, 1)
         # -- search on name --
-        query({"search": "John"}, 2)
+        assert_query({"search": "John"}, 2)
         # -- search on block --
-        query({"search": Block.B}, 1) # will show all tenancies with new block even duplicates.
+        assert_query({"block": Block.B}, 1)
         # -- search on status --
-        query({"status": TS.ACTIVE}, 2)
+        assert_query({"status": TS.ACTIVE}, 2)
         # -- search on unit number --
-        query({"search": "101"}, 2)
+        assert_query({"search": "101"}, 2)
         # -- search on partial last name --
-        query({"search": "Smi"}, 1)
+        assert_query({"search": "Smi"}, 1)
         # -- search on dates --
-        query({"joined_after": "2026-06-01"}, 2)
-        query({"joined_after": "2026-06-01", "joined_before": "2026-06-30"}, 1)
-        query({"joined_before": "2026-5-30"}, 1)
+        assert_query({"joined_after": "2026-06-01"}, 2)
+        assert_query({"joined_after": "2026-06-01", "joined_before": "2026-06-30"}, 1)
+        assert_query({"joined_before": "2026-5-30"}, 1)
 
 
 class TestTenancyGetFor:

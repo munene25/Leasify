@@ -268,7 +268,7 @@ def apartment_factory(fake: Faker) -> Factory[Apartment]:
         rentable: bool = True,
         floor: int | None = None,
         wing: Wing | None = None,
-        rent: Decimal | None = None,
+        rent: int | None = None,
         block: Block | None = None,
     ):
         apartments: list[Apartment] = []
@@ -279,7 +279,7 @@ def apartment_factory(fake: Faker) -> Factory[Apartment]:
                 floor= floor or random.choice(range(1, 6)),
                 wing = wing or random.choice(Wing.values),
                 unit_number = unit_number or fake.building_number(),
-                rent = rent or Decimal(fake.numerify("1#000")),
+                rent = Decimal(rent or fake.numerify("1#000")),
                 rentable = rentable
             )
             apartments.append(apt)

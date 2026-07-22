@@ -19,6 +19,7 @@ class TenancyListCreateView(BaseAPIView):
 
     class FilterClass(serializers.Serializer):
         apartment = serializers.IntegerField()
+        block=serializers.CharField()
         joined_before = serializers.DateField()
         joined_after = serializers.DateField()
         search = serializers.CharField()

@@ -7,9 +7,8 @@ from common.period import DateRange
 from users.services import user_set_role
 from tenancy import validators as v
 from tenancy.models import Tenancy
-from tenancy.choices import TenancyStatus, TerminationReason
-from tenancy.selectors import tenancy_in
-from apartments.selectors import apartment_lock
+from tenancy.choices import TenancyStatus as TS, TerminationReason as TR
+from apartments.models import Apartment
 from billing.services import billing_period_create
 from billing.choices import BillingStatus
 from billing.selectors import billing_last_paid
@@ -19,7 +18,6 @@ logger = get_logger("tenancy.services")
 if TYPE_CHECKING:
     from users.models import User
     from datetime import date
-    from apartments.models import Apartment
     from billing.models import BillingPeriod
 
 
@@ -46,8 +44,8 @@ def tenancy_create(*, user: "User", apartment: "Apartment", start_date: "date", 
     # I need to check that they are not booking too far in advance
     v.validate_lease_period(start_date)
 
-    # We need to lock the apartment to
-    apt = apartment_lock(apartment.pk)
+    # We need to lock the apartment to prevent state change
+    apt = Apartment.objects.select_for_update().get(pk=apartment.pk)
 
     if not apt.rentable:
         raise ApartmentUnavailableError()
@@ -57,7 +55,7 @@ def tenancy_create(*, user: "User", apartment: "Apartment", start_date: "date", 
     t = Tenancy(
         user=user,
         apartment=apt,
-        status=TenancyStatus.RESERVED,
+        status=TS.RESERVED,
         date_joined=start_date,
     )
     # Its important to note that we are no longer validating via full clean.
@@ -67,7 +65,7 @@ def tenancy_create(*, user: "User", apartment: "Apartment", start_date: "date", 
 
     # Add user to Tenant group if not already
     # Reworked the user role assignment to skip reassignment.
-    # *Replace is set to false to prevent overwriting existing roles.
+    # * Replace is set to false to prevent overwriting existing roles.
     user_set_role(user=user, role=get_group(name="tenant"))
 
     logger.info(
@@ -115,7 +113,7 @@ def tenancy_lease_extend(tenancy: Tenancy, duration_months: int) -> tuple[Tenanc
 
 
 @transaction.atomic
-def tenancy_terminate(*, tenancy: Tenancy, termination_reason: TerminationReason, termination_date: "date | None" = None) -> Tenancy:
+def tenancy_terminate(*, tenancy: Tenancy, termination_reason: TR, termination_date: "date | None" = None) -> Tenancy:
     """
     Allow tenants to cancel their leases.
     Cleanup involves terminating their billing periods as well.
@@ -134,7 +132,7 @@ def tenancy_terminate(*, tenancy: Tenancy, termination_reason: TerminationReason
         created_at = tenancy.created_at.date().strftime("%B %d, %Y")
         raise ValidationError(f"Cannot set termination date before tenant's creation date: {created_at}")
 
-    tenancy.status = TenancyStatus.TERMINATED
+    tenancy.status = TS.TERMINATED
     tenancy.termination_date = termination_date or today()
     tenancy.termination_reason = termination_reason
     tenancy.save(update_fields=("status", "termination_date", "termination_reason"))
