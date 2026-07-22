@@ -65,7 +65,7 @@ class TestPaymentMpesaInitiate:
         monkeypatch.setattr("payments.services.initiate_stk_push", lambda **kwargs: {"checkout_id": "unique_checkout"})
 
         # Create a payment with an idempotency key
-        bill1= billing_factory(statuses=[BS.UNPAID])[0]
+        bill1 = billing_factory(statuses=[BS.UNPAID])[0]
         processed = payment_factory(billing=bill1)[0]
         idemp_key = processed.idempotency_key
         assert idemp_key is not None
@@ -80,7 +80,6 @@ class TestPaymentMpesaInitiate:
         bill2 = billing_factory(statuses=[BS.UNPAID])[0]
         pending = payment_factory(statuses=[PS.PENDING], billing=bill2)[0]
         assert initiate(billing=bill2, idempotency_key="XYZ3") == pending
-
 
     def test_stk_push_raises_exception(
         self,
@@ -187,11 +186,18 @@ class TestPaymentMpesaProcess:
         with pytest.raises(NotFound, match="checkout_id does not exist"):
             payment_mpesa_process(stk_result(False))
 
+    def test_raises_for_non_pending_payments(self, stk_result, payment_factory: Factory[Payment]):
+        """It should raise a not found"""
+        payment = payment_factory()[0]
+        stk = stk_result(True, payment.checkout_id)
+        with pytest.raises(ValidationError, match="payment cannot be queried"):
+            payment_mpesa_process(stk)
+
     @pytest.mark.skip
     def test_extra_recepients_called(self, monkeypatch: pytest.MonkeyPatch, pending_payment: Payment, stk_result):
         """Extra recepients should be called"""
         mock = MagicMock()
-        monkeypatch.setattr("payments.selectors.payment_get_extra_recepients", mock)
+        monkeypatch.setattr("payments.selectors.payment_get_extra_recipients", mock)
 
         # mock to avoid sending email
         monkeypatch.setattr("payments.tasks.send_payment_notification.delay", lambda *args: None)
@@ -225,23 +231,26 @@ class TestPaymentMpesaQuery:
         payment = payment_factory(mode=PM.CASH)[0]
         with pytest.raises(ValidationError, match="M-PESA"):
             payment_mpesa_query(payment)
-            
+
     def test_raises_for_non_pending_payments(self, payment_factory: Factory[Payment]):
         """success or failed should fail"""
         payments = payment_factory(statuses=[PS.SUCCESS, PS.FAILED])
-        
+
         with pytest.raises(ValidationError, match=PS.SUCCESS.capitalize()):
             payment_mpesa_query(payment=payments[0])
-        
+
         with pytest.raises(ValidationError, match=PS.FAILED.capitalize()):
             payment_mpesa_query(payment=payments[1])
 
     def test_query_count(self, pending_payment: Payment, monkeypatch: pytest.MonkeyPatch, django_assert_num_queries):
         """Based on the type of payment, Either calls made in payment processing or none"""
         monkeypatch.setattr("payments.tasks.payment_mpesa_process_async.delay", lambda *args: None)
-        monkeypatch.setattr("payments.services.query_payment_status", lambda **kwargs: {"result_desc": "Payment completed"})
+        monkeypatch.setattr(
+            "payments.services.query_payment_status", lambda **kwargs: {"result_desc": "Payment completed"}
+        )
         with django_assert_num_queries(0):
             payment_mpesa_query(pending_payment)
+
     
     def test_stk_query_called_once_with_correct_params(self, monkeypatch: pytest.MonkeyPatch, pending_payment: Payment, stk_result):
         """The kwargs should be the checkout_id and timestamp"""
@@ -283,4 +292,3 @@ class TestPaymentMpesaQuery:
 
         payment_mpesa_query(pending_payment)
         mock_payment_process.assert_called_once_with(stk)
-
