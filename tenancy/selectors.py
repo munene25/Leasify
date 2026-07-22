@@ -36,7 +36,7 @@ def tenancy_list_for(*, user: "User", filters: QueryDict | dict[str, Any]) -> Qu
     class TenancyFilter(django_filters.FilterSet):
         class Meta:
             model = Tenancy
-            fields = ("status",)
+            fields = ("status", "apartment")
 
         search = django_filters.CharFilter(method="search_fields")
         joined = django_filters.DateFromToRangeFilter(field_name="date_joined")
@@ -73,6 +73,6 @@ def tenancy_in(states: list[TenancyStatus]) -> QuerySet[Tenancy]:
     return Tenancy.objects.filter(status__in=states)
 
 
-current_tenant = Prefetch(
+CURRENT_TENANT = Prefetch(
     "tenancy_set", tenancy_in(ACTIVE_RESERVED_OR_DEFAULTING).select_related("user"), to_attr="_active_tenant"
 )
