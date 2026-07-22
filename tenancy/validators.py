@@ -3,13 +3,14 @@ from typing import TYPE_CHECKING
 from rest_framework.exceptions import ValidationError
 from common.exceptions import MaxReservationsExceededError
 from tenancy.models import Tenancy, MAX_RESERVATIONS_PER_USER
-from tenancy.choices import TenancyStatus, active_reserved_defaulting
+from tenancy.choices import TenancyStatus, ACTIVE_RESERVED_OR_DEFAULTING
 from tenancy.selectors import tenancy_in
 from django.db.models import Count, Q
 from common.period import DateRange, today
 
 if TYPE_CHECKING:
     from apartments.models import Apartment
+
 
 def validate_max_monthly_reservations(user_id: int, exceed: int = MAX_RESERVATIONS_PER_USER) -> None:
     """
@@ -51,10 +52,9 @@ def validate_lease_period(start_date_raw: date) -> None:
     if target_month == next_month and now.day < 21:
         raise ValidationError("Bookings for next month open on the 21st.")
 
-def validate_db_constraint(*, user_id: int, apartment_id: int):
-    conflict = tenancy_in(active_reserved_defaulting).filter(
-        Q(apartment_id=apartment_id) | Q(user_id=user_id)
-    ).exists()
 
+def validate_db_constraint(*, user_id: int, apartment_id: int):
+    qs = tenancy_in(ACTIVE_RESERVED_OR_DEFAULTING)
+    conflict = qs.filter(Q(apartment_id=apartment_id) | Q(user_id=user_id)).exists()
     if conflict:
         raise ValidationError("This Aparment or User is already associated with a tenancy")

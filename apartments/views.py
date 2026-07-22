@@ -86,31 +86,3 @@ class ApartmentDetailUpdateDeleteView(BaseAPIView):
         return Response(
             status=status.HTTP_204_NO_CONTENT, data={"message": f"Apartment {str(selected)} deleted successfully"}
         )
-
-
-class ApartmentOverviewView(BaseAPIView):
-
-    class FilterSerializer(serializers.Serializer):
-        start_date = serializers.DateField()
-        end_date = serializers.DateField()
-
-    permission_classes = [IsAuthenticated]
-    filter_class = FilterSerializer
-    
-    def get(self, request: Request):
-        
-        check_perms(request.user, "apartments.view_overview")
-        filter = self.validate_filter(data=request.query_params)
-        try:
-            s = filter["start_date"]
-            e = filter["end_date"]
-            r = DateRange(s, e)
-        except (KeyError, ValueError):
-            r = DateRange.for_month()
-        overview = selectors.apartment_overview(r)
-
-        serializer = sc.ApartmentOverviewSerializer(instance=overview)
-        return Response(
-            status=status.HTTP_200_OK,
-            data=serializer.data,
-        )

@@ -50,8 +50,6 @@ def tenancy_list_for(*, user: "User", filters: QueryDict | dict[str, Any]) -> Qu
                 q |= Q(user__first_name__icontains=value)
                 q |= Q(user__last_name__icontains=value)
             return queryset.filter(q).distinct()
-        
-            
 
     t_filters = TenancyFilterPolicy.for_user(user)
     tenancies = BASE_QS.filter(t_filters)
@@ -74,4 +72,7 @@ def tenancy_in(states: list[TenancyStatus]) -> QuerySet[Tenancy]:
     """
     return Tenancy.objects.filter(status__in=states)
 
-current_tenant = Prefetch("tenancy_set", tenancy_in(active_reserved_defaulting).select_related("user"), to_attr="_active_tenant")
+
+current_tenant = Prefetch(
+    "tenancy_set", tenancy_in(ACTIVE_RESERVED_OR_DEFAULTING).select_related("user"), to_attr="_active_tenant"
+)

@@ -19,12 +19,12 @@ class TenancyStatus(TextChoices):
 
 class TerminationReason(TextChoices):
     """MANAGERIAL, EXPIRED, VOLUNTARY OR NONPAYMENT"""
-    
+
     MANAGERIAL = "managerial", "Managerial decision to terminate"
     EXPIRED = "expired", "Reservation expired"
     VOLUNTARY = "voluntary", "Voluntary termination"
     NONPAYMENT = "non_payment", "Tenant failed to pay"
 
 
-active_reserved_defaulting = [TenancyStatus.ACTIVE, TenancyStatus.RESERVED, TenancyStatus.DEFAULTING]
-reserved_or_terminated = [TenancyStatus.RESERVED, TenancyStatus.TERMINATED]
+ACTIVE_RESERVED_OR_DEFAULTING = [TenancyStatus.ACTIVE, TenancyStatus.RESERVED, TenancyStatus.DEFAULTING]
+RESERVED_OR_TERMINATED = [TenancyStatus.RESERVED, TenancyStatus.TERMINATED]

@@ -5,7 +5,7 @@ from common.period import DateRange
 from common.helpers import raise_not_found
 from apartments.models import Apartment
 from tenancy.selectors import current_tenant
-from tenancy.choices import TenancyStatus, active_reserved_defaulting
+from tenancy.choices import TenancyStatus, ACTIVE_RESERVED_OR_DEFAULTING
 
 if TYPE_CHECKING:
     from users.models import User
@@ -64,7 +64,7 @@ def apartment_list_for(*, user: "User", filters: dict[str, Any] | None = None):
     return ApartmentFilter(filters, apartments).qs
 
 
-def apartment_overview(r: DateRange):
+def apartment_get_overview():
     """
     Return an overview of apartments occupancy for the selected semester:
     total, occupied, and vacant counts.
