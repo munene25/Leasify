@@ -121,6 +121,9 @@ def payment_mpesa_process(stk_result: "STKResult") -> Payment:
     """
     payment = sl.payment_get_checkout(stk_result["checkout_id"])
 
+    if payment.status != PS.PENDING:
+        raise ValidationError(f"'{payment.status.capitalize()}' payment cannot be queried")
+
     payment.status = PS.SUCCESS if stk_result["success"] else PS.FAILED
     payment.receipt_no = stk_result["receipt_no"]
 

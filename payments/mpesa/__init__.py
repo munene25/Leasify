@@ -3,4 +3,3 @@ from .types import STKResult, STKInitialResponse
 from .utils import make_timestamp, make_password
 from .handlers import initiate_stk_push, query_payment_status
 from .auth import get_access_token
-from .ip import is_mpesa_ip
