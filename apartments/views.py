@@ -20,7 +20,10 @@ class ApartmentListCreateView(BaseAPIView):
     All apartments viewable by priviledged users, and rentable apartments for the rest.
     """
     class FilterSerializer(serializers.Serializer):
-        search = serializers.CharField()
+        block = serializers.CharField()
+        wing = serializers.CharField()
+        floor = serializers.IntegerField()
+        unit_number = serializers.IntegerField()
         rentable = serializers.BooleanField(allow_null=True)
         order_by = serializers.CharField()
         rent_min = serializers.IntegerField()
@@ -86,3 +89,5 @@ class ApartmentDetailUpdateDeleteView(BaseAPIView):
         return Response(
             status=status.HTTP_204_NO_CONTENT, data={"message": f"Apartment {str(selected)} deleted successfully"}
         )
+
+# need to add choice fields options paths

@@ -27,4 +27,5 @@ class TerminationReason(TextChoices):
 
 
 ACTIVE_RESERVED_OR_DEFAULTING = [TenancyStatus.ACTIVE, TenancyStatus.RESERVED, TenancyStatus.DEFAULTING]
+ACTIVE_OR_DEFAULTING = [TenancyStatus.ACTIVE, TenancyStatus.DEFAULTING]
 RESERVED_OR_TERMINATED = [TenancyStatus.RESERVED, TenancyStatus.TERMINATED]

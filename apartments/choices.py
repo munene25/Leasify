@@ -1,10 +1,10 @@
 from django.db import models
 
 class Block(models.TextChoices):
-    A = "block A" "Block A"
-    B = "block B", "Block B"
-    C = "block C", "Block C"
-    D = "block D", "Block D"
+    A = "A" "Block A"
+    B = "B", "Block B"
+    C = "C", "Block C"
+    D = "D", "Block D"
 
 class Wing(models.TextChoices):
     NORTH = "north", "North wing"

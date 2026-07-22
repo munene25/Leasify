@@ -27,7 +27,7 @@ class TenancyFilterPolicy(FilteringPolicy):
     REGULAR = lambda user: Q(user_id=user.pk)
 
 
-def tenancy_list_for(*, user: "User", filters: QueryDict | dict[str, Any]) -> QuerySet[Tenancy]:
+def tenancy_list_for(*, user: "User", filters: QueryDict | dict[str, Any] = {}) -> QuerySet[Tenancy]:
     """
     List tenancies based on who is requesting
     """
@@ -36,9 +36,10 @@ def tenancy_list_for(*, user: "User", filters: QueryDict | dict[str, Any]) -> Qu
     class TenancyFilter(django_filters.FilterSet):
         class Meta:
             model = Tenancy
-            fields = ("status", "apartment")
+            fields = ("status", "apartment", "block")
 
         search = django_filters.CharFilter(method="search_fields")
+        block = django_filters.CharFilter(field_name="apartment__block")
         joined = django_filters.DateFromToRangeFilter(field_name="date_joined")
 
         def search_fields(self, queryset, name, value: str):
