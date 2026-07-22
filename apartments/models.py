@@ -41,11 +41,9 @@ class Apartment(BaseModel):
         """
         Full represantation of the aparment block, unit_number, floor, wing.
         """
-        parts = [f"Block {self.block}"]
+        parts = [f"Unit {self.block}-{self.floor}{self.unit_number:02}"]
         if self.wing:
-            parts.append(f"Wing {self.wing}")
-        parts.append(f"Floor {self.floor}")
-        parts.append(f"Unit {self.unit_number:02}")
+            parts.append(f"{self.wing.capitalize()} wing")
         return " | ".join(parts)
 
     @property

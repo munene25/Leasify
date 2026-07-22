@@ -1,7 +1,7 @@
 from django.db import models
 
 class Block(models.TextChoices):
-    A = "A" "Block A"
+    A = "A", "Block A"
     B = "B", "Block B"
     C = "C", "Block C"
     D = "D", "Block D"
