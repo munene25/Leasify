@@ -49,10 +49,11 @@ class PaymentDetailView(APIView):
         selected = sl.payment_get_for(user=request.user, payment_id=payment_id)
         outgoing = sc.PaymentDetailSerializer(instance=selected)
         return Response(data=outgoing.data, status=status.HTTP_200_OK)
-    
+
 
 class PaymentInitiateMpesaView(BaseAPIView):
     """Initiates an M-Pesa payment via STK push."""
+
     # ? Need to add throttle class?
 
     permission_classes = [IsAuthenticated]
@@ -71,9 +72,10 @@ class PaymentInitiateMpesaView(BaseAPIView):
         )
 
         return Response(
-            {"message": "M-Pesa transaction initiated.", "payment_id": payment.pk},
+            {"message": "M-Pesa transaction initiated.", "payment_id": payment.pk, "status": payment.status},
             status=status.HTTP_201_CREATED,
         )
+
 
 class PaymentStatusQueryView(BaseAPIView):
     """Queries the status of an M-PESA payment."""
@@ -87,7 +89,10 @@ class PaymentStatusQueryView(BaseAPIView):
         selected = sl.payment_get_for(user=request.user, payment_id=payment_id)
         result = sr.payment_mpesa_query(selected)
         tasks.payment_mpesa_process_async.delay(result)
-        return Response(data={"message": "Payment query in progress"}, status=status.HTTP_200_OK)
+        return Response(
+            data={"message": "Payment query in progress", "payment_id": selected.pk, "status": selected.status},
+            status=status.HTTP_200_OK,
+        )
 
 
 class PaymentMpesaCallbackView(BaseAPIView):

@@ -64,13 +64,6 @@ def stk_initial_response():
         "CustomerMessage": "Success. Request accepted for processing",
     }
 
-
-@pytest.fixture
-def patch_mpesa_auth(monkeypatch: pytest.MonkeyPatch):
-    mock = MagicMock(return_value="secret_token")
-    monkeypatch.setattr("payments.mpesa.auth.get_access_token", mock)
-    yield mock
-
 @pytest.fixture(scope="session")
 def stk_result() -> typing.Callable[[bool, str], STKResult]:
     """Return an stk result dict for for either success or failed based on a checkout_id"""
@@ -91,37 +84,43 @@ def pending_payment(payment_factory: Factory[Payment]) -> Payment:
     "Returns a pending payment"
     return payment_factory(statuses=[PS.PENDING])[0]
 
-@pytest.fixture()
+@pytest.fixture
+def patch_mpesa_auth(monkeypatch: pytest.MonkeyPatch) -> typing.Generator[MagicMock]:
+    mock = MagicMock(return_value="secret_token")
+    monkeypatch.setattr("payments.mpesa.auth.get_access_token", mock)
+    yield mock
+
+@pytest.fixture
 def patch_payment_get_for(monkeypatch: pytest.MonkeyPatch, payment_factory: Factory[Payment]):
     billing = payment_factory(1, statuses=[PS.SUCCESS])[0]
     mock = MagicMock(return_value=billing)
     monkeypatch.setattr("payments.selectors.payment_get_for", mock)
     yield mock
 
-
 @pytest.fixture
-def patch_payment_mpesa_initiate(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
+def patch_payment_mpesa_initiate(monkeypatch: pytest.MonkeyPatch) -> typing.Generator[MagicMock]:
     mock = MagicMock()
     mock.return_value.pk = 1
+    mock.return_value.status = "pending"
     monkeypatch.setattr("payments.services.payment_mpesa_initiate", mock)
-    return mock
+    yield mock
 
 @pytest.fixture
-def patch_payment_mpesa_process_async(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
+def patch_payment_mpesa_process_async(monkeypatch: pytest.MonkeyPatch) -> typing.Generator[MagicMock]:
     mock = MagicMock()
     mock.delay = MagicMock(return_value=None)
     monkeypatch.setattr("payments.tasks.payment_mpesa_process_async", mock)
-    return mock
+    yield mock
 
 @pytest.fixture
-def patch_payment_mpesa_query(monkeypatch: pytest.MonkeyPatch, stk_result) -> MagicMock:
+def patch_payment_mpesa_query(monkeypatch: pytest.MonkeyPatch, stk_result) -> typing.Generator[MagicMock]:
     mock = MagicMock(return_value=stk_result(True, None))
     monkeypatch.setattr("payments.services.payment_mpesa_query", mock)
-    return mock
+    yield mock
 
 @pytest.fixture
-def patch_payment_alt_create(monkeypatch: pytest.MonkeyPatch, payment_factory: Factory[Payment]) -> MagicMock:
+def patch_payment_alt_create(monkeypatch: pytest.MonkeyPatch, payment_factory: Factory[Payment]) -> typing.Generator[MagicMock]:
     payment = payment_factory(mode=PM.CASH)[0]
     mock = MagicMock(return_value=payment)
     monkeypatch.setattr("payments.services.payment_alt_create", mock)
-    return mock
+    yield mock
