@@ -1,7 +1,6 @@
 from typing import Any, TYPE_CHECKING
 from django.db import models
 from common.domain import FilteringPolicy
-from common.period import DateRange
 from common.helpers import raise_not_found
 from apartments.models import Apartment
 from tenancy.selectors import CURRENT_TENANT

@@ -18,6 +18,7 @@ from users.services import user_account_create, user_set_role
 
 from apartments.services import apartment_create
 from apartments.models import Apartment
+from apartments.choices import Block, Wing
 
 from tenancy.models import Tenancy
 from billing.models import BillingPeriod as BP
@@ -255,20 +256,31 @@ def superuser_client(superuser) -> APIClient:
 
 
 @pytest.fixture(scope="session")
-def apartment_factory(fake) -> Factory[Apartment]:
+def apartment_factory(fake: Faker) -> Factory[Apartment]:
     """Returns a callable for generating apartments"""
+    from decimal import Decimal
+    
+    import random
 
-    def create(quantity: int = 1, ordered: bool = False, **kwargs):
-        import random
-        from decimal import Decimal
-
+    def create(
+        quantity: int = 1, 
+        unit_number: int | None = None,
+        rentable: bool = True,
+        floor: int | None = None,
+        wing: Wing | None = None,
+        rent: Decimal | None = None,
+        block: Block | None = None,
+    ):
         apartments: list[Apartment] = []
-        for i in range(quantity):
-            apt = apartment_create(
-                block=kwargs.get("block", random.choice(Apartment.Block.values)),
-                unit_number=(i + 1) if ordered else kwargs.get("unit_number", int(fake.building_number())),
-                rent=kwargs.get("rent", Decimal(fake.numerify("1#000"))),
-                rentable=kwargs.get("rentable", random.choice((True, False))),
+
+        for _ in range(quantity):
+            apt = Apartment.objects.create(
+                block = block or random.choice(Block.values),
+                floor= floor or random.choice(range(1, 6)),
+                wing = wing or random.choice(Wing.values),
+                unit_number = unit_number or fake.building_number(),
+                rent = rent or Decimal(fake.numerify("1#000")),
+                rentable = rentable
             )
             apartments.append(apt)
         return apartments
@@ -278,7 +290,7 @@ def apartment_factory(fake) -> Factory[Apartment]:
 
 @pytest.fixture
 def apartment(apartment_factory) -> Apartment:
-    return apartment_factory(ordered=True, block="NEW", rent=20_000, rentable=True)[0]
+    return apartment_factory(unit_number=1, block=Block.A, rent=20_000, rentable=True)[0]
 
 
 # ------------------------------------------------ Tenancy  ------------------------------------------------
@@ -299,22 +311,23 @@ def tenancy_factory(apartment_factory: Factory[Apartment], user_factory: Factory
     from tenancy.choices import TenancyStatus
 
     def create(
-        quantity=1, users: list[User] | None = None, apartments: list[Apartment] | None = None, **kwargs
+        quantity=1, 
+        users: list[User] | None = None,
+        apartments: list[Apartment] | None = None,
+        start_date: date | None = None,
+        status: TenancyStatus | None = None,
     ) -> list[Tenancy]:
         tenancies = []
 
         users = users or user_factory(quantity)
         apartments = apartments or apartment_factory(quantity=len(users), rentable=True)
 
-        start_date: date = kwargs.get("start_date", today)
-        status = kwargs.get("status", TenancyStatus.ACTIVE)
-
         for i, user in enumerate(users):
             t = Tenancy.objects.create(
                 user=user,
                 apartment=apartments[i],
-                date_joined=start_date,
-                status=status,
+                date_joined=start_date or today,
+                status=status or TenancyStatus.ACTIVE,
             )
             user_set_role(user=user, role=get_group("tenant"))
             tenancies.append(t)

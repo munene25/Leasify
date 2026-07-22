@@ -108,6 +108,7 @@ class TestTenancyListCreateView:
             ),
             ("search=John", {"search": "John"}),
             ("status=active", {"status": "active"}),
+            ("apartment=1", {"apartment": 1}),
         ],
     )
     def test_tenancy_list_query_filters(
