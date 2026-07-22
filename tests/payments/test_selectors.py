@@ -1,16 +1,16 @@
 import pytest
-import typing
 from functools import partial
 from rest_framework.exceptions import NotFound
 from tests.types import Factory
 from users.models import User
+from users.selectors import get_group
+from tenancy.models import Tenancy
 from billing.models import BillingPeriod as BP
 from billing.choices import BillingStatus as BS
-from tenancy.models import Tenancy
 from payments.models import Payment
 from payments.selectors import *
 from payments.choices import PaymentMode as PM, PaymentStatus as PS
-from users.selectors import get_group
+
 
 class TestBaseQS:
     def test_no_queries(self, payment_factory: Factory[Payment], django_assert_num_queries):
@@ -96,9 +96,10 @@ class TestPaymentGetFor:
         """Should raise a not found if there is not payment found"""
         with pytest.raises(NotFound, match="Payment not found"):
             payment_get_for(user=manager_user, payment_id=1)
-        
-    
-    def test_role_based_filtering(self, manager_user: User, caretaker_user: User, superuser: User, payment_factory: Factory[Payment]):
+
+    def test_role_based_filtering(
+        self, manager_user: User, caretaker_user: User, superuser: User, payment_factory: Factory[Payment]
+    ):
         """Should filter gets based on the type of user"""
         user1 = payment_factory(1)[0].billing.tenancy.user
         user2 = payment_factory(1)[0].billing.tenancy.user
@@ -131,6 +132,6 @@ class TestPaymentGetExtraEmailRecepients:
         manager = get_group("manager")
         u1.groups.add(manager)
         u2.groups.add(manager)
-        emails = payment_get_extra_recepients()
+        emails = payment_get_extra_recipients()
         assert isinstance(emails, list)
         assert set(emails) == {"edmune@gmail.com", "kmbape@yahoo.com"}

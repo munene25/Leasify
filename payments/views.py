@@ -100,6 +100,7 @@ class PaymentMpesaCallbackView(BaseAPIView):
 
     @csrf_exempt
     def post(self, request) -> Response:
+        # IP filtering done in reverse proxy
         stk_result = parse_callback_response(request.data)
         tasks.payment_mpesa_process_async.delay(stk_result)
         return Response(status=status.HTTP_200_OK)

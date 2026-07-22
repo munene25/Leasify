@@ -1,13 +1,13 @@
 import pytest
+from django.core.mail import EmailMessage
+from tests.types import Factory
+from tenancy.choices import TenancyStatus as TS
+from tenancy.models import Tenancy
+from billing.choices import BillingStatus as BS
+from billing.models import BillingPeriod as BP
 from payments.tasks import send_payment_notification, payment_mpesa_process_async
 from payments.models import Payment
-from tests.types import Factory
-from django.core.mail import EmailMessage
 from payments.choices import PaymentStatus as PS
-from billing.choices import BillingStatus as BS
-from tenancy.choices import TenancyStatus as TS
-from billing.models import BillingPeriod as BP
-from tenancy.models import Tenancy
 
 
 class TestSendPaymentNotification:
@@ -41,6 +41,28 @@ class TestSendPaymentNotification:
     
 
 class TestPaymentMpesaProcessAsync:
+
+    def test_with_not_found_checkout_id(self, stk_result):
+        """Should return early with task_status failed"""
+        result = payment_mpesa_process_async(stk_result(False))
+        assert result["task_status"] == "Failed"
+        assert "checkout_id" in result["description"]
+
+    def test_idempotency(self, stk_result, payment_factory: Factory[Payment]):
+        """Should not process an already processed payment"""
+        payments = payment_factory(statuses=[PS.SUCCESS, PS.FAILED])
+        success = stk_result(True, payments[0].checkout_id)
+        failed = stk_result(False, payments[1].checkout_id)
+
+        result = payment_mpesa_process_async(success)
+        assert result["task_status"] == "Skipped"
+        assert "Success" in result["description"]
+
+        result = payment_mpesa_process_async(failed)
+        assert result["task_status"] == "Skipped"
+        assert "Failed" in result["description"]
+
+
     @pytest.mark.parametrize(
         "initial,expected",
         [
@@ -58,13 +80,14 @@ class TestPaymentMpesaProcessAsync:
         
         result = payment_mpesa_process_async(success)
         payment.refresh_from_db()
-        assert result["tenancy"] == payment.billing.tenancy.status == expected[0]
-        assert result["billing"] == payment.billing.status == expected[1]
-        assert result["payment"] == payment.status == expected[2]
+        assert result["task_status"] == "Success"
+        assert payment.billing.tenancy.status == expected[0]
+        assert payment.billing.status == expected[1]
+        assert payment.status == expected[2]
 
-    def test_mail_sent(self, pending_payment, stk_result, mailoutbox):
-        """test mail"""
+    def test_mail_sending(self, pending_payment, stk_result, django_capture_on_commit_callbacks, mailoutbox):
+        """test mail sent out after commiting the transactions"""
         stk = stk_result(True, pending_payment.checkout_id)
-        payment_mpesa_process_async(stk)
+        with django_capture_on_commit_callbacks(execute=True):
+            payment_mpesa_process_async(stk)
         assert len(mailoutbox) == 1
-        mail = mailoutbox[0]

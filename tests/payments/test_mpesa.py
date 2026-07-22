@@ -1,9 +1,9 @@
 import pytest
-from payments.mpesa import auth, parser, initiate_stk_push, query_payment_status, make_timestamp, make_password
-from payments.mpesa import STKResult, STKInitialResponse
-from unittest.mock import MagicMock
-from freezegun import freeze_time
 from zoneinfo import ZoneInfo
+from freezegun import freeze_time
+from unittest.mock import MagicMock
+from payments.mpesa import parser, initiate_stk_push, query_payment_status, make_timestamp, make_password
+from payments.mpesa import STKResult, STKInitialResponse
 
 
 class TestUtils:

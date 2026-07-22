@@ -1,21 +1,12 @@
 import pytest
-from datetime import date
-from functools import partial
 from unittest.mock import MagicMock
-from rest_framework.exceptions import ValidationError, NotFound
+from django.db.models import QuerySet
 from rest_framework import status
 from common.exceptions import MpesaAPIError
 from tests.types import Factory, IsClient
 from tests.helpers import parse_paginated_response, parse_message, parse_error
-from users.models import User
 from payments.models import Payment
 from payments.choices import PaymentMode as PM, PaymentStatus as PS
-from payments.services import payment_mpesa_query, payment_alt_create, payment_mpesa_initiate, payment_mpesa_process
-from payments.mpesa import STKResult
-from billing.models import BillingPeriod as BP
-from billing.choices import BillingStatus as BS
-from django.db.models import QuerySet
-
 
 class TestPaymentListView:
 
@@ -201,6 +192,7 @@ class TestPaymentInitiateMpesaView:
 
         assert data["message"] == "M-Pesa transaction initiated."
         assert data["payment_id"] == patch_payment_mpesa_initiate.return_value.pk
+        assert data["status"] == patch_payment_mpesa_initiate.return_value.status
 
     def test_invalid_phone_number(
         self,
@@ -290,6 +282,8 @@ class TestPaymentMpesaQueryView:
         response = manager_client.post(self.path(1), {})
         data = parse_message(response, status.HTTP_200_OK)
         assert "query in progress" in data["message"]
+        assert data["status"] == patch_payment_get_for.return_value.status
+        assert data["payment_id"] == patch_payment_get_for.return_value.pk
 
     def test_mpesa_api_error(
         self,
