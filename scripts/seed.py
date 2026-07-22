@@ -1,15 +1,15 @@
+import random
 from decimal import Decimal
+from faker import Faker
+from django.utils import timezone
+from django.core.management import call_command
 from users.models import User
 from apartments.models import Apartment
-import random
 from tenancy.services import tenancy_create
 from apartments.services import apartment_create
 from payments.services import payment_alt_create
 from users.services import user_account_create
-from faker import Faker
-from django.core.management import call_command
 from payments.choices import PaymentMode
-from django.utils import timezone
 
 ITERATIONS = list(range(20))
 
@@ -60,13 +60,15 @@ def run():
         call_command("loaddata", "fixtures/test_apartments.json")
         apartments = Apartment.objects.all()
     except Exception:
-
         NO_OF_APTS = 30
+        from apartments.choices import Wing, Block
         apartments = [
             apartment_create(
-                block=random.choice(Apartment.Block.values),
+                block=random.choice(Block.values),
                 unit_number=int(f.building_number()[:4]),
                 rent=Decimal(f.numerify("1#000")),
+                wing=random.choice(Wing.values),
+                floor=random.choice(range(1, 6))
             )
             for _ in range(NO_OF_APTS)
         ]

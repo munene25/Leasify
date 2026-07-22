@@ -4,16 +4,17 @@ from common.domain import FilteringPolicy
 from common.period import DateRange
 from common.helpers import raise_not_found
 from apartments.models import Apartment
-from tenancy.selectors import current_tenant
+from tenancy.selectors import CURRENT_TENANT
 from tenancy.choices import TenancyStatus, ACTIVE_RESERVED_OR_DEFAULTING
 
 if TYPE_CHECKING:
     from users.models import User
 
 apartment_not_found = raise_not_found("apartment_id", "Apartment does not exist")
-BASE_QS = Apartment.objects.prefetch_related(current_tenant)
 
-aptartments_listable = (
+BASE_QS = Apartment.objects.prefetch_related(CURRENT_TENANT)
+
+LISTABLE = (
     models.Q(rentable=True)
     & models.Q(tenancy__isnull=True)
     | models.Q(tenancy__status__in=TenancyStatus.TERMINATED)
@@ -26,8 +27,8 @@ class ApartmentFilterPolicy(FilteringPolicy):
     SUPERUSER = models.Q()
     MANAGER = models.Q()
     CARETAKER = models.Q()
-    TENANT = aptartments_listable
-    REGULAR = aptartments_listable
+    TENANT = LISTABLE
+    REGULAR = LISTABLE
 
 
 def apartment_list_for(*, user: "User", filters: dict[str, Any] | None = None):
@@ -42,7 +43,7 @@ def apartment_list_for(*, user: "User", filters: dict[str, Any] | None = None):
     from decimal import Decimal
 
     class ApartmentFilter(django_filters.FilterSet):
-        order_by = django_filters.OrderingFilter(fields=("unit_number", "rent"))
+        order_by = django_filters.OrderingFilter(fields=("rent"))
         search = django_filters.CharFilter(method="search_fields")
         rent = django_filters.RangeFilter(field_name="rent")
 
@@ -53,10 +54,12 @@ def apartment_list_for(*, user: "User", filters: dict[str, Any] | None = None):
         def search_fields(self, queryset, name, value):
             q = models.Q()
             if value.isdigit():
-                q |= models.Q(unit_number=int(value))
+                q |= models.Q(floor=value)
+                q |= models.Q(unit_number=value)
                 q |= models.Q(rent=Decimal(value))
             else:
                 q |= models.Q(block__icontains=value)
+                q |= models.Q(wing__icontains=value)
             return queryset.filter(q)
 
     a_filters = ApartmentFilterPolicy.for_user(user)
@@ -64,11 +67,8 @@ def apartment_list_for(*, user: "User", filters: dict[str, Any] | None = None):
     return ApartmentFilter(filters, apartments).qs
 
 
-def apartment_get_overview():
-    """
-    Return an overview of apartments occupancy for the selected semester:
-    total, occupied, and vacant counts.
-    """
+def apartment_get_overview() -> dict[str, str|int|None]:
+    """Return an overview of apartments."""
 
     apartments = Apartment.objects.all()
     aggregates = apartments.aggregate(

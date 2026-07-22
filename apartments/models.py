@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING
 from django.db import models
 from common.models import BaseModel
 from tenancy.choices import ACTIVE_RESERVED_OR_DEFAULTING
+from apartments.choices import Block, Wing
 
 if TYPE_CHECKING:
     from tenancy.models import Tenancy
@@ -12,35 +13,40 @@ class Apartment(BaseModel):
     """
     Apartment Model.
     Fields block and unit number must be unique for every entry.
-    Rentable flag describes if the apartment is viewable for other users and tenants looking to book.
+    Rentable flag describes if the apartment is viewable for primary users.
     """
 
     class Meta:
         ordering = ["-created_at"]
-        unique_together = ("block", "unit_number")
-        permissions = (("view_overview", "Can view the apartments overview status for the semester"),)
+        unique_together = "block", "unit_number"
 
-    class Block(models.TextChoices):
-        NEW = "NEW", "New Block"
-        OLD = "OLD", "Old Block"
-
+    
     block = models.CharField(max_length=10, choices=Block.choices, blank=False, null=False)
     unit_number = models.PositiveSmallIntegerField(blank=False, null=False)
+    floor = models.PositiveSmallIntegerField(blank=False, null=False, help_text="Floor number, 0 for ground floor")
     rent = models.DecimalField(decimal_places=2, max_digits=10, blank=False, null=False)
     rentable = models.BooleanField(default=True, blank=False, null=False, help_text="Viewable and available to rent")
+
+    wing = models.CharField(max_length=15, blank=True, null=True, choices=Wing.choices)
+
 
     tenancy_set: models.QuerySet[Tenancy]
     _active_tenant: list[Tenancy]
 
     def __str__(self) -> str:
-        return f"{self.block}-{self.unit_number:02}"
+        return f"Block-{self.block} Unit-{self.unit_number:02}"
 
     @property
     def name(self) -> str:
         """
-        Representation of the apartment block and number.
+        Full represantation of the aparment block, unit_number, floor, wing.
         """
-        return str(self)
+        parts = [f"Block {self.block}"]
+        if self.wing:
+            parts.append(f"Wing {self.wing}")
+        parts.append(f"Floor {self.floor}")
+        parts.append(f"Unit {self.unit_number:02}")
+        return " | ".join(parts)
 
     @property
     def current_tenant(self) -> Tenancy | None:
