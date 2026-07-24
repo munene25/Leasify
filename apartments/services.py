@@ -13,12 +13,12 @@ logger = get_logger("apartments.services")
 class ApartmentUpdateData(TypedDict, total=False):
     """Represents the typical payload expected for apartment updates."""
 
-    block: Block
+    block: Block | str
     unit_number: int
     floor: int
     rent: int | Decimal
     rentable: bool
-    wing: Optional[Wing]
+    wing: Optional[Wing | str]
 
 
 def apartment_create(*, block: Block, unit_number: int, floor: int, rent: Decimal, wing: Wing | None, rentable: bool = True) -> Apartment:
@@ -35,7 +35,7 @@ def apartment_create(*, block: Block, unit_number: int, floor: int, rent: Decima
     :param rentable: Whether the apartment is rentable (default: True)
     :returns: The created Apartment instance
 
-    :raises ValidationError: If validation fails during clean()
+    :raises ValidationError: If validation fails during full clean
     """
     apartment = Apartment(
         unit_number=unit_number,
