@@ -109,24 +109,18 @@ class TestApartmentUpdateService:
 
 
 class TestApartmentDeleteService:
+    """Tests for apartment_delete service."""
 
-    def test_apartment_deletion_succeeds(self, apartment: Apartment):
-        """
-        Should delete normally if it's not attached to any tenancy
-        """
-
+    def test_apartment_deletion_succeeds(self, apartment: Apartment) -> None:
+        """An apartment without dependents should delete normally."""
         apartment_delete(apartment)
-        assert Apartment.objects.count() == 0
+        assert Apartment.objects.filter(pk=apartment.pk).exists() is False
 
-    def test_deleting_apartment_with_tenant_fails(self, user, apartment: Apartment):
-        """
-        Should fail to delete and unit should persist
-        """
-        from tenancy.services import tenancy_create
-        from django.utils import timezone
-
-        tenancy_create(user=user, apartment=apartment, start_date=timezone.now().date(), duration_months=2)
+    def test_deleting_apartment_with_tenant_fails(self, apartment: Apartment, tenancy_factory: Factory[Tenancy]) -> None:
+        """Deleting an apartment with a tenancy should raise a validation error."""
+        tenancy_factory(apartments=[apartment])
         with pytest.raises(ValidationError) as exc:
             apartment_delete(apartment)
 
         assert "apartment_id" in exc.value.detail
+        assert Apartment.objects.filter(pk=apartment.pk).exists() is True
