@@ -59,55 +59,53 @@ class TestApartmentCreateService:
 
 
 class TestApartmentUpdateService:
-    data = {"block": "OLD", "rent": 10_000, "rentable": True, "unit_number": 2}
+    """Tests for apartment_update service."""
 
-    def test_apartment_updates_successfully(self, apartment: Apartment):
-        """
-        Updated fields should match what is in the db, the returned object and the update data
-        """
-
-        updates = self.data
-        updated = apartment_update(apartment, **updates)
+    def test_updating_successful(self, apartment: Apartment) -> None:
+        """The update service should return the same apartment instance and persist changes."""
+        updated = apartment_update(
+            apartment=apartment,
+            block=Block.B,
+            rent=Decimal("15000"),
+            rentable=False,
+            floor=10,
+            wing=Wing.SOUTH
+        )
 
         apartment.refresh_from_db()  # type: ignore
+
+        assert updated == apartment
         assert updated.pk == apartment.pk
-        assert updated.rent == apartment.rent == Decimal(updates["rent"])
-        assert updated.rentable == apartment.rentable == updates["rentable"]
-        assert updated.unit_number == apartment.unit_number == updates["unit_number"]
-        assert updated.block == apartment.block == updates["block"]
+        assert apartment.block == Block.B
+        assert apartment.rent == Decimal("15000")
+        assert apartment.rentable is False
+        assert apartment.floor == 10
+        assert apartment.wing == Wing.SOUTH
 
-    def test_apartment_unique_constraints(self, apartment: Apartment):
-        """No two apartments should share same block and unit number"""
+    def test_apartment_update_calls_full_clean(self, apartment: Apartment, full_clean_patch: MagicMock) -> None:
+        """The update service should validate through full_clean."""
 
-        apt = apartment_create(**self.data)
-        with pytest.raises(ValidationError) as exc:
-            apartment_update(apartment=apt, block=apartment.block, unit_number=apartment.unit_number)
-        assert "Apartment with this Block and Unit number already exists" in str(exc.value.detail)
-        apt.refresh_from_db()  # type: ignore
-        assert apt.block == self.data["block"]
-        assert apt.unit_number == self.data["unit_number"]
-        assert apt.rent == self.data["rent"]
-        assert apt.rentable == self.data["rentable"]
+        apartment_update(apartment=apartment, block=Block.B, rent=Decimal("15000"), rentable=False)
+        full_clean_patch.assert_called_once()
 
-    def test_number_of_querries_vary_based_on_the_update_kwargs(self, apartment: Apartment, django_assert_num_queries):
+    def test_update_query_count(self, apartment: Apartment, django_assert_num_queries) -> None:
         """
-        Apartment should only be updated if fields actually change
+        1. No-op update should do no DB writes
+        2. A real update should validate and save changes
         """
-
-        # O querries since no updates are being made
         with django_assert_num_queries(0):
-            apartment_update(apartment, block=apartment.block, unit_number=apartment.unit_number)
+            apartment_update(
+                apartment=apartment,
+                block=apartment.block,
+                unit_number=apartment.unit_number,
+                floor=apartment.floor,
+                rent=apartment.rent,
+                rentable=apartment.rentable,
+                wing=apartment.wing,
+            )
 
-        # 1 uniqueness check via full clean
-        # 1 update
         with django_assert_num_queries(2):
-            apartment_update(apartment, **self.data)
-
-        apartment.refresh_from_db()  # type: ignore
-        assert apartment.block == self.data["block"]
-        assert apartment.unit_number == self.data["unit_number"]
-        assert apartment.rent == self.data["rent"]
-        assert apartment.rentable == self.data["rentable"]
+            apartment_update(apartment=apartment, block=Block.B, rent=Decimal("15000"), rentable=False)
 
 
 class TestApartmentDeleteService:
