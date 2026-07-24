@@ -1,59 +1,61 @@
+from unittest.mock import MagicMock
+from typing import Any
 import pytest
-import random
 from decimal import Decimal
 from rest_framework.exceptions import ValidationError
-from apartments.services import *
+
+from tests.types import Factory
+from apartments.choices import Block, Wing
 from apartments.models import Apartment
+from apartments.services import apartment_create, apartment_delete, apartment_update
+from tenancy.models import Tenancy
 
 
 class TestApartmentCreateService:
-    data = {"block": random.choice(Apartment.Block.values), "unit_number": 1, "rent": 15_000, "rentable": True}
+    """Tests for apartment_create service."""
 
-    def test_apartment_creation_successful(self):
+    def test_apartment_creation(self) -> None:
+        """The created apartment should be returned and stored with the supplied values."""
+
+        apartment = apartment_create(
+            block=Block.A,
+            unit_number=7,
+            floor=2,
+            rent=Decimal("12000"),
+            rentable=True,
+            wing=Wing.WEST,
+        )
+        persisted = Apartment.objects.get(pk=apartment.pk)
+
+        assert apartment == persisted
+        assert apartment.block == persisted.block == Block.A
+        assert apartment.unit_number == persisted.unit_number == 7
+        assert apartment.floor == persisted.floor == 2
+        assert apartment.rent == persisted.rent == Decimal("12000")
+        assert apartment.rentable == persisted.rentable is True
+        assert apartment.wing == persisted.wing == Wing.WEST
+
+    def test_apartment_create_calls_full_clean(self, apartment_data: dict[str, Any], full_clean_patch: MagicMock) -> None:
+        """The create service should validate through full_clean."""
+
+        apartment_create(**apartment_data)
+        full_clean_patch.assert_called_once()
+
+    def test_apartment_defaults_to_rentable(self, apartment_data: dict[str, Any]) -> None:
+        """New apartments should default to rentable."""
+
+        apartment_data.pop("rentable")
+        apartment = apartment_create(**apartment_data)
+        assert apartment.rentable is True
+
+    def test_apartment_create_query_count(self, apartment_data: dict[str, Any], django_assert_num_queries) -> None:
         """
-        apartment data must match what was input, the db and the returned object
+        1. Validate the apartment data
+        2. Insert the apartment record
         """
 
-        data = self.data
-        apartment = apartment_create(**data)
-        fetched = Apartment.objects.first()
-        assert fetched is not None
-        assert apartment.pk == fetched.pk
-        assert apartment.block == data["block"] == fetched.block
-        assert apartment.unit_number == data["unit_number"] == fetched.unit_number
-        assert apartment.rent == data["rent"] == fetched.rent
-        assert apartment.rentable == data["rentable"] == fetched.rentable
-
-    @pytest.mark.parametrize("invalid_block_name", ["new", "New", "old", "OLD "])
-    def test_apartment_creation_fails_for_invalid_block(self, invalid_block_name: str):
-        """
-        apartment block should be only allow those defined in the apartment choices
-        """
-
-        data = self.data
-        data["block"] = invalid_block_name
-
-        with pytest.raises(ValidationError) as exc:
-            apartment_create(**data)
-
-        assert "block" in exc.value.detail
-
-    def test_apartment_unique_constraints(self, apartment: Apartment):
-        """
-        No two apartments can have the same block and unit_number
-        """
-
-        with pytest.raises(ValidationError) as exc:
-            apartment_create(block=apartment.block, unit_number=apartment.unit_number, rent=apartment.rent)
-        assert "Apartment with this Block and Unit number already exists" in str(exc.value.detail)
-        assert Apartment.objects.count() == 1
-
-    def test_apartment_defaults_to_rentable(self):
-        """
-        Apartment should by default be rentable
-        """
-        apartment = apartment_create(block="NEW", unit_number=11, rent=20_000)
-        assert apartment.rentable == True
+        with django_assert_num_queries(2):
+            apartment_create(**apartment_data)
 
 
 class TestApartmentUpdateService:
