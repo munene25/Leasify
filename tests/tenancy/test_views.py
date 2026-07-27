@@ -358,6 +358,23 @@ class TestTenancyLeaseExtensionView:
 class TestTenancyChoicesViews:
     path = "/tenancy/choices"
 
+    @pytest.mark.parametrize(
+        "_client,code",
+        [
+            ("superuser_client", 200),
+            ("manager_client", 200,),
+            ("caretaker_client", 200),
+            ("tenant_client", 200),
+            ("user_client", 200),
+            ("client", 200),
+        ],
+    )
+    def test_auth(self, _client: str, code: int, request):
+        """Auth should be as follows"""
+        client = request.getfixturevalue(_client)
+        response = client.get(self.path)
+        assert response.status_code == code
+
     def test_response_structure(self, manager_client: IsClient):
         """Assert all choices are included"""
 
@@ -373,20 +390,3 @@ class TestTenancyChoicesViews:
 
         assert len(termination_reason) == len(TS.choices)
         assert {"key": TR.MANAGERIAL.value, "display": TR.MANAGERIAL.label} in termination_reason
-
-    @pytest.mark.parametrize(
-        "_client,code",
-        [
-            ("superuser_client", 200),
-            ("manager_client", 200,),
-            ("caretaker_client", 200),
-            ("tenant_client", 200),
-            ("user_client", 200),
-            ("client", 401),
-        ],
-    )
-    def test_auth(self, _client: str, code: int, request):
-        """Auth should be as follows"""
-        client = request.getfixturevalue(_client)
-        response = client.get(self.path)
-        assert response.status_code == code
