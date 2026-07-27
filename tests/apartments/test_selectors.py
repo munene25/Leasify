@@ -44,7 +44,7 @@ class TestApartmentListFor:
         """Given a number of apartments, we should be able to filter out the specific ones"""
         first = apartment_factory(rent=10_000, floor=1, unit_number=7, block=ch.Block.A, wing=ch.Wing.EAST)[0]
         second = apartment_factory(rent=10_000, floor=2, unit_number=8, block=ch.Block.A, wing=ch.Wing.WEST)[0]
-        third = apartment_factory(rent=20_000, floor=0, unit_number=7, block=ch.Block.B, wing=ch.Wing.NORTH)[0]
+        third = apartment_factory(rent=20_000, floor=4, unit_number=7, block=ch.Block.B, wing=ch.Wing.NORTH)[0]
         fourth = apartment_factory(rent=30_000, floor=3, unit_number=7, block=ch.Block.C, wing=ch.Wing.SOUTH)[0]
 
         def assert_query(filters: dict, count: int, apt: Apartment | None):

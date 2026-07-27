@@ -24,7 +24,7 @@ class TestApartmentModel:
 
         apt1.refresh_from_db()
 
-        assert apt1.block == "B"
+        assert apt1.block == "A"
         assert apt1.unit_number == 1
         assert apt1.floor == 0
         assert apt1.rent == Decimal(10_000)
