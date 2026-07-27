@@ -82,7 +82,7 @@ class TestBillingPeriodComplete:
     ):
         """Should also set the tenancy active if it is current"""
         # setup tenancy and a paid billing period with a successful payment
-        tenancy = tenancy_factory(statuses=[TS.RESERVED])[0]
+        tenancy = tenancy_factory(status=TS.RESERVED)[0]
         billing = billing_factory(tenancy=tenancy, statuses=[BS.UNPAID], starting=today)[0]
         # defaults success
         payment_factory(billing=billing)
