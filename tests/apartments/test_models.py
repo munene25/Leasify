@@ -1,7 +1,10 @@
 import pytest
 from decimal import Decimal
+
+from django.db import transaction
 from django.db import IntegrityError
 from rest_framework.exceptions import ValidationError
+
 from tests.types import Factory
 from apartments.models import Apartment
 from apartments.choices import Block, Wing
@@ -32,14 +35,15 @@ class TestApartmentModel:
         assert apt1.wing == "west"
 
         with pytest.raises(IntegrityError):
-            Apartment.objects.create(
-                block=apt1.block,
-                unit_number=apt1.unit_number,
-                floor=2,
-                rent=20_000,
-                rentable=False,
-                wing=Wing.EAST,
-            )
+            with transaction.atomic():
+                Apartment.objects.create(
+                    block=apt1.block,
+                    unit_number=apt1.unit_number,
+                    floor=2,
+                    rent=20_000,
+                    rentable=False,
+                    wing=Wing.EAST,
+                )
         assert Apartment.objects.count() == 1
 
 

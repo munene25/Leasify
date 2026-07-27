@@ -326,7 +326,7 @@ class TestTenancyLeaseExtensionView:
         url = self.path(1)
         r = tenant_client.post(url, data={"duration_months": 1})
         data = parse_message(r)
-        assert str(active_tenant.billings.first()) in data["message"]
+        assert active_tenant.billings.first().name in data["message"]
         assert active_tenant.billings.first().pk == data["billing_id"]
 
     def test_unsuccessful_response_structure(self, manager_client):

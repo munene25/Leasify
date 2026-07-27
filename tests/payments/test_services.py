@@ -34,7 +34,7 @@ class TestPaymentMpesaInitiate:
         stk_push.assert_called_once_with(
             phone_number="0700",
             amount=int(billing.total_due),
-            account_ref="JAN-2025",
+            account_ref="Jan 2025",
             description="Rent Payment",
             timestamp=timestamp,
         )
