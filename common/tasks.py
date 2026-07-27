@@ -2,7 +2,7 @@ import smtplib
 from typing import Callable
 from celery import Task, shared_task
 
-TaskDecorator = Callable[[Callable], Task]
+type TaskDecorator = Callable[[Callable], Task]
 
 class EmailTask(Task):
     """Base task for email operations."""
