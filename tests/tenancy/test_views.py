@@ -355,19 +355,23 @@ class TestTenancyLeaseExtensionView:
         ]
 
 
-class TestTenancyTerminationReasons:
-    path = "/tenancy/termination-reasons"
+class TestTenancyChoicesViews:
+    path = "/tenancy/choices"
 
     def test_response_structure(self, manager_client: IsClient):
-        """Mock the tenancy_get_for and assert called with correct user"""
+        """Assert all choices are included"""
 
         response = manager_client.get(self.path)
         data = parse_message(response)
-        assert len(data) == len(TR.choices)
-        assert TR.MANAGERIAL in str(data)
-        assert TR.EXPIRED in str(data)
-        assert TR.VOLUNTARY in str(data)
-        assert TR.NONPAYMENT in str(data)
+        assert len(data) == 2
+
+        termination_reasons = data["termination_reasons"]
+        statuses = data["statuses"]
+
+        assert {"key": TS.DEFAULTING.value, "display": TS.DEFAULTING.label} in statuses
+        assert {"key": TR.MANAGERIAL.value, "display": TR.MANAGERIAL.label} in termination_reasons
+        assert len(statuses) == len(TS.choices)
+        assert len(termination_reasons) == len(TS.choices)
 
     @pytest.mark.parametrize(
         "_client,code",
