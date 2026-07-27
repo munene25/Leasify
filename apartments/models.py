@@ -16,7 +16,7 @@ class Apartment(BaseModel):
     """
 
     class Meta:
-        ordering = ["-created_at"]
+        ordering = ["unit_number"]
         unique_together = "block", "unit_number"
 
     block = models.CharField(max_length=10, choices=Block.choices, blank=False, null=False)
