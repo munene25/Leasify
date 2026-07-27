@@ -16,17 +16,12 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
-from django.http.response import JsonResponse
-from django.views.decorators.csrf import ensure_csrf_cookie
-
-# view to obtain csrf cookie
-@ensure_csrf_cookie
-def get_csrf(request):
-    return JsonResponse({"message": "csrf set"})
+from common.views import HealthCheckView ,get_csrf
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('csrf-token/', get_csrf, name="get_csrf"),
+    path('csrf-token/', get_csrf, name="csrf"),
+    path('health/', HealthCheckView.as_view(), name="health"),
     path('users/', include("users.urls"), name='users'),
     path('apartments/', include("apartments.urls"), name='apartments'),
     path('tenancy/', include("tenancy.urls"), name='tenancy'),
