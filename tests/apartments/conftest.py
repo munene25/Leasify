@@ -1,8 +1,7 @@
+import pytest
 from typing import Any
 from unittest.mock import MagicMock
 
-import pytest
-from tests.types import Factory
 from apartments.choices import Wing, Block
 
 
