@@ -62,12 +62,6 @@ class ApartmentDetailUpdateDeleteView(BaseAPIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, apartment_id):
-        """
-        At this point, there is no new information provided in detail other than what the admin should view ie: current_tenant.
-        Therefore it's better to just have it as an admin route.
-        If anything changes, better to add view_apartment to the tenant's permission then serialize the instance differently based on the user.
-        If this is the case, user rank based on their permission is more viable.
-        """
         check_perms(request.user, "apartments.view_apartment")
         selected = sl.apartment_get_for(user=request.user, apartment_id=apartment_id)
         outgoing = sc.ApartmentDetailSerializer(instance=selected)
@@ -92,9 +86,11 @@ class ApartmentDetailUpdateDeleteView(BaseAPIView):
         )
 
 class ApartmentChoicesView(BaseAPIView):
+
+    permission_classes = []
     
     def get(self, request) -> Response:
         return Response({
-            "blocks": [{"key": k, "display": v} for k, v in Block.choices],
-            "wings": [{"key": k, "display": v} for k, v in Wing.choices],
+            "block": [{"key": k, "display": v} for k, v in Block.choices],
+            "wing": [{"key": k, "display": v} for k, v in Wing.choices],
         })

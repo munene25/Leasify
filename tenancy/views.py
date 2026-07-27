@@ -104,13 +104,13 @@ class TenancyLeaseExtensionView(BaseAPIView):
 class TenancyChoicesViews(BaseAPIView):
     """Returns a list of valid termination reasons for tenancies."""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = []
 
     def get(self, request):
         """Retrieve all available termination reason options."""
         choices = {
-            "termination_reasons": [{"key": k, "display": v} for k, v in TR.choices],
-            "statuses": [{"key": k, "display": v} for k, v in TS.choices],
+            "termination_reason": [{"key": k, "display": v} for k, v in TR.choices],
+            "status": [{"key": k, "display": v} for k, v in TS.choices],
         }
         return Response(data=choices, status=status.HTTP_200_OK)
 

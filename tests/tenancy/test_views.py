@@ -365,13 +365,14 @@ class TestTenancyChoicesViews:
         data = parse_message(response)
         assert len(data) == 2
 
-        termination_reasons = data["termination_reasons"]
-        statuses = data["statuses"]
+        termination_reason = data["termination_reason"]
+        status = data["statuses"]
 
-        assert {"key": TS.DEFAULTING.value, "display": TS.DEFAULTING.label} in statuses
-        assert {"key": TR.MANAGERIAL.value, "display": TR.MANAGERIAL.label} in termination_reasons
-        assert len(statuses) == len(TS.choices)
-        assert len(termination_reasons) == len(TS.choices)
+        assert len(status) == len(TS.choices)
+        assert {"key": TS.DEFAULTING.value, "display": TS.DEFAULTING.label} in status
+
+        assert len(termination_reason) == len(TS.choices)
+        assert {"key": TR.MANAGERIAL.value, "display": TR.MANAGERIAL.label} in termination_reason
 
     @pytest.mark.parametrize(
         "_client,code",
