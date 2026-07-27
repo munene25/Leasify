@@ -1,14 +1,15 @@
-from rest_framework.permissions import IsAuthenticated, AllowAny
-from rest_framework.response import Response
-from rest_framework.request import Request
-from rest_framework import serializers
+from structlog import get_logger
 from rest_framework import status
+from rest_framework import serializers
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated, AllowAny
+
 from common.views import BaseAPIView
-from common.period import DateRange
 from common.permissions import check_perms
 from common.pagination import get_paginated_response
-from apartments import selectors, services, serializer as sc
-from structlog import get_logger
+
+from apartments import selectors as sl, services as sr, serializer as sc
+from apartments.choices import Block, Wing
 
 logger = get_logger("apartments.views")
 
@@ -38,7 +39,7 @@ class ApartmentListCreateView(BaseAPIView):
 
     def get(self, request):
         filters = self.validate_filter(data=request.query_params)
-        qs = selectors.apartment_list_for(user=request.user, filters=filters)
+        qs = sl.apartment_list_for(user=request.user, filters=filters)
         return get_paginated_response(
             serializer_class=sc.ApartmentListSerializer, queryset=qs, request=request, view=self
         )
@@ -46,7 +47,7 @@ class ApartmentListCreateView(BaseAPIView):
     def post(self, request):
         check_perms(request.user, "apartments.add_apartment")
         incoming = self.validate_serializer(data=request.data)
-        apartment = services.apartment_create(**incoming)
+        apartment = sr.apartment_create(**incoming)
         outgoing = sc.ApartmentDetailSerializer(instance=apartment)
         return Response(data=outgoing.data, status=status.HTTP_201_CREATED)
 
@@ -68,7 +69,7 @@ class ApartmentDetailUpdateDeleteView(BaseAPIView):
         If this is the case, user rank based on their permission is more viable.
         """
         check_perms(request.user, "apartments.view_apartment")
-        selected = selectors.apartment_get_for(user=request.user, apartment_id=apartment_id)
+        selected = sl.apartment_get_for(user=request.user, apartment_id=apartment_id)
         outgoing = sc.ApartmentDetailSerializer(instance=selected)
         return Response(status=status.HTTP_200_OK, data=outgoing.data)
 
@@ -76,18 +77,24 @@ class ApartmentDetailUpdateDeleteView(BaseAPIView):
         check_perms(request.user, "apartments.change_apartment")
 
         incoming = self.validate_serializer(data=request.data, partial=True)
-        selected = selectors.apartment_get_for(user=request.user, apartment_id=apartment_id)
+        selected = sl.apartment_get_for(user=request.user, apartment_id=apartment_id)
 
-        apartment = services.apartment_update(apartment=selected, **incoming)
+        apartment = sr.apartment_update(apartment=selected, **incoming)
         outgoing = sc.ApartmentDetailSerializer(instance=apartment)
         return Response(data=outgoing.data, status=status.HTTP_200_OK)
 
     def delete(self, request, apartment_id):
         check_perms(request.user, "apartments.delete_apartment")
-        selected = selectors.apartment_get_for(user=request.user, apartment_id=apartment_id)
-        services.apartment_delete(selected)
+        selected = sl.apartment_get_for(user=request.user, apartment_id=apartment_id)
+        sr.apartment_delete(selected)
         return Response(
             status=status.HTTP_204_NO_CONTENT, data={"message": f"Apartment {str(selected)} deleted successfully"}
         )
 
-# need to add choice fields options paths
+class ApartmentChoicesView(BaseAPIView):
+    
+    def get(self, request) -> Response:
+        return Response({
+            "blocks": Block.choices,
+            "wings": Wing.choices,
+        })
