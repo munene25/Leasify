@@ -35,7 +35,7 @@ class ApartmentListCreateView(BaseAPIView):
 
     def get_permissions(self):
         """Only authenticated users during apartment creation, otherwise open to all."""
-        return [IsAuthenticated()] if self.request.method == "POST" else [AllowAny()]
+        return [IsAuthenticated() if self.request.method == "POST" else AllowAny()]
 
     def get(self, request):
         filters = self.validate_filter(data=request.query_params)
@@ -95,6 +95,6 @@ class ApartmentChoicesView(BaseAPIView):
     
     def get(self, request) -> Response:
         return Response({
-            "blocks": Block.choices,
-            "wings": Wing.choices,
+            "blocks": [{"key": block.value, "display": block.label} for block in Block],
+            "wings": [{"key": wing.value, "display": wing.label} for wing in Wing],
         })
