@@ -282,6 +282,7 @@ def apartment_factory(fake: Faker) -> Factory[Apartment]:
                 rent = Decimal(rent or fake.numerify("1#000")),
                 rentable = rentable
             )
+            logger.info("apartment_created", apartment=apt.name, rent=apt.rent, rentable=apt.rentable)
             apartments.append(apt)
         return apartments
 
@@ -371,7 +372,7 @@ def billing_factory(today: date, tenancy_factory: Factory[Tenancy]) -> Factory[B
         tenancy = tenancy or tenancy_factory()[0]
         statuses = statuses or [BS.PAID] * quantity
         billings = []
-        r = DateRange.for_month(starting)
+        r = DateRange.compute_lease_window(starting, duration)
         for s in statuses:
             b = billing_period_create(tenancy=tenancy, date_r=r)
             b.status = s
