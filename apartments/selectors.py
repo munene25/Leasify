@@ -1,8 +1,10 @@
 from typing import Any, TYPE_CHECKING
 from django.db import models
 from django.db.models.query import QuerySet
+
 from common.domain import FilteringPolicy
 from common.helpers import raise_not_found
+
 from apartments.models import Apartment
 from tenancy.selectors import CURRENT_TENANT
 from tenancy.choices import TenancyStatus, ACTIVE_OR_DEFAULTING
@@ -36,7 +38,6 @@ def apartment_list_for(*, user: "User", filters: dict[str, Any] | None = None) -
     """
 
     import django_filters
-    from decimal import Decimal
 
     class ApartmentFilter(django_filters.FilterSet):
         order_by = django_filters.OrderingFilter(fields=("rent"))
