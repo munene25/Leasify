@@ -71,9 +71,16 @@ class BillingPeriod(BaseModel):
         return DateRange(self.start_date, self.end_date).duration_months
 
     def __str__(self) -> str:
-        """Outputs it in the form of a string e.g. JUN-2025:JUL-2025"""
-        return f"{self.start_date.strftime('%b-%Y').upper()} to {self.end_date.strftime('%b-%Y').upper()}"
+        """Outputs it in the form of a string e.g. '[JUN-2025]-[JUL-2025]' """
+        start = self.start_date.strftime('%b-%Y').upper()
+        end = self.end_date.strftime('%b-%Y').upper()
+        return f"[{start}][{end}]"
     
     @property
     def name(self) -> str:
-        return str(self)
+        """Outputs it in the form of a string e.g. 'Jan 2025' or 'Feb 2026 to Mar 2026' """
+        start = self.start_date.strftime("%b %Y")
+        end = self.end_date.strftime("%b %Y")
+        if start == end:
+            return start
+        return f"{start} to {end}"

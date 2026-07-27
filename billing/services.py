@@ -40,7 +40,7 @@ def billing_period_create(*, tenancy: "Tenancy", date_r: DateRange) -> BillingPe
         tenancy_id=tenancy.pk,
         duration=bp.duration_months,
         billing_id=bp.pk,
-        billing_period=bp.name,
+        billing_period=str(bp),
     )
     return bp
 
@@ -60,7 +60,7 @@ def billing_period_cancel(billing: BillingPeriod) -> BillingPeriod:
         "billing_period_canceled",
         tenancy_id=billing.tenancy_id,
         billing_id=billing.pk,
-        billing_period=billing.name,
+        billing_period=str(billing),
     )
     return billing
 
@@ -80,7 +80,7 @@ def billing_period_complete(billing: BillingPeriod) -> BillingPeriod:
         tenancy_id=billing.tenancy_id,
         payment_id=payment.pk,
         billing_id=billing.pk,
-        billing_period=billing.name,
+        billing_period=str(billing),
     )
     if billing.is_current:
         t_logger = get_logger("tenancy.services")
