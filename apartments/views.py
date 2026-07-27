@@ -95,6 +95,6 @@ class ApartmentChoicesView(BaseAPIView):
     
     def get(self, request) -> Response:
         return Response({
-            "blocks": [{"key": block.value, "display": block.label} for block in Block],
-            "wings": [{"key": wing.value, "display": wing.label} for wing in Wing],
+            "blocks": [{"key": k, "display": v} for k, v in Block.choices],
+            "wings": [{"key": k, "display": v} for k, v in Wing.choices],
         })
