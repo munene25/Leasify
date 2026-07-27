@@ -1,10 +1,11 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
-from common.views import BaseAPIView
+
 from rest_framework import status, serializers
-from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+
+from common.views import BaseAPIView
 from common.permissions import check_perms
 from common.pagination import get_paginated_response
 from tenancy import services as sr, serializer as sc, selectors as sl
@@ -100,15 +101,18 @@ class TenancyLeaseExtensionView(BaseAPIView):
         )
 
 
-class TenancyTerminationReasonsView(BaseAPIView):
+class TenancyChoicesViews(BaseAPIView):
     """Returns a list of valid termination reasons for tenancies."""
 
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         """Retrieve all available termination reason options."""
-        reasons = [{"key": reason.value, "display": reason.label} for reason in TR]
-        return Response(data=reasons, status=status.HTTP_200_OK)
+        choices = {
+            "termination_reasons": [{"key": k, "value": v} for k, v in TR.choices],
+            "status": [{"key": k, "value": v} for k, v in TS.choices],
+        }
+        return Response(data=choices, status=status.HTTP_200_OK)
 
 
 class TenancyOverviewView(BaseAPIView):
