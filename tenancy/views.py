@@ -109,8 +109,8 @@ class TenancyChoicesViews(BaseAPIView):
     def get(self, request):
         """Retrieve all available termination reason options."""
         choices = {
-            "termination_reasons": [{"key": k, "value": v} for k, v in TR.choices],
-            "status": [{"key": k, "value": v} for k, v in TS.choices],
+            "termination_reasons": [{"key": k, "display": v} for k, v in TR.choices],
+            "statuses": [{"key": k, "display": v} for k, v in TS.choices],
         }
         return Response(data=choices, status=status.HTTP_200_OK)
 
