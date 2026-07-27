@@ -227,3 +227,14 @@ class TestApartmentDetailUpdateDeleteView:
         """Returns 404 for non-existent apartment."""
         api = getattr(manager_client, method)
         parse_error(api(self.path(999), {"block": "B"}), status.HTTP_404_NOT_FOUND)
+
+
+class TestApartmentChoiceView:
+    path = "/apartments/choices"
+
+    def test_choices_response_structure(self, client: IsClient):
+        """Verify choices endpoint returns block and wing options."""
+        data = parse_message(client.get(self.path), status.HTTP_200_OK)
+
+        assert data["block"] == [{"key": k, "display": v} for k, v in Block.choices]
+        assert data["wing"] == [{"key": k, "display": v} for k, v in Wing.choices]
