@@ -1,5 +1,5 @@
 import requests
-from config.settings import MPESA_CONFIG as cfg
+from config.django.base import MPESA_CONFIG as cfg
 from payments.mpesa import auth, utils, STKInitialResponse, STKResult
 
 

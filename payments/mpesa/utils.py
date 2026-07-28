@@ -1,7 +1,7 @@
 import base64
 from datetime import datetime
 from zoneinfo import ZoneInfo
-from config.settings import MPESA_CONFIG as cfg
+from config.django.base import MPESA_CONFIG as cfg
 
 
 def make_password(shortcode: str, passkey: str, timestamp: str) -> str:

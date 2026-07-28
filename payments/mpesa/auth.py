@@ -1,6 +1,6 @@
 import requests
 from requests.auth import HTTPBasicAuth
-from config.settings import MPESA_CONFIG as cfg
+from config.django.base import MPESA_CONFIG as cfg
 from structlog import get_logger
 from django.core.cache import cache
 
