@@ -9,16 +9,16 @@ class EmailConfig:
     frontend_domain: str
     frontend_url: str
     app_name: str
-    support_email: str
-    default_from_email: str
     company_name: str
     company_address: str
+    support_email: str = f"support@{settings.FRONTEND_DOMAIN}.com"
+    default_from_email: str = "noreply@{settings.FRONTEND_DOMAIN}.com"
 
     @classmethod
     def load(cls):
         values = {}
         for f in fields(cls):
-            values[f.name] = getattr(settings, f.name.upper())
+            values[f.name] = getattr(settings, f.name.upper(), None)
         return cls(**values)
     
     @property
