@@ -116,7 +116,7 @@ class LoginView(BaseAPIView):
     Throttles based on failed attempts, Successful request do not count as attempts.
     """
 
-    from config.auth import ForceCSRFAuthentication
+    from config.settings.auth import ForceCSRFAuthentication
 
     authentication_classes = [ForceCSRFAuthentication]
     permission_classes = [AllowAny]
