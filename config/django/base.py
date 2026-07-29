@@ -13,7 +13,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 import os
 
 from config.env import env, BASE_DIR
-from config.settings.logging import DICT_LOG
+from config.settings.logging import DICT_LOG, configure_logging
 
 env.read_env(BASE_DIR(".env"))
 
