@@ -6,27 +6,20 @@ from typing import Any
 
 @dataclass(frozen=True)
 class EmailConfig:
-    frontend_domain: str
-    frontend_url: str
-    app_name: str
-    company_name: str
-    company_address: str
-    support_email: str = f"support@{settings.FRONTEND_DOMAIN}.com"
-    default_from_email: str = "noreply@{settings.FRONTEND_DOMAIN}.com"
-
-    @classmethod
-    def load(cls):
-        values = {}
-        for f in fields(cls):
-            values[f.name] = getattr(settings, f.name.upper(), None)
-        return cls(**values)
+    frontend_domain: str = settings.FRONTEND_DOMAIN
+    frontend_url: str = settings.FRONTED_URL
+    app_name: str = settings.APP_NAME
+    company_name: str = settings.COMPANY_NAME
+    company_address: str = settings.COMPANY_ADDRESS
+    support_email: str = f"support@{settings.FRONTEND_DOMAIN}"
+    default_from_email: str = "noreply@{settings.FRONTEND_DOMAIN}"
     
     @property
     def as_dict(self) -> dict[str, str]:
         return asdict(self)
 
 
-email_context: EmailConfig = EmailConfig.load()
+email_context: EmailConfig = EmailConfig()
 
 
 def send_template_email(
