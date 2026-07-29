@@ -21,9 +21,10 @@ env.read_env(BASE_DIR(".env"))
 DEBUG = env.bool("DJANGO_DEBUG", default=True)
 
 # Site settings
-FRONTEND_DOMAIN = env.str("FRONTEND_DOMAIN", "localhost")
+APP_NAME = "leasify"
+
+FRONTEND_DOMAIN = env.str("FRONTEND_DOMAIN", "localhost:5173")
 FRONTEND_URL = env.str("FRONTEND_URL", "http://localhost:5173")
-APP_NAME = env.str("APP_NAME", "")
 COMPANY_NAME = "Bisika Apartments Ltd."
 COMPANY_ADDRESS = "Embu, Kenya"
 
@@ -31,13 +32,12 @@ COMPANY_ADDRESS = "Embu, Kenya"
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get("SECURITY_KEY", "secret-key")
+SECRET_KEY = env.str("SECURITY_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
-DEV_ENVIRONMENT = True
+DEBUG = env.bool("DJANGO_DEBUG", True)
 
-ALLOWED_HOSTS = [FRONTEND_DOMAIN, "localhost", "127.0.0.1"]
+ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
 
 
 LOCAL_APPS = [
@@ -64,7 +64,6 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-
     *LOCAL_APPS,
     *THIRD_PARTY_APPS,
 ]
@@ -101,27 +100,26 @@ TEMPLATES = [
 CSRF_COOKIE_SAMESITE = "Lax"
 CSRF_COOKIE_HTTPONLY = False
 CSRF_TRUSTED_ORIGINS = [FRONTEND_URL]
-# ?PROD ONLY
-# ?CSRF_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = False
 
 
 ## SESSIONS
 SESSION_COOKIE_SAMESITE = "Lax"
 SESSION_COOKIE_HTTPONLY = True
 SESSION_ENGINE = "django.contrib.sessions.backends.cache"
-# ?PROD ONLY
-# ?SESSION_COOKIE_SECURE = True
+SESSION_CACHE_ALIAS = "default"
+SESSION_COOKIE_SECURE = True
 
 ## CORS
 CORS_ALLOW_CREDENTIALS = True
-CORS_ALLOWED_ORIGINS = [FRONTEND_URL]
+CORS_ALLOWED_ORIGINS = [FRONTEND_URL, "http://localhost:8000", "http://127.0.0.1:8000"]
 
 
 ## Rest
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": ("config.auth.SessionAuthentication",),
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
-    "PAGE_SIZE": 5,
+    "PAGE_SIZE": 10,
     "EXCEPTION_HANDLER": "drf_standardized_errors.handler.exception_handler",
     "DEFAULT_THROTTLE_RATES": {
         "anon_sustained": "50/day",
@@ -146,14 +144,6 @@ DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
         "NAME": BASE_DIR("db.sqlite3"),
-    },
-    "postgres": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.getenv("POSTGRES_DB", "Leasify"),
-        "HOST": os.getenv("POSTGRES_HOST", "localhost"),
-        "PORT": os.getenv("POSTGRES_PORT", "5432"),
-        "USER": os.getenv("POSTGRES_USER", "postgres"),
-        "PASSWORD": os.getenv("POSTGRES_PASSWORD", "lif3isstrang3"),
     }
 }
 
@@ -168,45 +158,22 @@ AUTH_PASSWORD_VALIDATORS = [
 
 ## Caching
 CACHES = {
-    "default": {
-        "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": "redis://localhost:6379/1",
-        "OPTIONS": {
-            "CLIENT_CLASS": "django_redis.client.DefaultClient",
-        },
-    },
-    "redis": {
-        "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": "redis://localhost:6379/2",
-        "OPTIONS": {
-            "CLIENT_CLASS": "django_redis.client.DefaultClient",
-        },
-    },
-    "sessions": {
-        "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": "redis://localhost:6379/4",
-        "OPTIONS": {
-            "CLIENT_CLASS": "django_redis.client.DefaultClient",
-        },
-    },
-    "dev": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache", "LOCATION": "memory://"},
+    "default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache", "LOCATION": "memory://"},
 }
 
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
 
 LANGUAGE_CODE = "en-us"
-
 TIME_ZONE = "Africa/Nairobi"
-
 USE_I18N = True
-
 USE_TZ = True
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
-STATIC_URL = "static/"
+STATIC_URL = "/static/"
+STATIC_ROOT = BASE_DIR("static")
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
@@ -217,17 +184,12 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 ## User model
 AUTH_USER_MODEL = "users.User"
 
-
-## DRF standardized Errors
-DRF_STANDARDIZED_ERRORS = {"ENABLE_IN_DEBUG_FOR_UNHANDLED_EXCEPTIONS": True}
-
-
 ## CELERY
 CELERY_BROKER_URL = CACHES["default"]["LOCATION"]
 CELERY_TASK_ALWAYS_EAGER = False
 CELERY_IGNORE_RESULT = True
 CELERY_ENABLE_UTC = True
-CELERY_TIMEZONE = 'UTC'
+CELERY_TIMEZONE = "UTC"
 
 
 # MPESA
@@ -245,11 +207,5 @@ MPESA_CONFIG = {
 FLOWER_URL = "http://localhost:5555"
 FLOWER_URL_PREFIX = "flower"
 
-if DEV_ENVIRONMENT: 
-    ALLOWED_HOSTS.append("morbidity-blaspheme-shifty.ngrok-free.dev")
-    CSRF_TRUSTED_ORIGINS.append("https://morbidity-blaspheme-shifty.ngrok-free.dev")
-    CORS_ALLOWED_ORIGINS.append("https://morbidity-blaspheme-shifty.ngrok-free.dev")
-    CACHES["default"] = CACHES["dev"]
-    CELERY_TASK_ALWAYS_EAGER = True 
 
 from config.settings.emails import *
