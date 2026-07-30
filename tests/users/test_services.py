@@ -54,9 +54,7 @@ class TestAccountCreation:
         Test normal mail sending with notify flag set to True.
         Requires always eager for delay calls
         """
-        from common.emails import EmailConfig
-
-        config = EmailConfig.load()
+        from common.emails import email_context
 
         user_create_payload["notify"] = True
 
@@ -70,8 +68,8 @@ class TestAccountCreation:
         assert len(mailoutbox) == 1
         mail = mailoutbox[0]
         assert mail.to == [user_create_payload["email"]]
-        assert mail.from_email == config.default_from_email
-        assert mail.subject == f"Welcome to {config.app_name}"
+        assert mail.from_email == email_context.default_from_email
+        assert mail.subject == f"Welcome to {email_context.app_name}"
         assert "email-verify" in mail.body
 
     @patch("users.tasks.send_welcome_email.delay")

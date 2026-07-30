@@ -12,7 +12,7 @@ class EmailConfig:
     company_name: str = settings.COMPANY_NAME
     company_address: str = settings.COMPANY_ADDRESS
     support_email: str = f"support@{settings.FRONTEND_DOMAIN}"
-    default_from_email: str = "noreply@{settings.FRONTEND_DOMAIN}"
+    default_from_email: str = f"noreply@{settings.FRONTEND_DOMAIN}"
     
     @property
     def as_dict(self) -> dict[str, str]:
