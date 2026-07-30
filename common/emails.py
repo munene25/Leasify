@@ -7,7 +7,7 @@ from typing import Any
 @dataclass(frozen=True)
 class EmailConfig:
     frontend_domain: str = settings.FRONTEND_DOMAIN
-    frontend_url: str = settings.FRONTED_URL
+    frontend_url: str = settings.FRONTEND_URL
     app_name: str = settings.APP_NAME
     company_name: str = settings.COMPANY_NAME
     company_address: str = settings.COMPANY_ADDRESS
