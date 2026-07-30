@@ -23,7 +23,7 @@ DEBUG = env.bool("DJANGO_DEBUG", default=True)
 # Site settings
 APP_NAME = "leasify"
 
-FRONTEND_DOMAIN = env.str("FRONTEND_DOMAIN", "localhost:5173")
+FRONTEND_DOMAIN = env.str("FRONTEND_DOMAIN", "localhost")
 FRONTEND_URL = env.str("FRONTEND_URL", "http://localhost:5173")
 COMPANY_NAME = "Bisika Apartments Ltd."
 COMPANY_ADDRESS = "Embu, Kenya"
