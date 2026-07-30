@@ -117,7 +117,7 @@ CORS_ALLOWED_ORIGINS = [FRONTEND_URL, "http://localhost:8000", "http://127.0.0.1
 
 ## Rest
 REST_FRAMEWORK = {
-    "DEFAULT_AUTHENTICATION_CLASSES": ("config.auth.SessionAuthentication",),
+    "DEFAULT_AUTHENTICATION_CLASSES": ("config.settings.auth.SessionAuthentication",),
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 10,
     "EXCEPTION_HANDLER": "drf_standardized_errors.handler.exception_handler",
