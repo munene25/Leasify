@@ -1,5 +1,4 @@
 from config.env import env
-from enum import Enum
 
 STRATEGY = env.str("EMAIL_SENDING_STRATEGY", default="local")
 SERVER_EMAIL = "server@example.com"
@@ -17,5 +16,3 @@ elif STRATEGY == "thirdparty":
     EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS")
     EMAIL_HOST_USER = env.str("EMAIL_HOST_USER")
     EMAIL_HOST_PASSWORD = env.str("EMAIL_HOST_PASSWORD")
-
-ADMINS = env.list("ADMINS", ["edmune25@gmail.com"])
