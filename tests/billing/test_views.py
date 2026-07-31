@@ -11,7 +11,7 @@ from datetime import date
 
 
 class TestBillingListView:
-    path = "/billings/"
+    path = "/billing/"
 
     @pytest.mark.parametrize(
         "_client,expected_status",
@@ -82,7 +82,7 @@ class TestBillingListView:
 
 class TestBillingDetailView:
     def path(self, billing_id: int) -> str:
-        return f"/billings/{billing_id}"
+        return f"/billing/{billing_id}"
 
     @pytest.mark.parametrize(
         "_client,expected_status",
@@ -121,7 +121,7 @@ class TestBillingDetailView:
 
 class TestBillingCancelView:
     def path(self, billing_id: int) -> str:
-        return f"/billings/{billing_id}/cancel"
+        return f"/billing/{billing_id}/cancel"
 
     @pytest.mark.parametrize(
         "_client,expected_status",
@@ -175,7 +175,7 @@ class TestBillingCancelView:
 
 class TestBillingCompleteView:
     def path(self, billing_id: int) -> str:
-        return f"/billings/{billing_id}/complete"
+        return f"/billing/{billing_id}/complete"
 
     @pytest.mark.parametrize(
         "_client,expected_status",
