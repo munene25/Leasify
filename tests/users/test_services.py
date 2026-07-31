@@ -520,7 +520,7 @@ class TestUserChangePassword:
         Check the mail is sent to the correct user
         contains the correct subject, links, and body
         """
-        from django.conf import settings
+        from common.emails import email_context
 
         current_password = "Pa55word!"
         new_password = "TimT@tman!"
@@ -531,7 +531,7 @@ class TestUserChangePassword:
         assert len(mailoutbox) == 1
         mail = mailoutbox[0]
         assert mail.subject == "Account password has been changed"
-        assert mail.from_email == settings.DEFAULT_FROM_EMAIL
+        assert mail.from_email == email_context.default_from_email
         assert mail.to == [user.email]
         assert "password-reset" in mail.body
 
