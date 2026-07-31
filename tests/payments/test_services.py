@@ -28,7 +28,7 @@ class TestPaymentMpesaInitiate:
 
         # create a billing
         billing = billing_factory(statuses=[BS.UNPAID], starting=date(2025, 1, 1))[0]
-        payment = payment_mpesa_initiate(billing=billing, phone_number="0700", idempotency_key="XYZ")
+        payment = payment_mpesa_initiate(billing=billing, phone_number="0700", idempotency_key="XYZ", callback_url="https://example.com/confirm")
         assert payment is not None
 
         stk_push.assert_called_once_with(
@@ -37,6 +37,7 @@ class TestPaymentMpesaInitiate:
             account_ref="Jan 2025",
             description="Rent Payment",
             timestamp=timestamp,
+            callback_url="https://example.com/confirm"
         )
 
     def test_billing_validation(self, monkeypatch: pytest.MonkeyPatch, billing_factory: Factory[BP]):
@@ -47,7 +48,7 @@ class TestPaymentMpesaInitiate:
         billings = billing_factory(statuses=[BS.PAID, BS.CANCELLED])
 
         monkeypatch.setattr("payments.services.initiate_stk_push", lambda **kwargs: {"checkout_id": "unique_checkout"})
-        initiate = partial(payment_mpesa_initiate, phone_number="0000")
+        initiate = partial(payment_mpesa_initiate, phone_number="0000", callback_url="")
 
         with pytest.raises(ValidationError, match="paid billing"):
             initiate(billing=billings[0], idempotency_key="XYZ1")
@@ -61,7 +62,7 @@ class TestPaymentMpesaInitiate:
         2. For a duplicate payment with the same idemp-key
         3. Missing idemp should ignore.
         """
-        initiate = partial(payment_mpesa_initiate, phone_number="000")
+        initiate = partial(payment_mpesa_initiate, phone_number="000", callback_url="")
         monkeypatch.setattr("payments.services.initiate_stk_push", lambda **kwargs: {"checkout_id": "unique_checkout"})
 
         # Create a payment with an idempotency key
@@ -103,7 +104,7 @@ class TestPaymentMpesaInitiate:
         billing = billing_factory(statuses=[BS.UNPAID])[0]
 
         with pytest.raises(MpesaAPIError, match="Service is unavailable"):
-            payment_mpesa_initiate(billing=billing, phone_number="0000", idempotency_key="XYZ")
+            payment_mpesa_initiate(billing=billing, phone_number="0000", idempotency_key="XYZ", callback_url="")
         assert Payment.objects.count() == 0
 
         log = caplog[-1]
@@ -126,7 +127,7 @@ class TestPaymentMpesaInitiate:
         )
         billing = billing_factory(statuses=[BS.UNPAID])[0]
         with django_assert_num_queries(6):
-            payment_mpesa_initiate(billing=billing, phone_number="0000", idempotency_key="XYZ")
+            payment_mpesa_initiate(billing=billing, phone_number="0000", idempotency_key="XYZ", callback_url="")
 
 
 class TestPaymentAltCreate:
