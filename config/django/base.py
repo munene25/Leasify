@@ -166,8 +166,6 @@ CELERY_TIMEZONE = "UTC"
 DRF_STANDARDIZED_ERRORS = {"ENABLE_IN_DEBUG_FOR_UNHANDLED_EXCEPTIONS": True}
 
 # EMAILS
-ADMINS = [tuple(admin.split(":", 1)) for admin in env.list("ADMINS")]
-
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 
 EMAIL_HOST = env.str("EMAIL_HOST")
@@ -175,6 +173,8 @@ EMAIL_PORT = env.int("EMAIL_PORT")
 EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS")
 EMAIL_HOST_USER = env.str("EMAIL_HOST_USER")
 EMAIL_HOST_PASSWORD = env.str("EMAIL_HOST_PASSWORD")
+
+ADMINS = [tuple(admin.split(":", 1)) for admin in env.list("ADMINS")]
 
 from config.settings.mpesa import *
 from config.settings.security import *
