@@ -4,7 +4,7 @@ from datetime import timedelta
 from freezegun import freeze_time
 from unittest.mock import patch, MagicMock
 from django.utils import timezone
-from django.contrib.sessions.backends.cache import SessionStore
+from django.contrib.sessions.backends.db import SessionStore
 from django.core.cache import cache
 from rest_framework import status
 from users.models import User, EMAIL_COOLDOWN
