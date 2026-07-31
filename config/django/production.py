@@ -1,45 +1,42 @@
 from config.django.base import *
 from config.env import env
 
+DEBUG = False
+
 DATABASES = {
     "default": env.db("DATABASE_URL")
 }
 
-REDIS_URL = env.url("REDIS_URL")
+REDIS_URL = env.str("REDIS_URL")
 
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": f"{REDIS_URL}/1",
-        "OPTIONS": {
-            "CLIENT_CLASS": "django_redis.client.DefaultClient",
-        },
-    },
-    "sessions": {
-        "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": f"{REDIS_URL}/2",
-        "OPTIONS": {
-            "CLIENT_CLASS": "django_redis.client.DefaultClient",
-        },
-    },
-    "celery": {
-        "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": f"{REDIS_URL}/3",
+        "LOCATION": REDIS_URL,
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
         },
     },
 }
 
-SESSION_CACHE_ALIAS = "sessions"
-
-DEBUG = False
-
-CSRF_COOKIE_HTTPONLY = True
+# CSRF
 CSRF_COOKIE_SECURE = True
 
-CELERY_BROKER_URL = CACHES["celery"]["LOCATION"]
+# SESSIONS
+SESSION_ENGINE = "django.contrib.sessions.backends.cache"
+SESSION_COOKIE_SECURE = True
 
-CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS")
+# ALLOWED HOSTS
+ALLOWED_HOSTS = env.list("ALLOWED_HOSTS")
 
-ALLOWED_HOSTS = ALLOWED_HOSTS + env.list("ALLOWED_HOSTS")
+# CORS
+CORS_ALLOWED_ORIGINS = env.list("FRONTEND_ORIGINS")
+
+# CSRF
+CSRF_TRUSTED_ORIGINS  = env.list("FRONTEND_ORIGINS")
+CSRF_COOKIE_SECURE = True
+
+# CELERY
+CELERY_BROKER_URL = REDIS_URL
+CELERY_RESULT_BACKEND = "django-db"
+CELERY_TASK_ALWAYS_EAGER = False

@@ -22,22 +22,12 @@ DEBUG = env.bool("DJANGO_DEBUG", default=True)
 
 # Site settings
 APP_NAME = "leasify"
-
-FRONTEND_DOMAIN = env.str("FRONTEND_DOMAIN", "localhost")
-FRONTEND_URL = env.str("FRONTEND_URL", "http://localhost:5173")
 COMPANY_NAME = "Bisika Apartments Ltd."
 COMPANY_ADDRESS = "Embu, Kenya"
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = env.str("SECURITY_KEY")
-
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = env.bool("DJANGO_DEBUG", True)
-
-ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
 
 
 LOCAL_APPS = [
@@ -54,6 +44,7 @@ THIRD_PARTY_APPS = [
     "django_structlog",
     "rest_framework",
     "corsheaders",
+    "django_celery_results"
 ]
 
 
@@ -96,24 +87,6 @@ TEMPLATES = [
         },
     },
 ]
-## CSRF
-CSRF_COOKIE_SAMESITE = "Lax"
-CSRF_COOKIE_HTTPONLY = False
-CSRF_TRUSTED_ORIGINS = [FRONTEND_URL]
-CSRF_COOKIE_SECURE = False
-
-
-## SESSIONS
-SESSION_COOKIE_SAMESITE = "Lax"
-SESSION_COOKIE_HTTPONLY = True
-SESSION_ENGINE = "django.contrib.sessions.backends.cache"
-SESSION_CACHE_ALIAS = "default"
-SESSION_COOKIE_SECURE = True
-
-## CORS
-CORS_ALLOW_CREDENTIALS = True
-CORS_ALLOWED_ORIGINS = [FRONTEND_URL, "http://localhost:8000", "http://127.0.0.1:8000"]
-
 
 ## Rest
 REST_FRAMEWORK = {
@@ -143,7 +116,7 @@ configure_logging()
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR("db.sqlite3"),
+        "NAME": BASE_DIR("db.sqlite3")
     }
 }
 
@@ -177,35 +150,35 @@ STATIC_ROOT = BASE_DIR("static")
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
-
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
-
 
 ## User model
 AUTH_USER_MODEL = "users.User"
 
 ## CELERY
-CELERY_BROKER_URL = CACHES["default"]["LOCATION"]
-CELERY_TASK_ALWAYS_EAGER = False
-CELERY_IGNORE_RESULT = True
+CELERY_BROKER_URL = "memory://"
+CELERY_TASK_ALWAYS_EAGER = True
+CELERY_IGNORE_RESULT = False
 CELERY_ENABLE_UTC = True
 CELERY_TIMEZONE = "UTC"
 
+# DRF_STANDARDIZED_ERRORS
+DRF_STANDARDIZED_ERRORS = {"ENABLE_IN_DEBUG_FOR_UNHANDLED_EXCEPTIONS": True}
 
-# MPESA
-MPESA_CONFIG = {
-    "AUTHENTICATE_URL": os.environ["MPESA_AUTHENTICATE_URL"],
-    "CONSUMER_KEY": os.environ["MPESA_CONSUMER_KEY"],
-    "CONSUMER_SECRET": os.environ["MPESA_CONSUMER_SECRET"],
-    "SHORTCODE": os.environ["MPESA_SHORTCODE"],
-    "PASSKEY": os.environ["MPESA_PASSKEY"],
-    "CALLBACK_URL": os.environ["MPESA_CALLBACK_URL"],
-    "QUERY_URL": os.environ["MPESA_EXPRESS_URL_QUERY"],
-    "INITIATE_URL": os.environ["MPESA_EXPRESS_URL_INITIATE"],
-}
+# EMAILS
+ADMINS = [tuple(admin.split(":", 1)) for admin in env.list("ADMINS")]
 
-FLOWER_URL = "http://localhost:5555"
-FLOWER_URL_PREFIX = "flower"
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 
+EMAIL_HOST = env.str("EMAIL_HOST")
+EMAIL_PORT = env.int("EMAIL_PORT")
+EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS")
+EMAIL_HOST_USER = env.str("EMAIL_HOST_USER")
+EMAIL_HOST_PASSWORD = env.str("EMAIL_HOST_PASSWORD")
 
-from config.settings.emails import *
+from config.settings.mpesa import *
+from config.settings.security import *
+
+# We import security first to obtain FRONTEND_DOMAIN
+SERVER_EMAIL = f"server@{FRONTEND_DOMAIN}"
+DEFAULT_FROM_EMAIL = f"noreply@{FRONTEND_DOMAIN}"
