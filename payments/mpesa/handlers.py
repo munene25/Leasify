@@ -1,7 +1,8 @@
 import requests
-from config.django.base import MPESA_CONFIG as cfg
+from django.conf import settings
 from payments.mpesa import auth, utils, STKInitialResponse, STKResult
 
+cfg = settings.MPESA
 
 def initiate_stk_push(phone_number: str, amount: int, account_ref: str, description: str, timestamp: str) -> STKInitialResponse:
     """Initiate a M-PESA STK push request.

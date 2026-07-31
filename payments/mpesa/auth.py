@@ -1,8 +1,10 @@
 import requests
-from requests.auth import HTTPBasicAuth
-from config.django.base import MPESA_CONFIG as cfg
+from requests import auth
 from structlog import get_logger
+from django.conf import settings
 from django.core.cache import cache
+
+cfg = settings.MPESA
 
 logger = get_logger("payments.mpesa.auth")
 
@@ -21,7 +23,7 @@ def get_access_token() -> str:
     if token:
         return token
 
-    res = requests.get(cfg["AUTHENTICATE_URL"], auth=HTTPBasicAuth(cfg["CONSUMER_KEY"], cfg["CONSUMER_SECRET"]))
+    res = requests.get(cfg["AUTHENTICATE_URL"], auth=auth.HTTPBasicAuth(cfg["CONSUMER_KEY"], cfg["CONSUMER_SECRET"]))
     res.raise_for_status()
     token = res.json()["access_token"]
     cache.set(cache_key, token, timeout=60 * 55)
