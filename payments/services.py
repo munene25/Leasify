@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 
 
 @transaction.atomic
-def payment_mpesa_initiate(*, billing: "BP", phone_number: str, idempotency_key: str | None) -> Payment:
+def payment_mpesa_initiate(*, billing: "BP", phone_number: str, idempotency_key: str | None, callback_url: str) -> Payment:
     """
     Initialize a payment via M-Pesa STK push.
 
@@ -56,6 +56,7 @@ def payment_mpesa_initiate(*, billing: "BP", phone_number: str, idempotency_key:
             account_ref=billing.name[:8],
             description="Rent Payment",
             timestamp=timestamp,
+            callback_url=callback_url
         )
     except (requests.exceptions.RequestException) as e:
         status_code, message = parse_error(e)

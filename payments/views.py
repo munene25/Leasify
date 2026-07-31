@@ -1,16 +1,19 @@
 from django.views.decorators.csrf import csrf_exempt
+from django.urls import reverse
 from rest_framework import status, serializers
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.request import Request
 from rest_framework.views import APIView
-from rest_framework.exceptions import NotAcceptable
+from common.views import BaseAPIView
+
 from common.pagination import get_paginated_response
 from common.permissions import check_perms
-from payments import services as sr, selectors as sl, serializer as sc, models as md
-from common.views import BaseAPIView
-from payments.mpesa import parse_callback_response
-from payments import tasks
 from billing import selectors as billing_sl
+
+from payments import tasks
+from payments.mpesa import parse_callback_response
+from payments import services as sr, selectors as sl, serializer as sc, models as md
 
 
 class PaymentListView(BaseAPIView):
@@ -67,8 +70,12 @@ class PaymentInitiateMpesaView(BaseAPIView):
         # Billing needs to be obtained via selector to filter viewable billings.
         billing = billing_sl.billing_get_for(user=request.user, billing_id=incoming["billing_id"])
 
+
         payment = sr.payment_mpesa_initiate(
-            billing=billing, phone_number=incoming["phone_number"], idempotency_key=idempotency_key
+            billing=billing,
+            phone_number=incoming["phone_number"], 
+            idempotency_key=idempotency_key,
+            callback_url = request.build_absolute_uri(reverse("payments:mpesa_callback"))
         )
 
         return Response(

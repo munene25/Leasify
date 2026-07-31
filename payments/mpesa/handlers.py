@@ -4,7 +4,7 @@ from payments.mpesa import auth, utils, STKInitialResponse, STKResult
 
 cfg = settings.MPESA
 
-def initiate_stk_push(phone_number: str, amount: int, account_ref: str, description: str, timestamp: str) -> STKInitialResponse:
+def initiate_stk_push(phone_number: str, amount: int, account_ref: str, description: str, timestamp: str, callback_url: str) -> STKInitialResponse:
     """Initiate a M-PESA STK push request.
 
     Transaction type is "CustomerPayBillOnline" for PayBill Numbers and "CustomerBuyGoodsOnline" for Till Numbers.
@@ -34,7 +34,7 @@ def initiate_stk_push(phone_number: str, amount: int, account_ref: str, descript
         "PhoneNumber": phone_number,
         "TransactionDesc": description,
         "AccountReference": account_ref,
-        "CallBackURL": cfg["CALLBACK_URL"],
+        "CallBackURL": callback_url,
     }
 
     headers = {"Content-Type": "application/json", "Authorization": f"Bearer {auth.get_access_token()}"}
