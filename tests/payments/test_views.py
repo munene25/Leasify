@@ -156,16 +156,26 @@ class TestPaymentInitiateMpesaView:
         patch_payment_mpesa_initiate: MagicMock,
     ):
         """Verify billing selector is called with correct args"""
+
+        from django.urls import reverse
+        
         idemp = "test-idemp-key"
-        manager_client.post(self.path, {"billing_id": 1, "phone_number": "254712345678"}, HTTP_IDEMPOTENCY_KEY=idemp)
+        response = manager_client.post(self.path, {"billing_id": 1, "phone_number": "254712345678"}, HTTP_IDEMPOTENCY_KEY=idemp)
         patch_billing_get_for.assert_called_once_with(
             user=manager_client.user,
             billing_id=1,
         )
+        # Extract host and build callback url
+        scheme = "http://"
+        host = response.wsgi_request.get_host() # type: ignore
+        endpoint = reverse("payments:mpesa_callback")
+
+        
         patch_payment_mpesa_initiate.assert_called_once_with(
             billing=patch_billing_get_for.return_value,
             phone_number="254712345678",
             idempotency_key=idemp,
+            callback_url = scheme + host + endpoint
         )
 
     def test_idempotency_key_optional(
