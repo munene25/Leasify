@@ -32,7 +32,7 @@ class Apartment(BaseModel):
 
     def __str__(self) -> str:
         """Simplified representation of the apartment"""
-        return f"Block-{self.block} Unit-{self.unit_number:02}"
+        return f"{self.block}-{self.floor}-{self.unit_number}"
 
     @property
     def name(self) -> str:
