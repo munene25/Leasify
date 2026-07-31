@@ -24,8 +24,8 @@ urlpatterns = [
     path("csrf-token/", get_csrf, name="csrf"),
     path("health/", HealthCheckView.as_view(), name="health"),
     path("users/", include("users.urls", namespace="users")),
-    path("apartments/", include("apartments.urls", namespace="apartments")),
+    path("billing/", include("billing.urls", namespace="billing")),
     path("tenancy/", include("tenancy.urls", namespace="tenancy")),
-    path("billings/", include("billing.urls", namespace="billing")),
-    path("payments/", include("payments.urls", namespace="payment")),
+    path("payments/", include("payments.urls", namespace="payments")),
+    path("apartments/", include("apartments.urls", namespace="apartments")),
 ]

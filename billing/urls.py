@@ -1,6 +1,8 @@
 from django.urls import path
 from billing import views
 
+app_name = "billing"
+
 urlpatterns = [
     path("", views.BillingListView.as_view(), name="billing_list"),
     path("<int:billing_id>", views.BillingDetailView.as_view(), name="billing_detail"),

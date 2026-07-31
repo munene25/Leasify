@@ -1,6 +1,8 @@
 from django.urls import path
 from payments import views
 
+app_name = "payments"
+
 urlpatterns = [
     # List and retrieve all payments accessible by the authenticated user
     path("", views.PaymentListView.as_view(), name="list"),
