@@ -282,7 +282,7 @@ def apartment_factory(fake: Faker) -> Factory[Apartment]:
                 rent = Decimal(rent or fake.numerify("1#000")),
                 rentable = rentable
             )
-            logger.info("apartment_created", apartment=apt.name, rent=apt.rent, rentable=apt.rentable)
+            logger.info("apartment_created", apartment=apt.name, floor=apt.floor, block=apt.block, unit_number=apt.unit_number, rent=apt.rent, rentable=apt.rentable)
             apartments.append(apt)
         return apartments
 
