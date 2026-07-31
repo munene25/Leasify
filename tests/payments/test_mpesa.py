@@ -70,7 +70,7 @@ class TestInitiateSTKPush:
         mock_response = MagicMock()
         mock_response.json.return_value = stk_initial_response
         mock_response.raise_for_status.return_value = None
-        
+        callback_url = "https://example.com"
         mock_post = MagicMock(return_value=mock_response)
         monkeypatch.setattr('payments.mpesa.handlers.requests.post', mock_post)
         
@@ -79,7 +79,8 @@ class TestInitiateSTKPush:
             amount=1000,
             account_ref="JAN-2024",
             description="Rent",
-            timestamp="20240101120000"
+            timestamp="20240101120000",
+            callback_url=callback_url
         )
         
         assert result["checkout_id"] == "ws_CO_12345"
@@ -102,6 +103,7 @@ class TestInitiateSTKPush:
         assert payload["AccountReference"] == "JAN-2024"
         assert payload["TransactionDesc"] == "Rent"
         assert payload["Timestamp"] == "20240101120000"
+        assert payload["CallBackURL"] == callback_url
 
     
     def test_account_ref_too_long(self):
@@ -112,7 +114,8 @@ class TestInitiateSTKPush:
                 amount=1000,
                 account_ref="THIS_IS_TOO_LONG_OVER_12",
                 description="Rent",
-                timestamp="20240101120000"
+                timestamp="20240101120000",
+                callback_url="https://example.com"
             )
     
     def test_description_too_long(self):
@@ -123,9 +126,9 @@ class TestInitiateSTKPush:
                 amount=1000,
                 account_ref="JAN-2024",
                 description="This description is too long",
-                timestamp="20240101120000"
+                timestamp="20240101120000",
+                callback_url="https://example.com"
             )
-
     
     def test_http_error(self, monkeypatch: pytest.MonkeyPatch, stk_initial_response: dict, patch_mpesa_auth: MagicMock):
         """Test handling of HTTP errors."""
@@ -144,5 +147,6 @@ class TestInitiateSTKPush:
                 amount=1000,
                 account_ref="JAN-2024",
                 description="Rent",
-                timestamp="20240101120000"
+                timestamp="20240101120000",
+                callback_url="https::example.com"
             )
