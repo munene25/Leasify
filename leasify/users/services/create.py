@@ -1,7 +1,9 @@
 from structlog import getLogger
-from django.contrib.auth.models import Group
+
 from django.db import transaction
-from leasify.common.exceptions import RoleAssignmentError
+
+from rest_framework.exceptions import ValidationError
+
 from leasify.users.models import User, Account
 from leasify.users.tasks import send_welcome_email
 
@@ -31,7 +33,13 @@ def user_account_create(notify: bool=True, **kwargs) -> User:
     account_create(user=user, phone_number=kwargs.get("phone_number"))
 
     if notify == True:
-        transaction.on_commit(lambda: send_welcome_email.delay(user.pk))
+        unsub = kwargs["unsubscribe_url"]
+        verify = kwargs["email_verify_url"]
+
+        if not unsub or verify:
+            raise ValidationError({"urls": ["Please provide urls for unsubscribe and email verification"]})
+
+        transaction.on_commit(lambda: send_welcome_email.delay(user.pk, unsub, verify))
     logger.info("user_account_created", target_id=user.pk, email=user.email)
     return user
 
