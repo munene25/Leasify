@@ -1,12 +1,11 @@
 from structlog import getLogger
 
 from django.contrib.auth import authenticate
-from django.db import transaction
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from rest_framework.exceptions import ValidationError, AuthenticationFailed
 
 from leasify.users.models import User
-from leasify.authentication.tasks import notify_password_change
+from leasify.authentication import tasks
 
 logger = getLogger("authentication.services")
 
@@ -55,7 +54,7 @@ def user_change_password(*, user: User, new_password: str, password: str | None 
     user.save(update_fields=["password"])
     status = {True: "user_password_reset", False: "user_password_changed"}[is_ressetting]
     logger.warning(status, target_id=user.pk)
-    notify_password_change.delay(user.pk, url_path)
+    tasks.notify_password_change.delay(user.pk, url_path)
     return user
 
 
