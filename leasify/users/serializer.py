@@ -48,7 +48,7 @@ class UserDetailSerializer(serializers.Serializer):
     Detail serializer for the requesting user.
     Adds a role(s) field inteded for frontend role based access
     """
-
+    user_id = serializers.IntegerField(source="pk")
     email = serializers.EmailField()
     first_name = NameSerializerField()
     last_name = NameSerializerField()
@@ -71,15 +71,6 @@ class AdminUserUpdateSerializer(serializers.Serializer):
     last_name = NameSerializerField()
     # Account fields
     phone_number = PhoneNumberSerializerField()
-
-
-class AdminUserDetailSerializer(UserDetailSerializer):
-    """
-    Extends the user detail serializer
-    Intended for admins to have access to the user_id of the specified user.
-    """
-
-    user_id = serializers.IntegerField(source="pk")
 
 
 class UserEmailUpdateSerializer(serializers.Serializer):
@@ -109,14 +100,3 @@ class AdminRoleUpdateSerializer(serializers.Serializer):
     """
 
     role = serializers.SlugRelatedField(slug_field="name", queryset=Group.objects.all())
-
-
-class AdminRoleListSerializer(serializers.Serializer):
-    """
-    Instantiated with a groups qs.
-    The qs needs to be passed directly as the instance to the serializer through source="*"
-    Otherwise it will try to find a "roles" attribute on the qs.
-    read_only is needed to allow empyty groups list to be serialized.
-    """
-
-    roles = serializers.SlugRelatedField(source="*", slug_field="name", many=True, read_only=True)
