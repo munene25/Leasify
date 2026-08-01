@@ -3,7 +3,6 @@ from django.urls import reverse
 from rest_framework import status, serializers
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from rest_framework.request import Request
 from rest_framework.views import APIView
 from leasify.common.views import BaseAPIView
 
@@ -11,7 +10,7 @@ from leasify.common.pagination import get_paginated_response
 from leasify.common.permissions import check_perms
 from leasify.billing import selectors as billing_sl
 
-from leasify.payments import models as md, selectors as sl, serializer as sc
+from leasify.payments import selectors as sl, serializer as sc
 from leasify.payments import tasks
 from leasify.payments.mpesa import parse_callback_response
 from leasify.payments import services as sr
