@@ -12,32 +12,21 @@ class RequestPasswordResetSerializer(serializers.Serializer):
     """Email required to send the reset link to"""
 
     email = serializers.EmailField()
-    
+    url_path = serializers.CharField()
 
 
 class ConfirmPasswordResetSerializer(serializers.Serializer):
+    """Does not require current password"""
+
     new_password = serializers.CharField()
-    confirm_password = serializers.CharField()
 
-    def validate(self, data):
-        if data["new_password"] != data["confirm_password"]:
-            raise serializers.ValidationError({"confirm_password": "Passwords do not match"})
-        data.pop("confirm_password")
-        return data
+class RequestEmailVerificationSerializer(serializers.Serializer):
+    """Provide url path for the frontend path"""
 
+    url_path = serializers.CharField()
 
 class PasswordChangeSerializer(serializers.Serializer):
-    """
-    Inherits from BasePasswordSerializer
-    Adds a current password field unlike password resets.
-    """
+    """Requires current password as well as new password"""
 
     password = serializers.CharField()
     new_password = serializers.CharField()
-    confirm_password = serializers.CharField()
-
-    def validate(self, data):
-        if data["new_password"] != data["confirm_password"]:
-            raise serializers.ValidationError({"confirm_password": "Passwords do not match"})
-        data.pop("confirm_password")
-        return data
