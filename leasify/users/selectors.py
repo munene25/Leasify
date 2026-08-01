@@ -82,21 +82,11 @@ def user_get_by_email(user_email: str) -> User:
     return BASE_QS.get(email=email)
 
 
-@user_not_found
-def user_get_locked(user_id: int) -> User:
-    """
-    Necessary for locking row access while updating
-    """
-
-    return BASE_QS.select_for_update().get(pk=user_id)
-
-
 def groups_list():
     """
     Exists as a User selector as it's highly coupled with the user model
     """
     return Group.objects.all()
-
 
 
 @lru_cache(maxsize=5)
