@@ -14,6 +14,8 @@ class UserCreateSerializer(serializers.Serializer):
     password = serializers.CharField()
     phone_number = PhoneNumberSerializerField()
     notify = serializers.BooleanField(required=False, default=True)
+    unsubscribe_url = serializers.CharField(required=False)
+    email_verify_url = serializers.CharField(required=False)
 
 
 class UserListSerializer(serializers.Serializer):
