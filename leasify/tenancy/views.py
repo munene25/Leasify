@@ -1,0 +1,125 @@
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
+from rest_framework import status, serializers
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
+
+from leasify.common.views import BaseAPIView
+from leasify.common.permissions import check_perms
+from leasify.common.pagination import get_paginated_response
+from leasify.tenancy import selectors as sl, serializer as sc
+from leasify.tenancy import services as sr
+from leasify.tenancy.choices import TenancyStatus as TS, TerminationReason as TR
+
+if TYPE_CHECKING:
+    from rest_framework.request import Request
+
+
+class TenancyListCreateView(BaseAPIView):
+    """Handles listing and creating tenancies with filtering capabilities."""
+
+    class FilterClass(serializers.Serializer):
+        apartment = serializers.IntegerField()
+        block=serializers.CharField()
+        joined_before = serializers.DateField()
+        joined_after = serializers.DateField()
+        search = serializers.CharField()
+        status = serializers.CharField()
+
+    permission_classes = [IsAuthenticated]
+    serializer_class = sc.TenancyCreateSerializer
+    filter_class = FilterClass
+
+    def get(self, request: Request) -> Response:
+        """Retrieve a paginated list of tenancies matching the provided filters."""
+        check_perms(request.user, "tenancy.view_tenancy")
+        filters = self.validate_filter(data=request.query_params)
+        qs = sl.tenancy_list_for(user=request.user, filters=filters)
+        return get_paginated_response(
+            serializer_class=sc.TenancyListSerializer, queryset=qs, request=request, view=self
+        )
+
+    def post(self, request) -> Response:
+        """Create a new tenancy and return its details."""
+        incoming = self.validate_serializer(data=request.data)
+        tenancy = sr.tenancy_create(user=request.user, **incoming)
+        outgoing = sc.TenancyDetailSerializer(instance=tenancy)
+        return Response(data=outgoing.data, status=status.HTTP_201_CREATED)
+
+
+class TenancyDetailView(BaseAPIView):
+    """Retrieves detailed information about a specific tenancy."""
+
+    permission_classes = [IsAuthenticated]
+    serializer_class = sc.TenancyLeaseExtensionSerializer
+
+    def get(self, request, tenancy_id: int) -> Response:
+        """Get details of a single tenancy by ID."""
+        check_perms(request.user, "tenancy.view_tenancy")
+        selected = sl.tenancy_get_for(request.user, tenancy_id)
+        outgoing = sc.TenancyDetailSerializer(instance=selected)
+        return Response(status=status.HTTP_200_OK, data=outgoing.data)
+
+
+class TenancyTerminateView(BaseAPIView):
+    """Terminates a tenancy and returns its updated details."""
+
+    serializer_class = sc.TenancyTerminateSerializer
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, tenancy_id: int):
+        """Terminate a tenancy with an optional reason and date."""
+        check_perms(request.user, "tenancy.change_tenancy")
+        selected = sl.tenancy_get_for(request.user, tenancy_id)
+
+        if selected.status != TS.TERMINATED:
+            args = (
+                {"termination_reason": TR.VOLUNTARY, "termination_date": None}
+                if selected.user == request.user
+                else self.validate_serializer(data=request.data)
+            )
+
+            selected = sr.tenancy_terminate(tenancy=selected, **args)
+        outgoing = sc.TenancyDetailSerializer(instance=selected)
+        return Response(data=outgoing.data, status=status.HTTP_200_OK)
+
+
+class TenancyLeaseExtensionView(BaseAPIView):
+    """Extends a tenancy's lease period and creates a billing record."""
+
+    serializer_class = sc.TenancyLeaseExtensionSerializer
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, tenancy_id: int):
+        """Extend the lease term of a tenancy by adding days to the end date."""
+        check_perms(request.user, "tenancy.change_tenancy")
+        selected = sl.tenancy_get_for(request.user, tenancy_id)
+        incoming = self.validate_serializer(data=request.data)
+        _, billing = sr.tenancy_lease_extend(tenancy=selected, **incoming)
+        return Response(
+            data={"message": f"Lease {billing.name} created", "billing_id": billing.pk}, status=status.HTTP_200_OK
+        )
+
+
+class TenancyChoicesViews(BaseAPIView):
+    """Returns a list of valid termination reasons for tenancies."""
+
+    permission_classes = []
+
+    def get(self, request):
+        """Retrieve all available termination reason options."""
+        choices = {
+            "termination_reason": [{"key": k, "display": v} for k, v in TR.choices],
+            "status": [{"key": k, "display": v} for k, v in TS.choices],
+        }
+        return Response(data=choices, status=status.HTTP_200_OK)
+
+
+class TenancyOverviewView(BaseAPIView):
+    """Provides an overview summary of a user's tenancies."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        """Retrieve and display comprehensive information about the user's tenancies."""

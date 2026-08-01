@@ -1,0 +1,674 @@
+[
+{
+    "model": "users.user",
+    "pk": 1,
+    "fields": {
+        "password": "pbkdf2_sha256$1000000$fg0yGzBVGnkiPL68mzKMdi$Mac7EO6btMJtSWUBexNajIj++d0mlK33xUGw4Zfuphk=",
+        "last_login": null,
+        "is_superuser": false,
+        "is_staff": false,
+        "is_active": true,
+        "date_joined": "2026-08-01T14:04:57.447Z",
+        "created_at": "2026-08-01T14:04:57.924Z",
+        "first_name": "Laura",
+        "last_name": "Mohamed",
+        "email": "dkazungu@example.com",
+        "verified": false,
+        "last_email_change": null,
+        "groups": [],
+        "user_permissions": []
+    }
+},
+{
+    "model": "users.user",
+    "pk": 2,
+    "fields": {
+        "password": "pbkdf2_sha256$1000000$1G6l1wnSDHSQrUs6t7ljFW$QQ7rhX/gjxONH89PbgX0XuQMFodh7qigqN96MPxIpmI=",
+        "last_login": null,
+        "is_superuser": false,
+        "is_staff": false,
+        "is_active": true,
+        "date_joined": "2026-08-01T14:04:57.933Z",
+        "created_at": "2026-08-01T14:04:58.374Z",
+        "first_name": "John",
+        "last_name": "Nderitu",
+        "email": "emusyoka@example.net",
+        "verified": false,
+        "last_email_change": null,
+        "groups": [],
+        "user_permissions": []
+    }
+},
+{
+    "model": "users.user",
+    "pk": 3,
+    "fields": {
+        "password": "pbkdf2_sha256$1000000$PhA7KXfRQSGn3gp2FmGxGa$xsBOMsUwkqbfson55inDkotKUQseE63OGfrxbAohxPM=",
+        "last_login": null,
+        "is_superuser": false,
+        "is_staff": false,
+        "is_active": true,
+        "date_joined": "2026-08-01T14:04:58.383Z",
+        "created_at": "2026-08-01T14:04:58.810Z",
+        "first_name": "Dianah",
+        "last_name": "Mutia",
+        "email": "eliudmbithi@example.com",
+        "verified": false,
+        "last_email_change": null,
+        "groups": [],
+        "user_permissions": []
+    }
+},
+{
+    "model": "users.user",
+    "pk": 4,
+    "fields": {
+        "password": "pbkdf2_sha256$1000000$wrIhuZJI0kLTLMfuEAeHuD$QGkOW7mVuP7jDViDQCJeMxotj7qesPh+n+yJsim9lWU=",
+        "last_login": null,
+        "is_superuser": false,
+        "is_staff": false,
+        "is_active": true,
+        "date_joined": "2026-08-01T14:04:58.819Z",
+        "created_at": "2026-08-01T14:04:59.245Z",
+        "first_name": "Amina",
+        "last_name": "Nyambane",
+        "email": "monicahnabwire@example.com",
+        "verified": false,
+        "last_email_change": null,
+        "groups": [],
+        "user_permissions": []
+    }
+},
+{
+    "model": "users.user",
+    "pk": 5,
+    "fields": {
+        "password": "pbkdf2_sha256$1000000$OGJFfznq8O4GlBbBCglonq$SpR8Y2mBQZqQjMBuLAh57zqSlEzAf4BV1pNvoQ0z84A=",
+        "last_login": null,
+        "is_superuser": false,
+        "is_staff": false,
+        "is_active": true,
+        "date_joined": "2026-08-01T14:04:59.253Z",
+        "created_at": "2026-08-01T14:04:59.675Z",
+        "first_name": "Wairimu",
+        "last_name": "Mwangi",
+        "email": "atieno18@example.com",
+        "verified": false,
+        "last_email_change": null,
+        "groups": [],
+        "user_permissions": []
+    }
+},
+{
+    "model": "users.user",
+    "pk": 6,
+    "fields": {
+        "password": "pbkdf2_sha256$1000000$BDE7poykEFxOg8YE7d4wrL$gDDDua5wSvWH0QCiKS+CqyfLjjewyRUTbT09U6NZErw=",
+        "last_login": null,
+        "is_superuser": false,
+        "is_staff": false,
+        "is_active": true,
+        "date_joined": "2026-08-01T14:04:59.683Z",
+        "created_at": "2026-08-01T14:05:00.146Z",
+        "first_name": "Ruth",
+        "last_name": "Jomo",
+        "email": "vlangat@example.net",
+        "verified": false,
+        "last_email_change": null,
+        "groups": [],
+        "user_permissions": []
+    }
+},
+{
+    "model": "users.user",
+    "pk": 7,
+    "fields": {
+        "password": "pbkdf2_sha256$1000000$WQJyYiA6sXUwivGutK96KF$R1yU46GYM8aP64u0YCM1yMhvrmVxhmB3VLWVo6YFuMc=",
+        "last_login": null,
+        "is_superuser": false,
+        "is_staff": false,
+        "is_active": true,
+        "date_joined": "2026-08-01T14:05:00.154Z",
+        "created_at": "2026-08-01T14:05:00.605Z",
+        "first_name": "Mohamed",
+        "last_name": "Mutua",
+        "email": "dancunakinyi@example.com",
+        "verified": false,
+        "last_email_change": null,
+        "groups": [],
+        "user_permissions": []
+    }
+},
+{
+    "model": "users.user",
+    "pk": 8,
+    "fields": {
+        "password": "pbkdf2_sha256$1000000$ISlDogGxiNPvoD3CSD6tWM$2tCgZoNAOcAh72qElngMa0Aboj/P6yGzxFyYDQjOPr0=",
+        "last_login": null,
+        "is_superuser": false,
+        "is_staff": false,
+        "is_active": true,
+        "date_joined": "2026-08-01T14:05:00.613Z",
+        "created_at": "2026-08-01T14:05:01.064Z",
+        "first_name": "Beatrice",
+        "last_name": "Chepngetich",
+        "email": "elosy79@example.org",
+        "verified": false,
+        "last_email_change": null,
+        "groups": [],
+        "user_permissions": []
+    }
+},
+{
+    "model": "users.user",
+    "pk": 9,
+    "fields": {
+        "password": "pbkdf2_sha256$1000000$Scs5cvezIdfBHththfsHgk$8fc/exaKxG8EbxYAnditpNlcd1qmhfwTivmAzOOYFSM=",
+        "last_login": null,
+        "is_superuser": false,
+        "is_staff": false,
+        "is_active": true,
+        "date_joined": "2026-08-01T14:05:01.073Z",
+        "created_at": "2026-08-01T14:05:01.523Z",
+        "first_name": "Celestine",
+        "last_name": "Okumu",
+        "email": "benjamin59@example.org",
+        "verified": false,
+        "last_email_change": null,
+        "groups": [],
+        "user_permissions": []
+    }
+},
+{
+    "model": "users.user",
+    "pk": 10,
+    "fields": {
+        "password": "pbkdf2_sha256$1000000$HPaDeuQfAukYg5fPnKyUJQ$LXV8tBaDiG5DB1DnVde4iq2LcSTanEfZQhtvDCx+YVI=",
+        "last_login": null,
+        "is_superuser": false,
+        "is_staff": false,
+        "is_active": true,
+        "date_joined": "2026-08-01T14:05:01.531Z",
+        "created_at": "2026-08-01T14:05:01.981Z",
+        "first_name": "Henry",
+        "last_name": "Mwenda",
+        "email": "hmunyua@example.com",
+        "verified": false,
+        "last_email_change": null,
+        "groups": [],
+        "user_permissions": []
+    }
+},
+{
+    "model": "users.user",
+    "pk": 11,
+    "fields": {
+        "password": "pbkdf2_sha256$1000000$JqReDUhLs669fbjD3gtv7A$F3N8uFS+5gW8B99PSAWvewHLRAfBgV9+zRyDAHU9dzs=",
+        "last_login": null,
+        "is_superuser": false,
+        "is_staff": false,
+        "is_active": true,
+        "date_joined": "2026-08-01T14:05:01.988Z",
+        "created_at": "2026-08-01T14:05:02.425Z",
+        "first_name": "Hawa",
+        "last_name": "Irungu",
+        "email": "zsimon@example.com",
+        "verified": false,
+        "last_email_change": null,
+        "groups": [],
+        "user_permissions": []
+    }
+},
+{
+    "model": "users.user",
+    "pk": 12,
+    "fields": {
+        "password": "pbkdf2_sha256$1000000$WCJPDeYbiOIPVU1lpVrtoA$x2a9iFrAFCRSPmY/wwJdZ96PHb8vN18ZgTTzuaZRwL8=",
+        "last_login": null,
+        "is_superuser": false,
+        "is_staff": false,
+        "is_active": true,
+        "date_joined": "2026-08-01T14:05:02.432Z",
+        "created_at": "2026-08-01T14:05:02.850Z",
+        "first_name": "Mary",
+        "last_name": "Auma",
+        "email": "ahmedfidel@example.org",
+        "verified": false,
+        "last_email_change": null,
+        "groups": [],
+        "user_permissions": []
+    }
+},
+{
+    "model": "users.user",
+    "pk": 13,
+    "fields": {
+        "password": "pbkdf2_sha256$1000000$K4KoOWMwVDpBpxKdMsAm56$bGMXD9B7n2qqxJl3tUgeueEKrthn4nUxkd+PYDN6Agw=",
+        "last_login": null,
+        "is_superuser": false,
+        "is_staff": false,
+        "is_active": true,
+        "date_joined": "2026-08-01T14:05:02.858Z",
+        "created_at": "2026-08-01T14:05:03.282Z",
+        "first_name": "Vincent",
+        "last_name": "Otieno",
+        "email": "faithlangat@example.net",
+        "verified": false,
+        "last_email_change": null,
+        "groups": [],
+        "user_permissions": []
+    }
+},
+{
+    "model": "users.user",
+    "pk": 14,
+    "fields": {
+        "password": "pbkdf2_sha256$1000000$QMCoBC6EpqvbE78ybZ9hbq$yAg0JdYID8R21j4RBbOm0dck8dzqUVHru4Zl0ZHST2s=",
+        "last_login": null,
+        "is_superuser": false,
+        "is_staff": false,
+        "is_active": true,
+        "date_joined": "2026-08-01T14:05:03.291Z",
+        "created_at": "2026-08-01T14:05:03.737Z",
+        "first_name": "Irene",
+        "last_name": "Kiprono",
+        "email": "uonyango@example.org",
+        "verified": false,
+        "last_email_change": null,
+        "groups": [],
+        "user_permissions": []
+    }
+},
+{
+    "model": "users.user",
+    "pk": 15,
+    "fields": {
+        "password": "pbkdf2_sha256$1000000$G91AcOBHKTayzg4DOTkPe2$Rv8LS6h7K6xD3dARU6oXTMhPomhJ2ItoIF/38jw0jmw=",
+        "last_login": null,
+        "is_superuser": false,
+        "is_staff": false,
+        "is_active": true,
+        "date_joined": "2026-08-01T14:05:03.743Z",
+        "created_at": "2026-08-01T14:05:04.170Z",
+        "first_name": "Doris",
+        "last_name": "Njau",
+        "email": "mercyokoth@example.com",
+        "verified": false,
+        "last_email_change": null,
+        "groups": [],
+        "user_permissions": []
+    }
+},
+{
+    "model": "users.user",
+    "pk": 16,
+    "fields": {
+        "password": "pbkdf2_sha256$1000000$WqLcZdS3lhhY6ghxa2QkSY$MdSqRmmqNZTaxFHcaeZfpbTAbMv3LbhGbJdHrY36lxo=",
+        "last_login": null,
+        "is_superuser": false,
+        "is_staff": false,
+        "is_active": true,
+        "date_joined": "2026-08-01T14:05:04.177Z",
+        "created_at": "2026-08-01T14:05:04.642Z",
+        "first_name": "Doreen",
+        "last_name": "Kiilu",
+        "email": "mariam51@example.org",
+        "verified": false,
+        "last_email_change": null,
+        "groups": [],
+        "user_permissions": []
+    }
+},
+{
+    "model": "users.user",
+    "pk": 17,
+    "fields": {
+        "password": "pbkdf2_sha256$1000000$zfNUQL3Hzg1nractDtsRVr$6LDnWFJd/0rGMzyV/IAqiXRuFZZj0kH/vq6c0c18/Dk=",
+        "last_login": null,
+        "is_superuser": false,
+        "is_staff": false,
+        "is_active": true,
+        "date_joined": "2026-08-01T14:05:04.650Z",
+        "created_at": "2026-08-01T14:05:05.069Z",
+        "first_name": "Dennis",
+        "last_name": "Musau",
+        "email": "nmwangi@example.org",
+        "verified": false,
+        "last_email_change": null,
+        "groups": [],
+        "user_permissions": []
+    }
+},
+{
+    "model": "users.user",
+    "pk": 18,
+    "fields": {
+        "password": "pbkdf2_sha256$1000000$GGHnFIpuiDlzNbKl6NBOgA$6uf1NhsUtuo7lnvyrIk9znv6k5SUFcwu/GABazGvSE8=",
+        "last_login": null,
+        "is_superuser": false,
+        "is_staff": false,
+        "is_active": true,
+        "date_joined": "2026-08-01T14:05:05.077Z",
+        "created_at": "2026-08-01T14:05:05.545Z",
+        "first_name": "John",
+        "last_name": "Oyugi",
+        "email": "david64@example.com",
+        "verified": false,
+        "last_email_change": null,
+        "groups": [],
+        "user_permissions": []
+    }
+},
+{
+    "model": "users.user",
+    "pk": 19,
+    "fields": {
+        "password": "pbkdf2_sha256$1000000$vRqI4bqHCQUIyAqiqvF9m6$VdyIc6sKryvjUi19UoMFz3Cdn6tBvajba2YjmxNYCfk=",
+        "last_login": null,
+        "is_superuser": false,
+        "is_staff": false,
+        "is_active": true,
+        "date_joined": "2026-08-01T14:05:05.552Z",
+        "created_at": "2026-08-01T14:05:05.995Z",
+        "first_name": "Tracy",
+        "last_name": "Nyang'au",
+        "email": "barasadavid@example.net",
+        "verified": false,
+        "last_email_change": null,
+        "groups": [],
+        "user_permissions": []
+    }
+},
+{
+    "model": "users.user",
+    "pk": 20,
+    "fields": {
+        "password": "pbkdf2_sha256$1000000$8GQXPhKeWSpJR6ByzxVKuF$TsfEr35bru4z1fKKYj/jBL/cpxNUwOpDdKeE6ywKjwc=",
+        "last_login": null,
+        "is_superuser": false,
+        "is_staff": false,
+        "is_active": true,
+        "date_joined": "2026-08-01T14:05:06.002Z",
+        "created_at": "2026-08-01T14:05:06.464Z",
+        "first_name": "Daniel",
+        "last_name": "Mwangi",
+        "email": "abdihakimkihara@example.org",
+        "verified": false,
+        "last_email_change": null,
+        "groups": [],
+        "user_permissions": []
+    }
+},
+{
+    "model": "users.user",
+    "pk": 21,
+    "fields": {
+        "password": "pbkdf2_sha256$1000000$aXBGIx3RAOLBJN4dYu36Yi$X/ABAbIcAcL1crtWL01g9+dAtzVLJzRZB0tBqevKxEM=",
+        "last_login": null,
+        "is_superuser": true,
+        "is_staff": true,
+        "is_active": true,
+        "date_joined": "2026-08-01T14:05:06.472Z",
+        "created_at": "2026-08-01T14:05:06.918Z",
+        "first_name": "Edwin",
+        "last_name": "Edwin",
+        "email": "edmune25@gmail.com",
+        "verified": true,
+        "last_email_change": null,
+        "groups": [],
+        "user_permissions": []
+    }
+},
+{
+    "model": "users.account",
+    "pk": 1,
+    "fields": {
+        "created_at": "2026-08-01T14:04:57.928Z",
+        "user": 1,
+        "phone_number": "254767038920",
+        "bio": null,
+        "backup_email": null,
+        "can_receive_emails": true
+    }
+},
+{
+    "model": "users.account",
+    "pk": 2,
+    "fields": {
+        "created_at": "2026-08-01T14:04:58.378Z",
+        "user": 2,
+        "phone_number": "254771017060",
+        "bio": null,
+        "backup_email": null,
+        "can_receive_emails": true
+    }
+},
+{
+    "model": "users.account",
+    "pk": 3,
+    "fields": {
+        "created_at": "2026-08-01T14:04:58.814Z",
+        "user": 3,
+        "phone_number": "254768009865",
+        "bio": null,
+        "backup_email": null,
+        "can_receive_emails": true
+    }
+},
+{
+    "model": "users.account",
+    "pk": 4,
+    "fields": {
+        "created_at": "2026-08-01T14:04:59.248Z",
+        "user": 4,
+        "phone_number": "254769564612",
+        "bio": null,
+        "backup_email": null,
+        "can_receive_emails": true
+    }
+},
+{
+    "model": "users.account",
+    "pk": 5,
+    "fields": {
+        "created_at": "2026-08-01T14:04:59.679Z",
+        "user": 5,
+        "phone_number": "254705611225",
+        "bio": null,
+        "backup_email": null,
+        "can_receive_emails": true
+    }
+},
+{
+    "model": "users.account",
+    "pk": 6,
+    "fields": {
+        "created_at": "2026-08-01T14:05:00.149Z",
+        "user": 6,
+        "phone_number": "254739955933",
+        "bio": null,
+        "backup_email": null,
+        "can_receive_emails": true
+    }
+},
+{
+    "model": "users.account",
+    "pk": 7,
+    "fields": {
+        "created_at": "2026-08-01T14:05:00.608Z",
+        "user": 7,
+        "phone_number": "254764463639",
+        "bio": null,
+        "backup_email": null,
+        "can_receive_emails": true
+    }
+},
+{
+    "model": "users.account",
+    "pk": 8,
+    "fields": {
+        "created_at": "2026-08-01T14:05:01.068Z",
+        "user": 8,
+        "phone_number": "254704060794",
+        "bio": null,
+        "backup_email": null,
+        "can_receive_emails": true
+    }
+},
+{
+    "model": "users.account",
+    "pk": 9,
+    "fields": {
+        "created_at": "2026-08-01T14:05:01.526Z",
+        "user": 9,
+        "phone_number": "254724833275",
+        "bio": null,
+        "backup_email": null,
+        "can_receive_emails": true
+    }
+},
+{
+    "model": "users.account",
+    "pk": 10,
+    "fields": {
+        "created_at": "2026-08-01T14:05:01.983Z",
+        "user": 10,
+        "phone_number": "254771732505",
+        "bio": null,
+        "backup_email": null,
+        "can_receive_emails": true
+    }
+},
+{
+    "model": "users.account",
+    "pk": 11,
+    "fields": {
+        "created_at": "2026-08-01T14:05:02.427Z",
+        "user": 11,
+        "phone_number": "254751936909",
+        "bio": null,
+        "backup_email": null,
+        "can_receive_emails": true
+    }
+},
+{
+    "model": "users.account",
+    "pk": 12,
+    "fields": {
+        "created_at": "2026-08-01T14:05:02.853Z",
+        "user": 12,
+        "phone_number": "254785504558",
+        "bio": null,
+        "backup_email": null,
+        "can_receive_emails": true
+    }
+},
+{
+    "model": "users.account",
+    "pk": 13,
+    "fields": {
+        "created_at": "2026-08-01T14:05:03.286Z",
+        "user": 13,
+        "phone_number": "254719060272",
+        "bio": null,
+        "backup_email": null,
+        "can_receive_emails": true
+    }
+},
+{
+    "model": "users.account",
+    "pk": 14,
+    "fields": {
+        "created_at": "2026-08-01T14:05:03.739Z",
+        "user": 14,
+        "phone_number": "254767760167",
+        "bio": null,
+        "backup_email": null,
+        "can_receive_emails": true
+    }
+},
+{
+    "model": "users.account",
+    "pk": 15,
+    "fields": {
+        "created_at": "2026-08-01T14:05:04.172Z",
+        "user": 15,
+        "phone_number": "254763208632",
+        "bio": null,
+        "backup_email": null,
+        "can_receive_emails": true
+    }
+},
+{
+    "model": "users.account",
+    "pk": 16,
+    "fields": {
+        "created_at": "2026-08-01T14:05:04.646Z",
+        "user": 16,
+        "phone_number": "254733298303",
+        "bio": null,
+        "backup_email": null,
+        "can_receive_emails": true
+    }
+},
+{
+    "model": "users.account",
+    "pk": 17,
+    "fields": {
+        "created_at": "2026-08-01T14:05:05.073Z",
+        "user": 17,
+        "phone_number": "254735883229",
+        "bio": null,
+        "backup_email": null,
+        "can_receive_emails": true
+    }
+},
+{
+    "model": "users.account",
+    "pk": 18,
+    "fields": {
+        "created_at": "2026-08-01T14:05:05.547Z",
+        "user": 18,
+        "phone_number": "254771990422",
+        "bio": null,
+        "backup_email": null,
+        "can_receive_emails": true
+    }
+},
+{
+    "model": "users.account",
+    "pk": 19,
+    "fields": {
+        "created_at": "2026-08-01T14:05:05.997Z",
+        "user": 19,
+        "phone_number": "254737996897",
+        "bio": null,
+        "backup_email": null,
+        "can_receive_emails": true
+    }
+},
+{
+    "model": "users.account",
+    "pk": 20,
+    "fields": {
+        "created_at": "2026-08-01T14:05:06.468Z",
+        "user": 20,
+        "phone_number": "254735971743",
+        "bio": null,
+        "backup_email": null,
+        "can_receive_emails": true
+    }
+},
+{
+    "model": "users.account",
+    "pk": 21,
+    "fields": {
+        "created_at": "2026-08-01T14:05:06.921Z",
+        "user": 21,
+        "phone_number": "254791573104",
+        "bio": null,
+        "backup_email": null,
+        "can_receive_emails": true
+    }
+}
+]
