@@ -18,15 +18,18 @@ ITERATIONS = list(range(20))
 
 f = Faker("en_KE")
 
+FIXTURES = settings.APP_DIRS.path("fixtures")
 
 def dump_data(file_name: str, *app_labels: str):
     """Helper to create fixtures after seeding"""
-    with open(settings.APP_DIRS("fixtures/" + file_name), "w") as f:
+    
+    with open(FIXTURES(file_name), "w") as f:
         call_command("dumpdata", *app_labels, stdout=f, indent=4)
 
 def load_data(file_name: str):
     """Helper for loading fixtures from path"""
-    call_command("loaddata",  settings.APP_DIRS(file_name))
+
+    call_command("loaddata",  FIXTURES(file_name))
 
 def run():
     # ============================================= Roles =============================================
