@@ -1,0 +1,94 @@
+from structlog import getLogger
+
+from django.contrib.auth import authenticate
+from django.db import transaction
+from django.contrib.auth.models import AbstractUser, BaseUserManager
+from rest_framework.exceptions import ValidationError, AuthenticationFailed
+
+from leasify.users.models import User
+from leasify.authentication.tasks import notify_password_change
+
+logger = getLogger("authentication.services")
+
+def user_authenticate(*, email: str, password: str) -> AbstractUser:
+    """
+    Authenticates the user and updates their last login
+    Incorrect credentials or inactive users raise Authentication Error
+
+    :param email: email for the user
+    :type email: str
+    :param password: user's password
+    :type password: str
+
+    :return: returns a user or will raise an 401 if authentication failed 
+    :rtype: User
+    """
+    
+    normalized_email = BaseUserManager.normalize_email(email)
+    user = authenticate(email=normalized_email, password=password)
+    if user is None:
+        err = "Incorrect email or password"
+        logger.warning("user_authentication_failed", email=email)
+        raise AuthenticationFailed({"email": [err], "password": [err]})
+
+    # user_login from django.contrib.auth.user_login will update last_login
+    logger.info("user_authenticated", target_id=user.pk)
+    return user
+
+
+@transaction.atomic
+def user_change_password(*, user: User, new_password: str, password: str | None = None, is_ressetting: bool = False) -> User:
+    """
+    This service is used in both password recovery and password changes
+    Therefore in password recovery flows, the current password is unknown
+    Raw password is also required to check password validity
+
+
+    :param user: User model instance
+    :type user: User
+    :param new_password: The password to be set if operation is successfull
+    :type new_password: str
+    :param password: The current raw password of the user. Can be none in password recovery flows
+    :type password: str | None
+
+    :return: Modified User object
+    :rtype: User
+    """
+    # ! Password changes automatically invalidate issued cookies
+    # ! CRITICAL BUG Found
+    # Calling check_password does not raise an error
+    # To mitigate this an explicit flag guarantees the password is checked.
+    # Also necessary to call **validate_password** not 'check_password'
+
+    if not is_ressetting:
+        if not password:
+            raise ValidationError({"password": "Please provide a password"})
+        else:
+            user.validate_password(password)
+
+    user.set_password(new_password)
+    user.full_clean()
+    user.save(update_fields=["password"])
+    status = {True: "user_password_reset", False: "user_password_changed"}[is_ressetting]
+    logger.warning(status, target_id=user.pk)
+    transaction.on_commit(lambda: notify_password_change.delay(user.pk))
+    return user
+
+
+def user_email_verify(user: User) -> User:
+    """
+    Simply verifies the user in a transaction,
+    Could add more features in the future like a confirmaiton email.
+
+    :param user: User object
+    :type user: User
+
+    :return: A user that is verified
+    :rtype: User
+    """
+    user.verified = True
+    user.save(update_fields=["verified"])
+    logger.info("user_email_verified", target_id=user.pk)
+    return user
+
+

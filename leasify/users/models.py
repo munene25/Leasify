@@ -67,7 +67,6 @@ class User(BaseModel, AbstractUser):
         Ranges from superuser, or the group they belong to.
         caching the property causes unexpected behavior when changing user roles mid session.
         Defaults to regular.
-        ? Instead of user.role better to have user.rank? as an interger?
         """
         group = self.groups.first()
         if self.is_superuser:

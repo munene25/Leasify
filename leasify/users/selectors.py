@@ -72,7 +72,7 @@ def user_get_for(*, user: User, user_id: int) -> User:
 
 
 @raise_not_found("email", "User with given email not found")
-def user_get_by_email(user_email) -> User:
+def user_get_by_email(user_email: str) -> User:
     """
     Used in views where the email is the only identifying attribute eg. password-reset
     Should first normalize the email then try to get the user

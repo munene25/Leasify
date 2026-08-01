@@ -1,12 +1,13 @@
 from typing import TypedDict
 from typing_extensions import Unpack
+
 from structlog import getLogger
-from leasify.users.models import User, Account, EMAIL_COOLDOWN
+
 from django.db import transaction
-from rest_framework.exceptions import ValidationError
-from leasify.users.tasks import notify_password_change
 from django.utils import timezone
+
 from leasify.common.exceptions import EmailUpdateError
+from leasify.users.models import User, Account, EMAIL_COOLDOWN
 
 logger = getLogger("users.services.update")
 
@@ -73,46 +74,6 @@ def user_update(user: User, **kwargs: Unpack[UserUpdateData]):
 
     return user
 
-
-@transaction.atomic
-def user_change_password(*, user: User, new_password: str, password: str | None = None, is_ressetting: bool = False) -> User:
-    """
-    This service is used in both password recovery and password changes
-    Therefore in password recovery flows, the current password is unknown
-    Raw password is also required to check password validity
-
-
-    :param user: User model instance
-    :type user: User
-    :param new_password: The password to be set if operation is successfull
-    :type new_password: str
-    :param password: The current raw password of the user. Can be none in password recovery flows
-    :type password: str | None
-
-    :return: Modified User object
-    :rtype: User
-    """
-    # ! Password changes automatically invalidate issued cookies
-    # ! CRITICAL BUG Found
-    # Calling check_password does not raise an error
-    # To mitigate this an explicit flag guarantees the password is checked.
-    # Also necessary to call **validate_password** not 'check_password'
-
-    if not is_ressetting:
-        if not password:
-            raise ValidationError({"password": "Please provide a password"})
-        else:
-            user.validate_password(password)
-
-    user.set_password(new_password)
-    user.full_clean()
-    user.save(update_fields=["password"])
-    status = {True: "user_password_reset", False: "user_password_changed"}[is_ressetting]
-    logger.warning(status, target_id=user.pk)
-    transaction.on_commit(lambda: notify_password_change.delay(user.pk))
-    return user
-
-
 def account_update_mailing_status(account: Account, status: bool) -> Account:
     """
     Changes ability of a user to receive non-critical mail in their inbox.
@@ -146,22 +107,6 @@ def user_update_active_status(user: User, status: bool) -> User:
     logger.info("users_active_status_updated", target_id=user.pk, status=status_change)
     return user
 
-
-def user_email_verify(user: User) -> User:
-    """
-    Simply verifies the user in a transaction,
-    Could add more features in the future like a confirmaiton email.
-
-    :param user: User object
-    :type user: User
-
-    :return: A user that is verified
-    :rtype: User
-    """
-    user.verified = True
-    user.save(update_fields=["verified"])
-    logger.info("user_email_verified", target_id=user.pk)
-    return user
 
 
 def user_email_update(user: User, email: str, password: str) -> User:
