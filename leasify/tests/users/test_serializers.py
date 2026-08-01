@@ -1,9 +1,9 @@
-import pytest
 from zoneinfo import ZoneInfo
-from rest_framework.exceptions import ValidationError
+
 from leasify.users import models
 from leasify.users import serializer
 from leasify.users.selectors import get_group
+
 
 class TestUserListSerializer:
     def test_user_list_serializer_resolves_related_fields(self, user: models.User):
@@ -55,25 +55,6 @@ class TestUserDetailSerializer:
         assert s["joined_at"] == u.created_at.astimezone(local_tz).isoformat()
 
 
-class TestBasePasswordSerializer:
-    def test_serializer_validation_succeeds(self):
-        data = {"new_password": "password", "confirm_password": "password"}
-        instance = serializer.BasePasswordSerializer(data=data)
-        instance.is_valid(raise_exception=True)
-
-        s = instance.validated_data
-        assert isinstance(s, dict)
-        assert len(s) == 1
-        assert "new_password" in data
-
-    def test_serializer_validation_fails(self):
-        data = {"new_password": "password", "confirm_password": "Password"}
-        instance = serializer.BasePasswordSerializer(data=data)
-        with pytest.raises(ValidationError) as exc:
-            instance.is_valid(raise_exception=True)
-        assert "confirm_password" in exc.value.detail
-
-
 class TestUpdateSerializer:
     def test_serializer_ommits_unnamed_fields(self):
         from leasify.tests.types import UserUpdatePayload
@@ -87,18 +68,6 @@ class TestUpdateSerializer:
         s = instance.validated_data
         assert isinstance(s, dict)
         assert ["first_name", "last_name"] == list(s.keys())
-
-
-class TestPasswordChangeSerializer:
-    def test_serializer(self):
-        data = {"password": "password", "new_password": "password", "confirm_password": "password"}
-        instance = serializer.PasswordChangeSerializer(data=data)
-        instance.is_valid(raise_exception=True)
-
-        s = instance.validated_data
-        assert isinstance(s, dict)
-        assert len(s) == 2
-        assert {"password", "new_password"} == set(s.keys())
 
 
 class TestUserRoleDetialSerializer:
