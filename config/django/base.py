@@ -34,6 +34,7 @@ LOCAL_APPS = [
     "leasify.tenancy.apps.TenancyConfig",
     "leasify.payments.apps.PaymentsConfig",
     "leasify.apartments.apps.ApartmentsConfig",
+    "leasify.authentication.apps.AuthenticationConfig"
 ]
 
 THIRD_PARTY_APPS = [
