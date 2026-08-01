@@ -4,8 +4,7 @@ from typing import override, cast, Any
 from django.http import QueryDict
 from rest_framework import status
 from rest_framework.views import APIView
-from django.http.response import JsonResponse
-from django.views.decorators.csrf import ensure_csrf_cookie
+
 from rest_framework.response import Response
 from rest_framework.serializers import Serializer
 from rest_framework.exceptions import ValidationError
@@ -85,6 +84,3 @@ class HealthCheckView(BaseAPIView):
             status=status.HTTP_200_OK if healthy else status.HTTP_503_SERVICE_UNAVAILABLE,
         )
 
-@ensure_csrf_cookie
-def get_csrf(request):
-    return JsonResponse({"message": "csrf set"})
