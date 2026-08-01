@@ -17,15 +17,15 @@ Including another URLconf
 
 from django.contrib import admin
 from django.urls import path, include
-from common.views import HealthCheckView, get_csrf
+from leasify.common.views import HealthCheckView, get_csrf
 
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("csrf-token/", get_csrf, name="csrf"),
     path("health/", HealthCheckView.as_view(), name="health"),
-    path("users/", include("users.urls", namespace="users")),
-    path("billing/", include("billing.urls", namespace="billing")),
-    path("tenancy/", include("tenancy.urls", namespace="tenancy")),
-    path("payments/", include("payments.urls", namespace="payments")),
-    path("apartments/", include("apartments.urls", namespace="apartments")),
+    path("users/", include("leasify.users.urls", namespace="users")),
+    path("billing/", include("leasify.billing.urls", namespace="billing")),
+    path("tenancy/", include("leasify.tenancy.urls", namespace="tenancy")),
+    path("payments/", include("leasify.payments.urls", namespace="payments")),
+    path("apartments/", include("leasify.apartments.urls", namespace="apartments")),
 ]
