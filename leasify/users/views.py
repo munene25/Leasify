@@ -1,21 +1,19 @@
 from structlog import get_logger
 
-from django.contrib.auth import login, logout, update_session_auth_hash
+from django.contrib.auth import logout
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.request import Request
 from rest_framework import serializers
-from rest_framework.exceptions import NotFound
 from rest_framework import status
 
 from leasify.common.views import BaseAPIView
 from leasify.common.permissions import IsManager, check_perms
 from leasify.common.pagination import get_paginated_response
-from leasify.common.throttling import AnonSustained, EmailScopedThrottle
+from leasify.common.throttling import AnonSustained
 
-from leasify.users import selectors as sl, serializer as sc
+from leasify.users import selectors as sl, serializer as sc, services as sr
 from leasify.authentication.tokens import get_user_from_uidb64
-from leasify.users import services as sr
 
 logger = get_logger("users.views")
 
@@ -63,7 +61,7 @@ class AdminDetailUpdateDestroyView(BaseAPIView):
     def get(self, request, user_id):
         check_perms(request.user, "users.view_user")
         user = sl.user_get_for(user=request.user, user_id=user_id)
-        serialzer_class = sc.AdminUserDetailSerializer(instance=user)
+        serialzer_class = sc.UserDetailSerializer(instance=user)
         return Response(status=status.HTTP_200_OK, data=serialzer_class.data)
 
     def patch(self, request, user_id):
@@ -72,7 +70,7 @@ class AdminDetailUpdateDestroyView(BaseAPIView):
         user = sl.user_get_for(user=request.user, user_id=user_id)
         mod = sr.user_update(user, **incoming)
 
-        outgoing = sc.AdminUserDetailSerializer(instance=mod)
+        outgoing = sc.UserDetailSerializer(instance=mod)
         return Response(data=outgoing.data, status=status.HTTP_200_OK)
 
     def delete(self, request, user_id):
@@ -159,8 +157,8 @@ class AdminRoleListView(BaseAPIView):
 
     def get(self, request):
         groups = sl.groups_list()
-        serializer = sc.AdminRoleListSerializer(instance=groups)
-        return Response(status=status.HTTP_200_OK, data=serializer.data)
+        outgoing = [{"key": group.name, "display": group.name} for group in groups]
+        return Response(data=outgoing, status=status.HTTP_200_OK)
 
 
 class AdminRoleDetailView(BaseAPIView):
