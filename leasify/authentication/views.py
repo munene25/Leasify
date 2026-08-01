@@ -95,50 +95,6 @@ class PasswordChangeView(BaseAPIView):
         return Response(data={"message": "Password has been successfully updated"}, status=status.HTTP_200_OK)
 
 
-class RequestEmailVerificationView(BaseAPIView):
-    """
-    View sends an email to the requesting user to verify email.
-    The link points to the fronted with then posts to this view.
-    Done via post as it's an unsafe operation.
-    """
-
-    permission_classes = [IsAuthenticated]
-    throttle_classes = [EmailScopedThrottle]
-    throttle_scope = "email_verifications"
-
-    def post(self, request):
-        user = request.user
-        incomming = self.validate_serializer(data=request.data)
-
-        if not user.verified:
-            ts.send_token_email.delay(
-                user_id=user.pk,
-                url_path=incomming["email-verify"],
-                subject="Verify your email address.",
-                action_cta="Verify Email",
-            )
-            logger.info("email_verification_request_sent", target_id=user.pk)
-        return Response(
-            data={"message": "email verification link sent if user exists"}, status=status.HTTP_202_ACCEPTED
-        )
-
-
-class ConfirmEmailVerificationView(BaseAPIView):
-    """
-    Allows users to verify their emails
-    Skips verification if user is already verified.
-    """
-
-    permission_classes = [AllowAny]
-
-    def post(self, request, uidb64, token):
-        user = get_user_from_uidb64(uidb64)
-        if not user.verified:
-            token_validate(user=user, token=token)
-            sr.user_email_verify(user)
-        return Response(data={"message": "email has been verified successfully"}, status=status.HTTP_200_OK)
-
-
 class RequestPasswordResetView(BaseAPIView):
     """
     Forgot password route.
@@ -187,6 +143,51 @@ class ConfirmPasswordResetView(BaseAPIView):
             data={"message": "password has been reset successfully"},
             status=status.HTTP_200_OK,
         )
+
+
+class RequestEmailVerificationView(BaseAPIView):
+    """
+    View sends an email to the requesting user to verify email.
+    The link points to the fronted with then posts to this view.
+    Done via post as it's an unsafe operation.
+    """
+
+    permission_classes = [IsAuthenticated]
+    throttle_classes = [EmailScopedThrottle]
+    serializer_class = sc.RequestEmailVerificationSerializer
+    throttle_scope = "email_verifications"
+
+    def post(self, request):
+        user = request.user
+        incomming = self.validate_serializer(data=request.data)
+
+        if not user.verified:
+            ts.send_token_email.delay(
+                user_id=user.pk,
+                url_path=incomming["url_path"],
+                subject="Verify your email address.",
+                action_cta="Verify Email",
+            )
+            logger.info("email_verification_request_sent", target_id=user.pk)
+        return Response(
+            data={"message": "email verification link sent if user exists"}, status=status.HTTP_202_ACCEPTED
+        )
+
+
+class ConfirmEmailVerificationView(BaseAPIView):
+    """
+    Allows users to verify their emails
+    Skips verification if user is already verified.
+    """
+
+    permission_classes = [AllowAny]
+
+    def post(self, request, uidb64, token):
+        user = get_user_from_uidb64(uidb64)
+        if not user.verified:
+            token_validate(user=user, token=token)
+            sr.user_email_verify(user)
+        return Response(data={"message": "email has been verified successfully"}, status=status.HTTP_200_OK)
 
 
 

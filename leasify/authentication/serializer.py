@@ -19,14 +19,18 @@ class ConfirmPasswordResetSerializer(serializers.Serializer):
     """Does not require current password"""
 
     new_password = serializers.CharField()
-
-class RequestEmailVerificationSerializer(serializers.Serializer):
-    """Provide url path for the frontend path"""
-
     url_path = serializers.CharField()
+
 
 class PasswordChangeSerializer(serializers.Serializer):
     """Requires current password as well as new password"""
 
     password = serializers.CharField()
     new_password = serializers.CharField()
+    url_path = serializers.CharField()
+
+
+class RequestEmailVerificationSerializer(serializers.Serializer):
+    """Provide url path for the frontend path"""
+
+    url_path = serializers.CharField()
