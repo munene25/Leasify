@@ -11,6 +11,7 @@ from faker import Faker
 from django.conf import settings
 from django.core import management as django_management, cache
 from django.contrib.auth.models import Group
+
 from rest_framework.test import APIClient
 
 from leasify.tests.types import Factory
@@ -20,7 +21,6 @@ from leasify.users.models import User
 from leasify.users.selectors import get_group
 from leasify.users.services import user_account_create, user_set_role
 
-from leasify.apartments.services import apartment_create
 from leasify.apartments.models import Apartment
 from leasify.apartments.choices import Block, Wing
 
