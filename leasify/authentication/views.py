@@ -1,11 +1,13 @@
 from structlog import get_logger
 
 from django.contrib.auth import login, logout, update_session_auth_hash
+from django.http.response import JsonResponse
+from django.views.decorators.csrf import ensure_csrf_cookie
 
+from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.exceptions import NotFound
-from rest_framework import status
 
 from leasify.common.views import BaseAPIView
 from leasify.common.throttling import EmailScopedThrottle
@@ -185,3 +187,9 @@ class ConfirmPasswordResetView(BaseAPIView):
             data={"message": "password has been reset successfully"},
             status=status.HTTP_200_OK,
         )
+
+
+
+@ensure_csrf_cookie
+def get_csrf(request):
+    return JsonResponse({"message": "csrf set"})
