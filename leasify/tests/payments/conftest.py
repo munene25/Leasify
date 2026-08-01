@@ -6,6 +6,7 @@ from leasify.payments.models import Payment
 from leasify.payments.choices import PaymentStatus as PS, PaymentMode as PM
 from leasify.tests.types import Factory
 
+
 @pytest.fixture
 def stk_callback_fail():
     return {
@@ -64,6 +65,7 @@ def stk_initial_response():
         "CustomerMessage": "Success. Request accepted for processing",
     }
 
+
 @pytest.fixture(scope="session")
 def stk_result() -> typing.Callable[[bool, str], STKResult]:
     """Return an stk result dict for for either success or failed based on a checkout_id"""
@@ -79,55 +81,62 @@ def stk_result() -> typing.Callable[[bool, str], STKResult]:
 
     return stk_from_payment
 
+
 @pytest.fixture
 def pending_payment(payment_factory: Factory[Payment]) -> Payment:
     "Returns a pending payment"
     return payment_factory(statuses=[PS.PENDING])[0]
 
+
 @pytest.fixture
 def patch_mpesa_auth(monkeypatch: pytest.MonkeyPatch) -> typing.Generator[MagicMock]:
     mock = MagicMock(return_value="secret_token")
-    monkeypatch.setattr("payments.mpesa.auth.get_access_token", mock)
+    monkeypatch.setattr("leasify.payments.mpesa.auth.get_access_token", mock)
     yield mock
+
 
 @pytest.fixture
 def patch_payment_get_for(monkeypatch: pytest.MonkeyPatch, payment_factory: Factory[Payment]):
     billing = payment_factory(1, statuses=[PS.SUCCESS])[0]
     mock = MagicMock(return_value=billing)
-    monkeypatch.setattr("payments.selectors.payment_get_for", mock)
+    monkeypatch.setattr("leasify.payments.selectors.payment_get_for", mock)
     yield mock
+
 
 @pytest.fixture
 def patch_payment_mpesa_initiate(monkeypatch: pytest.MonkeyPatch) -> typing.Generator[MagicMock]:
     mock = MagicMock()
     mock.return_value.pk = 1
     mock.return_value.status = "pending"
-    monkeypatch.setattr("payments.services.payment_mpesa_initiate", mock)
+    monkeypatch.setattr("leasify.payments.services.payment_mpesa_initiate", mock)
     yield mock
+
 
 @pytest.fixture
 def patch_payment_mpesa_process_async(monkeypatch: pytest.MonkeyPatch) -> typing.Generator[MagicMock]:
     mock = MagicMock()
     mock.delay = MagicMock(return_value=None)
-    monkeypatch.setattr("payments.tasks.payment_mpesa_process_async", mock)
+    monkeypatch.setattr("leasify.payments.tasks.payment_mpesa_process_async", mock)
     yield mock
+
 
 @pytest.fixture
 def patch_payment_mpesa_query(monkeypatch: pytest.MonkeyPatch, stk_result) -> typing.Generator[MagicMock]:
     mock = MagicMock(return_value=stk_result(True, None))
-    monkeypatch.setattr("payments.services.payment_mpesa_query", mock)
+    monkeypatch.setattr("leasify.payments.services.payment_mpesa_query", mock)
     yield mock
+
 
 @pytest.fixture
 def patch_payment_alt_create(monkeypatch: pytest.MonkeyPatch, payment_factory: Factory[Payment]) -> typing.Generator[MagicMock]:
     payment = payment_factory(mode=PM.CASH)[0]
     mock = MagicMock(return_value=payment)
-    monkeypatch.setattr("payments.services.payment_alt_create", mock)
+    monkeypatch.setattr("leasify.payments.services.payment_alt_create", mock)
     yield mock
+
 
 @pytest.fixture
 def patch_payment_parse_callback_response(monkeypatch: pytest.MonkeyPatch, stk_result):
     mock = MagicMock(return_value=stk_result(True, None))
-    monkeypatch.setattr("payments.views.parse_callback_response", mock)
+    monkeypatch.setattr("leasify.payments.views.parse_callback_response", mock)
     yield mock
-    

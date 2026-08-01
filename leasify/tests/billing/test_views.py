@@ -119,6 +119,7 @@ class TestBillingDetailView:
         assert data["is_current"] == billing.is_current == True
         assert data["duration_months"] == billing.duration_months
 
+
 class TestBillingCancelView:
     def path(self, billing_id: int) -> str:
         return f"/billing/{billing_id}/cancel"
@@ -144,8 +145,8 @@ class TestBillingCancelView:
     ):
         """Test auth and authorization for cancel view across different client types"""
         billing = billing_factory(quantity=1)[0]
-        monkeypatch.setattr("billing.selectors.billing_get_for", MagicMock(return_value=billing))
-        monkeypatch.setattr("billing.services.billing_period_cancel", MagicMock(return_value=billing))
+        monkeypatch.setattr("leasify.billing.selectors.billing_get_for", MagicMock(return_value=billing))
+        monkeypatch.setattr("leasify.billing.services.billing_period_cancel", MagicMock(return_value=billing))
 
         client: IsClient = request.getfixturevalue(_client)
         response = client.post(self.path(billing.pk), data={})
@@ -161,13 +162,13 @@ class TestBillingCancelView:
 
     def test_service_and_selector_called_once(self, manager_client: IsClient, billing_factory: Factory[BP], monkeypatch: pytest.MonkeyPatch):
         """Verify selector is called with correct arguments for cancel view"""
-        
+
         billing = billing_factory(quantity=1)[0]
         mock_service = MagicMock(return_value=billing)
         mock_selector = MagicMock(return_value=billing)
-        monkeypatch.setattr("billing.selectors.billing_get_for", mock_selector)
-        monkeypatch.setattr("billing.services.billing_period_cancel", mock_service)
-        
+        monkeypatch.setattr("leasify.billing.selectors.billing_get_for", mock_selector)
+        monkeypatch.setattr("leasify.billing.services.billing_period_cancel", mock_service)
+
         manager_client.post(self.path(billing.pk), data={})
         mock_selector.assert_called_once_with(user=manager_client.user, billing_id=billing.pk)
         mock_service.assert_called_once_with(billing)
@@ -198,8 +199,8 @@ class TestBillingCompleteView:
     ):
         """Test auth and authorization for complete view across different client types"""
         billing = billing_factory(statuses=[BS.UNPAID])[0]
-        monkeypatch.setattr("billing.selectors.billing_get_for", MagicMock(return_value=billing))
-        monkeypatch.setattr("billing.services.billing_period_complete", MagicMock(return_value=billing))
+        monkeypatch.setattr("leasify.billing.selectors.billing_get_for", MagicMock(return_value=billing))
+        monkeypatch.setattr("leasify.billing.services.billing_period_complete", MagicMock(return_value=billing))
 
         client: IsClient = request.getfixturevalue(_client)
         response = client.post(self.path(billing.pk), data={})
@@ -219,9 +220,9 @@ class TestBillingCompleteView:
         billing = billing_factory(statuses=[BS.UNPAID])[0]
         mock_selector = MagicMock(return_value=billing)
         mock_service = MagicMock(return_value=billing)
-        monkeypatch.setattr("billing.selectors.billing_get_for", mock_selector)
-        monkeypatch.setattr("billing.services.billing_period_complete", mock_service)
-        
+        monkeypatch.setattr("leasify.billing.selectors.billing_get_for", mock_selector)
+        monkeypatch.setattr("leasify.billing.services.billing_period_complete", mock_service)
+
         manager_client.post(self.path(billing.pk), data={})
 
         mock_service.assert_called_once_with(billing)

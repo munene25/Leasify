@@ -32,7 +32,6 @@ from leasify.billing.choices import BillingStatus as BS
 from leasify.payments.models import Payment
 from leasify.payments.choices import PaymentMode as PM, PaymentStatus as PS
 
-
 logger = get_logger("tests.conftest")
 
 # ------------------------------------------------------ Globals  ------------------------------------------------------ #
@@ -165,8 +164,6 @@ def roles_list() -> list[Group]:
     return list(Group.objects.all())
 
 
-
-
 @pytest.fixture
 def superuser(user_factory: Factory[User]):
     u = user_factory()[0]
@@ -264,11 +261,11 @@ def superuser_client(superuser) -> APIClient:
 def apartment_factory(fake: Faker) -> Factory[Apartment]:
     """Returns a callable for generating apartments"""
     from decimal import Decimal
-    
+
     import random
 
     def create(
-        quantity: int = 1, 
+        quantity: int = 1,
         unit_number: int | None = None,
         rentable: bool = True,
         floor: int | None = None,
@@ -280,14 +277,22 @@ def apartment_factory(fake: Faker) -> Factory[Apartment]:
 
         for _ in range(quantity):
             apt = Apartment.objects.create(
-                block = block or random.choice(Block.values),
-                floor= floor or random.choice(range(1, 6)),
-                wing = wing or random.choice(Wing.values),
-                unit_number = unit_number or fake.building_number(),
-                rent = Decimal(rent or fake.numerify("1#000")),
-                rentable = rentable
+                block=block or random.choice(Block.values),
+                floor=floor or random.choice(range(1, 6)),
+                wing=wing or random.choice(Wing.values),
+                unit_number=unit_number or fake.building_number(),
+                rent=Decimal(rent or fake.numerify("1#000")),
+                rentable=rentable,
             )
-            logger.info("apartment_created", apartment=apt.name, floor=apt.floor, block=apt.block, unit_number=apt.unit_number, rent=apt.rent, rentable=apt.rentable)
+            logger.info(
+                "apartment_created",
+                apartment=apt.name,
+                floor=apt.floor,
+                block=apt.block,
+                unit_number=apt.unit_number,
+                rent=apt.rent,
+                rentable=apt.rentable,
+            )
             apartments.append(apt)
         return apartments
 
@@ -305,8 +310,8 @@ def tenancy_patch_validators(monkeypatch: pytest.MonkeyPatch) -> dict[str, Magic
     user_reservations = MagicMock()
     lease_period = MagicMock()
 
-    monkeypatch.setattr("tenancy.validators.validate_max_monthly_reservations", user_reservations)
-    monkeypatch.setattr("tenancy.validators.validate_lease_period", lease_period)
+    monkeypatch.setattr("leasify.tenancy.validators.validate_max_monthly_reservations", user_reservations)
+    monkeypatch.setattr("leasify.tenancy.validators.validate_lease_period", lease_period)
 
     return {"user_reservations": user_reservations, "lease_period": lease_period}
 
@@ -317,7 +322,7 @@ def tenancy_factory(apartment_factory: Factory[Apartment], user_factory: Factory
     from leasify.tenancy.choices import TenancyStatus
 
     def create(
-        quantity=1, 
+        quantity=1,
         users: list[User] | None = None,
         apartments: list[Apartment] | None = None,
         start_date: date | None = None,
@@ -388,11 +393,12 @@ def billing_factory(today: date, tenancy_factory: Factory[Tenancy]) -> Factory[B
 
     return create
 
+
 @pytest.fixture()
 def patch_billing_get_for(monkeypatch: pytest.MonkeyPatch, billing_factory: Factory[BP]):
     billing = billing_factory(1, statuses=[BS.UNPAID])[0]
     mock = MagicMock(return_value=billing)
-    monkeypatch.setattr("billing.selectors.billing_get_for", mock)
+    monkeypatch.setattr("leasify.billing.selectors.billing_get_for", mock)
     yield mock
 
 

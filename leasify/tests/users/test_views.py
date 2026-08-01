@@ -474,8 +474,6 @@ class TestEmailUpdateView:
             assert user.last_email_change == self.before
 
 
-
-
 class TestUserUnsubscribeView:
     path = "/users/unsubscribe/"
 
@@ -516,7 +514,7 @@ class TestAdminRoleListView:
         assert {"key": role, "display": role}
 
     def test_response_with_no_available_groups(self, manager_client: IsClient, monkeypatch):
-        monkeypatch.setattr("users.selectors.groups_list", lambda: [])
+        monkeypatch.setattr("leasify.users.selectors.groups_list", lambda: [])
         response1 = manager_client.get(self.path, {})
         data1 = parse_message(response1)
         assert len(data1["roles"]) == 0

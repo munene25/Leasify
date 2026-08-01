@@ -8,6 +8,7 @@ from leasify.tests.helpers import parse_paginated_response, parse_message, parse
 from leasify.payments.models import Payment
 from leasify.payments.choices import PaymentMode as PM, PaymentStatus as PS
 
+
 class TestPaymentListView:
 
     path = "/payments/"
@@ -50,7 +51,7 @@ class TestPaymentListView:
     ):
         """Patch selector and check args"""
         mock = MagicMock(return_value=QuerySet(Payment))
-        monkeypatch.setattr("payments.selectors.payment_list_for", mock)
+        monkeypatch.setattr("leasify.payments.selectors.payment_list_for", mock)
         res = manager_client.get(self.path, filters)
         parse_paginated_response(res, 0)
         mock.assert_called_once_with(user=manager_client.user, filters=filters)
@@ -158,24 +159,25 @@ class TestPaymentInitiateMpesaView:
         """Verify billing selector is called with correct args"""
 
         from django.urls import reverse
-        
+
         idemp = "test-idemp-key"
-        response = manager_client.post(self.path, {"billing_id": 1, "phone_number": "254712345678"}, HTTP_IDEMPOTENCY_KEY=idemp)
+        response = manager_client.post(
+            self.path, {"billing_id": 1, "phone_number": "254712345678"}, HTTP_IDEMPOTENCY_KEY=idemp
+        )
         patch_billing_get_for.assert_called_once_with(
             user=manager_client.user,
             billing_id=1,
         )
         # Extract host and build callback url
         scheme = "http://"
-        host = response.wsgi_request.get_host() # type: ignore
+        host = response.wsgi_request.get_host()  # type: ignore
         endpoint = reverse("payments:mpesa_callback")
 
-        
         patch_payment_mpesa_initiate.assert_called_once_with(
             billing=patch_billing_get_for.return_value,
             phone_number="254712345678",
             idempotency_key=idemp,
-            callback_url = scheme + host + endpoint
+            callback_url=scheme + host + endpoint,
         )
 
     def test_idempotency_key_optional(
@@ -329,7 +331,7 @@ class TestPaymentMpesaCallbackView:
         client: IsClient,
         stk_callback_fail: dict,
         stk_callback_sucess: dict,
-        patch_payment_mpesa_process_async: MagicMock
+        patch_payment_mpesa_process_async: MagicMock,
     ):
         """Unauthenticated clients should be able to call api as well as non csrf clients"""
         response1 = csrf_client.post(self.path, stk_callback_fail, format="json")
@@ -343,18 +345,17 @@ class TestPaymentMpesaCallbackView:
         client: IsClient,
         stk_callback_fail: dict,
         patch_payment_parse_callback_response: MagicMock,
-        patch_payment_mpesa_process_async: MagicMock
+        patch_payment_mpesa_process_async: MagicMock,
     ):
         """Processing should be delayed and response should be parsed"""
         response = client.post(self.path, stk_callback_fail, format="json")
         parse_message(response, status.HTTP_200_OK)
-       
-        patch_payment_parse_callback_response.assert_called_once_with(
-            stk_callback_fail
-        )
+
+        patch_payment_parse_callback_response.assert_called_once_with(stk_callback_fail)
         patch_payment_mpesa_process_async.delay.assert_called_once_with(
             patch_payment_parse_callback_response.return_value
         )
+
 
 class TestPaymentAltCreateView:
 
@@ -387,7 +388,7 @@ class TestPaymentAltCreateView:
     def test_calls(self, manager_client: IsClient, patch_billing_get_for: MagicMock, patch_payment_alt_create: MagicMock):
         """Verify selectors and services are called with correct args"""
         manager_client.post(self.path, {"billing_id": 1, "mode": PM.CASH, "status": PS.SUCCESS})
-        
+
         patch_billing_get_for.assert_called_once_with(
             user=manager_client.user,
             billing_id=1,

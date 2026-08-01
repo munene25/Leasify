@@ -18,12 +18,8 @@ if TYPE_CHECKING:
 
 @pytest.fixture
 def tenancy_payload(user: "User", apartment: "Apartment", today: "date") -> "TenancyPayload":
-    return {
-        "user": user,
-        "apartment": apartment,
-        "start_date": today,
-        "duration_months": 1
-    }
+    return {"user": user, "apartment": apartment, "start_date": today, "duration_months": 1}
+
 
 @pytest.fixture
 def tenant_client(active_tenant: "Tenancy") -> APIClient:
@@ -31,6 +27,7 @@ def tenant_client(active_tenant: "Tenancy") -> APIClient:
     client.force_authenticate(user=active_tenant.user)
     setattr(client, "user", active_tenant.user)
     return client
+
 
 @pytest.fixture
 def reserved_tenant(tenancy_factory, billing_factory: "Factory[BP]") -> "Tenancy":
@@ -43,13 +40,17 @@ def reserved_tenant(tenancy_factory, billing_factory: "Factory[BP]") -> "Tenancy
 @pytest.fixture
 def active_tenant(tenancy_factory: "Factory[Tenancy]", billing_factory: "Factory[BP]") -> "Tenancy":
     t = tenancy_factory(status=TS.ACTIVE)[0]
-    billing_factory(tenancy=t, statuses=[BS.PAID],)
+    billing_factory(
+        tenancy=t,
+        statuses=[BS.PAID],
+    )
     return t
-    
+
+
 @pytest.fixture
 def mock_billing_create(monkeypatch) -> MagicMock:
     """Mock billing period create"""
 
     mock = MagicMock()
-    monkeypatch.setattr("tenancy.services.billing_period_create", mock)
+    monkeypatch.setattr("leasify.tenancy.services.billing_period_create", mock)
     return mock

@@ -87,7 +87,7 @@ class TestAccountCreation:
         # Cache raises an exception
         user_create_payload["notify"] = True
         mock = MagicMock()
-        monkeypatch.setattr("users.tasks.send_welcome_email.delay", mock)
+        monkeypatch.setattr("leasify.users.tasks.send_welcome_email.delay", mock)
         mock.side_effect = Exception("Cache Down")
 
         with pytest.raises(Exception, match="Cache Down"):

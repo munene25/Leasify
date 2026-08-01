@@ -71,7 +71,7 @@ class TestApartmentListCreateView:
     def test_create_service_called_correctly(self, manager_client: IsClient, monkeypatch: pytest.MonkeyPatch):
         """Verify service is called with correct args including rentable default."""
         mock = MagicMock(return_value=Apartment(pk=1))
-        monkeypatch.setattr("apartments.services.apartment_create", mock)
+        monkeypatch.setattr("leasify.apartments.services.apartment_create", mock)
 
         data = {k: v for k, v in self.data.items() if k != "rentable"}
         manager_client.post(self.path, data)
@@ -91,10 +91,12 @@ class TestApartmentListCreateView:
             {"order_by": "-rent"},
         ],
     )
-    def test_list_selector_called_with_filters(self, filters: dict, manager_client: IsClient, monkeypatch: pytest.MonkeyPatch):
+    def test_list_selector_called_with_filters(
+        self, filters: dict, manager_client: IsClient, monkeypatch: pytest.MonkeyPatch
+    ):
         """Verify each filter is passed through to selector."""
         mock = MagicMock(return_value=Apartment.objects.none())
-        monkeypatch.setattr("apartments.selectors.apartment_list_for", mock)
+        monkeypatch.setattr("leasify.apartments.selectors.apartment_list_for", mock)
         manager_client.get(self.path, filters)
         mock.assert_called_once_with(user=manager_client.user, filters=filters)
 
@@ -183,7 +185,7 @@ class TestApartmentDetailUpdateDeleteView:
     def test_update_service_called_correctly(self, manager_client: IsClient, apartment: Apartment, monkeypatch: pytest.MonkeyPatch):
         """Verify update service is called with correct args."""
         mock = MagicMock(return_value=apartment)
-        monkeypatch.setattr("apartments.services.apartment_update", mock)
+        monkeypatch.setattr("leasify.apartments.services.apartment_update", mock)
         manager_client.patch(self.path(apartment.pk), self.update_data)
         mock.assert_called_once_with(apartment=apartment, **self.update_data)
 
@@ -218,7 +220,7 @@ class TestApartmentDetailUpdateDeleteView:
     def test_delete_service_called_correctly(self, manager_client: IsClient, apartment: Apartment, monkeypatch: pytest.MonkeyPatch):
         """Verify delete service is called with correct apartment."""
         mock = MagicMock()
-        monkeypatch.setattr("apartments.services.apartment_delete", mock)
+        monkeypatch.setattr("leasify.apartments.services.apartment_delete", mock)
         manager_client.delete(self.path(apartment.pk))
         mock.assert_called_once_with(apartment)
 

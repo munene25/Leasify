@@ -10,7 +10,5 @@ from django.db.models import QuerySet
 @pytest.fixture()
 def patch_billing_list_for(monkeypatch: MonkeyPatch):
     mock = MagicMock(return_value=QuerySet(BillingPeriod))
-    monkeypatch.setattr("billing.selectors.billing_list_for", mock)
+    monkeypatch.setattr("leasify.billing.selectors.billing_list_for", mock)
     yield mock
-    
-  

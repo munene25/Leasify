@@ -20,5 +20,5 @@ def apartment_data() -> dict[str, Any]:
 @pytest.fixture
 def full_clean_patch(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
     full_clean = MagicMock()
-    monkeypatch.setattr("apartments.services.Apartment.full_clean", full_clean)
+    monkeypatch.setattr("leasify.apartments.services.Apartment.full_clean", full_clean)
     return full_clean

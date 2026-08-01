@@ -41,9 +41,11 @@ class TestTenancyListCreateView:
     ):
         """Test both list and create views. Need to patch to speed up."""
         initialized: IsClient = request.getfixturevalue(_client)
-        monkeypatch.setattr("tenancy.views.TenancyListCreateView.validate_serializer", lambda *args, **kwargs: {})
-        monkeypatch.setattr("tenancy.services.tenancy_create", lambda **kwargs: Tenancy())
-        monkeypatch.setattr("tenancy.serializer.TenancyDetailSerializer", mock_serializer)
+        monkeypatch.setattr(
+            "leasify.tenancy.views.TenancyListCreateView.validate_serializer", lambda *args, **kwargs: {}
+        )
+        monkeypatch.setattr("leasify.tenancy.services.tenancy_create", lambda **kwargs: Tenancy())
+        monkeypatch.setattr("leasify.tenancy.serializer.TenancyDetailSerializer", mock_serializer)
         parse_message(initialized.get(self.path), get)
         parse_message(initialized.post(self.path, self.data), post)
 
@@ -118,7 +120,7 @@ class TestTenancyListCreateView:
         Patch list_for and test that filters are called with correct values.
         """
         mock = MagicMock()
-        monkeypatch.setattr("tenancy.selectors.tenancy_list_for", mock)
+        monkeypatch.setattr("leasify.tenancy.selectors.tenancy_list_for", mock)
 
         manager_client.get(self.path + f"?{query_param}")
         mock.assert_called_once_with(user=manager_user, filters=expected)
@@ -146,8 +148,8 @@ class TestTenancyListCreateView:
     ):
         """Test that tenancy_create is called with correct values"""
         mock = MagicMock(return_value=Tenancy())
-        monkeypatch.setattr("tenancy.services.tenancy_create", mock)
-        monkeypatch.setattr("tenancy.serializer.TenancyDetailSerializer", mock_serializer)
+        monkeypatch.setattr("leasify.tenancy.services.tenancy_create", mock)
+        monkeypatch.setattr("leasify.tenancy.serializer.TenancyDetailSerializer", mock_serializer)
         user_client.post(self.path, data=self.data)
         mock.assert_called_once_with(
             user=user,
@@ -225,9 +227,9 @@ class TestTenancyTerminateView:
 
         client: IsClient = request.getfixturevalue(_client)
         t = Tenancy(status=TS.ACTIVE, user=User())
-        monkeypatch.setattr("tenancy.services.tenancy_terminate", lambda *args, **kwargs: t)
-        monkeypatch.setattr("tenancy.selectors.tenancy_get_for", lambda *args, **kwargs: t)
-        monkeypatch.setattr("tenancy.serializer.TenancyDetailSerializer", mock_serializer)
+        monkeypatch.setattr("leasify.tenancy.services.tenancy_terminate", lambda *args, **kwargs: t)
+        monkeypatch.setattr("leasify.tenancy.selectors.tenancy_get_for", lambda *args, **kwargs: t)
+        monkeypatch.setattr("leasify.tenancy.serializer.TenancyDetailSerializer", mock_serializer)
 
         parse_message(client.post(self.path(1), {"termination_reason": TR.VOLUNTARY}), post)
     
@@ -238,7 +240,7 @@ class TestTenancyTerminateView:
         t = tenancy_factory()[0]
 
         # patch to avoid service calls
-        monkeypatch.setattr("tenancy.services.tenancy_terminate", lambda *args, **kwargs: t)
+        monkeypatch.setattr("leasify.tenancy.services.tenancy_terminate", lambda *args, **kwargs: t)
 
         # check that the manager can see it
         parse_message(manager_client.post(self.path(t.id), {"termination_reason": TR.NONPAYMENT}), 200)
@@ -272,7 +274,7 @@ class TestTenancyTerminateView:
         tr = {"termination_reason": TR.NONPAYMENT, "termination_date": "2020-12-31"}
 
         mock = MagicMock(return_value=active_tenant)
-        monkeypatch.setattr("tenancy.services.tenancy_terminate", mock)
+        monkeypatch.setattr("leasify.tenancy.services.tenancy_terminate", mock)
         parse_message(manager_client.post(self.path(active_tenant.pk), tr), 200)
         mock.assert_called_once_with(
             tenancy=active_tenant,
@@ -302,7 +304,7 @@ class TestTenancyLeaseExtensionView:
         billing.name = "billng"
         billing.pk = 1
         service = MagicMock(return_value=(None, billing))
-        monkeypatch.setattr("tenancy.services.tenancy_lease_extend", service)
+        monkeypatch.setattr("leasify.tenancy.services.tenancy_lease_extend", service)
 
         url = self.path(active_tenant.pk)
         client = request.getfixturevalue(_client)
@@ -315,7 +317,7 @@ class TestTenancyLeaseExtensionView:
         billing.name = "billng"
         billing.pk = 1
         service = MagicMock(return_value=(None, billing))
-        monkeypatch.setattr("tenancy.services.tenancy_lease_extend", service)
+        monkeypatch.setattr("leasify.tenancy.services.tenancy_lease_extend", service)
 
         url = self.path(1)
         manager_client.post(url, data={"duration_months": 2})
@@ -340,9 +342,9 @@ class TestTenancyLeaseExtensionView:
         """Mock the tenancy_get_for and assert called with correct user"""
         url = self.path(1)
         selector = MagicMock(return_value=Tenancy())
-        monkeypatch.setattr("tenancy.selectors.tenancy_get_for", selector)
+        monkeypatch.setattr("leasify.tenancy.selectors.tenancy_get_for", selector)
         service = MagicMock(return_value=(None, "billing"))
-        monkeypatch.setattr("tenancy.services.tenancy_lease_extend", service)
+        monkeypatch.setattr("leasify.tenancy.services.tenancy_lease_extend", service)
 
         # Assert manager client can access all tenancies
         manager_client.post(url, {})
