@@ -82,7 +82,7 @@ def user_get_by_email(user_email: str) -> User:
     return BASE_QS.get(email=email)
 
 
-def groups_list():
+def groups_list() -> QuerySet[Group]:
     """
     Exists as a User selector as it's highly coupled with the user model
     """
