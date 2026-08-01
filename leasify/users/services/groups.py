@@ -1,6 +1,7 @@
 from structlog import get_logger
-from django.db import transaction
+
 from django.contrib.auth.models import Group
+
 from leasify.users.models import User
 from leasify.common.exceptions import RoleAssignmentError
 
