@@ -36,24 +36,8 @@ def user_authenticate(*, email: str, password: str) -> AbstractUser:
     return user
 
 
-@transaction.atomic
-def user_change_password(*, user: User, new_password: str, password: str | None = None, is_ressetting: bool = False) -> User:
-    """
-    This service is used in both password recovery and password changes
-    Therefore in password recovery flows, the current password is unknown
-    Raw password is also required to check password validity
-
-
-    :param user: User model instance
-    :type user: User
-    :param new_password: The password to be set if operation is successfull
-    :type new_password: str
-    :param password: The current raw password of the user. Can be none in password recovery flows
-    :type password: str | None
-
-    :return: Modified User object
-    :rtype: User
-    """
+def user_change_password(*, user: User, new_password: str, password: str | None = None, url_path: str, is_ressetting: bool = False) -> User:
+    """Password change for user via reset or with old password"""
     # ! Password changes automatically invalidate issued cookies
     # ! CRITICAL BUG Found
     # Calling check_password does not raise an error
@@ -71,7 +55,7 @@ def user_change_password(*, user: User, new_password: str, password: str | None 
     user.save(update_fields=["password"])
     status = {True: "user_password_reset", False: "user_password_changed"}[is_ressetting]
     logger.warning(status, target_id=user.pk)
-    transaction.on_commit(lambda: notify_password_change.delay(user.pk))
+    notify_password_change.delay(user.pk, url_path)
     return user
 
 
@@ -81,10 +65,7 @@ def user_email_verify(user: User) -> User:
     Could add more features in the future like a confirmaiton email.
 
     :param user: User object
-    :type user: User
-
     :return: A user that is verified
-    :rtype: User
     """
     user.verified = True
     user.save(update_fields=["verified"])
