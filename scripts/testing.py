@@ -6,14 +6,18 @@ from django.utils import timezone as tz
 from django.contrib.auth.models import Permission
 from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
-from apartments import models as a_models, selectors as a_selectors, services as a_services
-from tenancy import models as t_models, selectors as t_selectors, services as t_services
-from tenancy.choices import TenancyStatus as TS, TerminationReason as TR
-from billing.choices import BillingStatus as BS
-from billing.models import BillingPeriod as BP
-from payments import models as p_models, selectors as p_selectors, services as p_services
-from users import services as u_services, models as u_models, selectors as u_selectors
-from payments.tasks import send_payment_notification
+from leasify.apartments import services as a_services
+from leasify.apartments import models as a_models, selectors as a_selectors
+from leasify.payments import models as p_models, selectors as p_selectors
+from leasify.tenancy import models as t_models, selectors as t_selectors
+from leasify.users import models as u_models, selectors as u_selectors
+from leasify.tenancy import services as t_services
+from leasify.tenancy.choices import TenancyStatus as TS, TerminationReason as TR
+from leasify.billing.choices import BillingStatus as BS
+from leasify.billing.models import BillingPeriod as BP
+from leasify.payments import services as p_services
+from leasify.users import services as u_services
+from leasify.payments.tasks import send_payment_notification
 # from tenancy.tasks import notify_reserved_on_expiry
 
 def run():

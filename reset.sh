@@ -27,10 +27,10 @@ find . -type d -name "__pycache__" -exec rm -rf {} +
 
 if [ "$SKIP_MIGRATIONS" = false ]; then
     for app in "${APPS[@]}"; do
-        if [ -d "$app/migrations" ]; then
+        if [ -d "leasify/$app/migrations" ]; then
             echo "Cleaning migrations in $app..."
-            find "$app/migrations" -type f -name "*.py" ! -name "__init__.py" -delete
-            find "$app/migrations" -type f -name "*.pyc" -delete
+            find "leasify/$app/migrations" -type f -name "*.py" ! -name "__init__.py" -delete
+            find "leasify/$app/migrations" -type f -name "*.pyc" -delete
         else
             echo "⚠️ No migrations folder found in $app."
         fi
