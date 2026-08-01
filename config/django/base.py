@@ -10,9 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
-import os
-
-from config.env import env, BASE_DIR
+from config.env import env, BASE_DIR, APP_DIRS
 from config.settings.logging import DICT_LOG, configure_logging
 
 env.read_env(BASE_DIR(".env"))
@@ -31,11 +29,11 @@ COMPANY_ADDRESS = "Embu, Kenya"
 
 
 LOCAL_APPS = [
-    "users",
-    "payments",
-    "apartments",
-    "tenancy",
-    "billing",
+    "leasify.users.apps.UsersConfig",
+    "leasify.billing.apps.BillingConfig",
+    "leasify.tenancy.apps.TenancyConfig",
+    "leasify.payments.apps.PaymentsConfig",
+    "leasify.apartments.apps.ApartmentsConfig",
 ]
 
 THIRD_PARTY_APPS = [
@@ -76,7 +74,7 @@ ROOT_URLCONF = "config.settings.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [BASE_DIR("templates")],
+        "DIRS": [BASE_DIR("leasify/templates")],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
