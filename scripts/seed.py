@@ -1,15 +1,18 @@
 import random
 from decimal import Decimal
+
 from faker import Faker
 from django.utils import timezone
+from django.conf import settings
 from django.core.management import call_command
-from users.models import User
-from apartments.models import Apartment
-from tenancy.services import tenancy_create
-from apartments.services import apartment_create
-from payments.services import payment_alt_create
-from users.services import user_account_create
-from payments.choices import PaymentMode
+
+from leasify.users.models import User
+from leasify.apartments.models import Apartment
+from leasify.tenancy.services import tenancy_create
+from leasify.apartments.services import apartment_create
+from leasify.payments.services import payment_alt_create
+from leasify.users.services import user_account_create
+from leasify.payments.choices import PaymentMode
 
 ITERATIONS = list(range(20))
 
@@ -17,21 +20,24 @@ f = Faker("en_KE")
 
 
 def dump_data(file_name: str, *app_labels: str):
-    with open(file_name, "w") as f:
+    """Helper to create fixtures after seeding"""
+    with open(settings.APP_DIRS("fixtures/" + file_name), "w") as f:
         call_command("dumpdata", *app_labels, stdout=f, indent=4)
 
+def load_data(file_name: str):
+    """Helper for loading fixtures from path"""
+    call_command("loaddata",  settings.APP_DIRS(file_name))
 
 def run():
     # ============================================= Roles =============================================
     try:
-        call_command("loaddata", "fixtures/roles.json")
+        load_data("roles.json")
     except Exception:
-        call_command("setup_roles", )
-        dump_data("fixtures/roles.json", "auth.Permission", "auth.Group")
+        call_command("setup_roles")
 
     # ============================================= Users =============================================
     try:
-        call_command("loaddata", "fixtures/test_users.json")
+        load_data("test_users.json")
         users = User.objects.all()
     except Exception:
         users = [
@@ -52,16 +58,17 @@ def run():
             first_name="Edwin",
             last_name="Munene",
             phone_number="+254-791-573-104",
+            notify=False
         )  # type: ignore
-        dump_data("fixtures/test_users.json", "users")
+        dump_data("test_users.json", "users")
 
     # ============================================= Apartments =============================================
     try:
-        call_command("loaddata", "fixtures/test_apartments.json")
+        load_data("test_apartments.json")
         apartments = Apartment.objects.all()
     except Exception:
         NO_OF_APTS = 30
-        from apartments.choices import Wing, Block
+        from leasify.apartments.choices import Wing, Block
         apartments = [
             apartment_create(
                 block=random.choice(Block.values),
@@ -72,7 +79,7 @@ def run():
             )
             for _ in range(NO_OF_APTS)
         ]
-        dump_data("fixtures/test_apartments.json", "apartments")
+        dump_data("test_apartments.json", "apartments")
 
     # ============================================= Tenancies =============================================
     tenancies = [
@@ -86,11 +93,11 @@ def run():
     ]
 
     # ============================================= Payments =============================================
-    from billing.services import billing_period_complete
+    from leasify.billing.services import billing_period_complete
 
     for t in tenancies:
         billing = t.billings.latest("pk")
-        payment = payment_alt_create(
+        payment_alt_create(
             billing=billing,
             mode=PaymentMode.MPESA,
             recorded_by=t.user,
