@@ -35,7 +35,7 @@ def user_authenticate(*, email: str, password: str) -> AbstractUser:
     return user
 
 
-def user_change_password(*, user: User, new_password: str, password: str | None = None, url_path: str, is_ressetting: bool = False) -> User:
+def user_change_password(*, user: User, new_password: str, url_path: str, password: str | None = None, is_ressetting: bool = False) -> User:
     """Password change for user via reset or with old password"""
     # ! Password changes automatically invalidate issued cookies
     # ! CRITICAL BUG Found
