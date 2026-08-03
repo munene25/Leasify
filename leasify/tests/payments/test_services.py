@@ -1,11 +1,15 @@
-import pytest
 import requests
 from datetime import date
 from functools import partial
 from unittest.mock import MagicMock
+
+import pytest
+
 from structlog.types import EventDict
+
 from rest_framework.exceptions import ValidationError, NotFound
-from common.exceptions import MpesaAPIError
+
+from leasify.common.exceptions import MpesaAPIError
 from leasify.tests.types import Factory
 from leasify.users.models import User
 from leasify.payments.models import Payment
@@ -134,7 +138,7 @@ class TestPaymentMpesaInitiate:
         6. End transaction
         """
         monkeypatch.setattr(
-            "payments.services.initiate_stk_push", lambda *args, **kwargs: {"checkout_id": "unique_checkout"}
+            "leasify.payments.services.initiate_stk_push", lambda *args, **kwargs: {"checkout_id": "unique_checkout"}
         )
         billing = billing_factory(statuses=[BS.UNPAID])[0]
         with django_assert_num_queries(6):
@@ -217,16 +221,6 @@ class TestPaymentMpesaProcess:
         payment_mpesa_process(stk_result_success)
         mock.assert_called_once()
 
-    @pytest.mark.skip
-    def test_sending_notification_called(self, manager_user: User, monkeypatch: pytest.MonkeyPatch, pending_payment: Payment, stk_result):
-        """Notification task should be called with the correct parameters"""
-        patch_notify = MagicMock()
-        monkeypatch.setattr("leasify.payments.tasks.send_payment_notification.delay", patch_notify)
-
-        stk_result_success = stk_result(True, pending_payment.checkout_id)
-
-        payment_mpesa_process(stk_result_success)
-        patch_notify.assert_called_once_with(pending_payment.pk, [manager_user.email])
 
     def test_no_queries(self, pending_payment: Payment, stk_result, django_assert_num_queries):
         """
@@ -257,9 +251,7 @@ class TestPaymentMpesaQuery:
     def test_query_count(self, pending_payment: Payment, monkeypatch: pytest.MonkeyPatch, django_assert_num_queries):
         """Based on the type of payment, Either calls made in payment processing or none"""
         monkeypatch.setattr("leasify.payments.tasks.payment_mpesa_process_async.delay", lambda *args: None)
-        monkeypatch.setattr(
-            "payments.services.query_payment_status", lambda **kwargs: {"result_desc": "Payment completed"}
-        )
+        monkeypatch.setattr("leasify.payments.services.query_payment_status", lambda **kwargs: {"result_desc": "Payment completed"})
         with django_assert_num_queries(0):
             payment_mpesa_query(pending_payment)
 
@@ -292,15 +284,3 @@ class TestPaymentMpesaQuery:
         assert log["event"] == "payment_query_failed"
         assert log["status_code"] == 409
         assert log["response"] == message
-
-    @pytest.mark.skip
-    def test_payment_mpesa_process_async_called(self, monkeypatch: pytest.MonkeyPatch, pending_payment: Payment, stk_result):
-        """Should return a payment, after calling process"""
-        stk = stk_result(True, pending_payment.checkout_id)
-        mock_query = MagicMock(return_value=stk)
-        mock_payment_process = MagicMock()
-        monkeypatch.setattr("leasify.payments.services.query_payment_status", mock_query)
-        monkeypatch.setattr("leasify.payments.tasks.payment_mpesa_process_async.delay", mock_payment_process)
-
-        payment_mpesa_query(pending_payment)
-        mock_payment_process.assert_called_once_with(stk)
