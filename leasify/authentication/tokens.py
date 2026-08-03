@@ -11,21 +11,21 @@ from leasify.users.selectors import user_get
 
 BASE_URL: str = getattr(settings, "FRONTEND_URL")
 
-
-def build_user_url(*, user: User, path: str, with_token: bool = True) -> str:
-    """
-    Constructs a URL pointing to the frontend for user-specific actions.
-    Token can be ommited for non sensitive tasks.
-    """
-    segments = [BASE_URL, path, uidb64_generate(user)]
-    if with_token:
-        segments.append(token_generate(user))
+def build_url(*, base_path, with_uidb64, with_token, user: User | None = None) -> str:
+    """Construct URLS pointing to the frontend"""
+    segments = [BASE_URL, base_path]
+    if with_token or with_uidb64:
+        if not user:
+            raise ValueError("User not Provided")
+        if with_uidb64:
+            segments.append(uidb64_generate(user))
+        if with_token:
+            segments.append(token_generate(user))
 
     return "/".join(segments)
 
-
 def token_generate(user: User) -> str:
-    """create a one time use token for a user"""
+    """Create a one time use token for a user"""
     return default_token_generator.make_token(user)
 
 

@@ -28,7 +28,7 @@ def month_start_tasks() -> dict[str, list]:
 def send_expiry_notification(reserved: list[int] = []) -> list[int]:
     from datetime import timedelta
     from leasify.common.emails import send_template_email
-    from leasify.authentication.tokens import build_user_url
+    from leasify.authentication.tokens import build_url
 
     # Get reserved whose expiry is tomorrow
     tommorow = today() + timedelta(1)
@@ -41,7 +41,7 @@ def send_expiry_notification(reserved: list[int] = []) -> list[int]:
             "tenant_name": t.user.full_name,
             "apartment_name": t.apartment.name,
             "max_reservations": MAX_RESERVATIONS_PER_USER,
-            "payment_url": build_user_url(user=t.user, path="payments/initiate", with_token=False),
+            "payment_url": build_url(base_path="payments/initiate", with_token=False, with_uidb64=False),
         }
         send_template_email(
             subject=subject, 
