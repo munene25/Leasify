@@ -23,7 +23,7 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("health/", HealthCheckView.as_view(), name="health"),
     path("users/", include("leasify.users.urls", namespace="users")),
-    path("auth/", include("leasify.authentication.urls", namespace="auth")),
+    path("auth/", include("leasify.authentication.urls", namespace="authentication")),
     path("billing/", include("leasify.billing.urls", namespace="billing")),
     path("tenancy/", include("leasify.tenancy.urls", namespace="tenancy")),
     path("payments/", include("leasify.payments.urls", namespace="payments")),
