@@ -31,9 +31,7 @@ class BaseAPIView(APIView):
             user_id=request.user.pk if request.user.is_authenticated else None,
         )
 
-    def _run_validation(
-        self, serializer_cls: type[Serializer], *, data: dict | QueryDict, partial: bool
-    ) -> dict[str, Any]:
+    def _run_validation(self, serializer_cls: type[Serializer], *, data: dict | QueryDict, partial: bool) -> dict[str, Any]:
         """Run DRF serializer validation and return validated data."""
 
         serializer = serializer_cls(data=data, partial=partial)
@@ -57,16 +55,6 @@ class BaseAPIView(APIView):
         if not validated:
             raise ValidationError("Empty values not allowed")
         return validated
-
-    def pop_latest_cache_entry(self, request) -> None:
-        """A utility function to remove the latest throttle entry from a cache object"""
-
-        from django.core.cache import cache
-
-        cache_key: str = getattr(request, "throttle_cache_key")
-        history = cache.get(cache_key)
-        history.pop()
-        cache.set(cache_key, history, timeout=None)
 
 
 class HealthCheckView(BaseAPIView):
