@@ -11,6 +11,8 @@ from django.core.mail import EmailMessage
 from django.contrib.sessions.backends.db import SessionStore
 from rest_framework import status
 
+from leasify.authentication.tokens import token_generate, uidb64_generate
+
 from leasify.users.models import User
 from leasify.tests.helpers import parse_error, parse_message, check_links_in_mail
 from leasify.tests.types import IsClient
@@ -187,7 +189,7 @@ class TestRequestPasswordResetView:
         parse_message(res1, status.HTTP_202_ACCEPTED)
         mail = mailoutbox[0]
         assert mail.to == [user.email]
-        check_links_in_mail(user, mail, "path/to/action")
+        check_links_in_mail(user=user, mail=mail, path="path/to/action", with_token=True, with_uidb64=True)
 
 
     def test_throttles_based_on_email(self, client: IsClient, user_client: IsClient, override_throttles, cache_clear):
@@ -224,8 +226,6 @@ class TestConfirmPasswordResetView:
     def test_password_reset(self, user_client: IsClient, client):
         """Unauthenticated clients should be allowed to post"""
 
-        from leasify.authentication.tokens import token_generate, uidb64_generate
-
         user = user_client.user
         # We need to refetch the user with updated logins
         user.refresh_from_db() # type: ignore
@@ -242,6 +242,16 @@ class TestConfirmPasswordResetView:
         res3 = user_client.get("/users/me")
         parse_error(res3, status.HTTP_401_UNAUTHORIZED)
 
+    def test_mail_links(self, user_client: IsClient, mailoutbox: list[EmailMessage]):
+        user = user_client.user
+        user.refresh_from_db() # type: ignore
+        
+        path = self.path(uidb64_generate(user), token_generate(user))
+        user_client.post(path, self.payload)
+        assert len(mailoutbox) == 1
+        user.refresh_from_db() # type: ignore
+        
+        check_links_in_mail(mail=mailoutbox[0], path=self.payload["url_path"], with_uidb64=True, with_token=True, user=user)
 
 class TestRequestEmailVerificationView:
     path = reverse("authentication:send_email_verification")

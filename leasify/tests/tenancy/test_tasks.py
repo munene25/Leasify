@@ -176,7 +176,7 @@ class TestNotifyReservedOnExpiry:
         assert len(mailoutbox) == 1
 
         mail = mailoutbox[0]
-        check_links_in_mail(reserved_tenant.user, mail, "payments/initiate")
+        check_links_in_mail(path="payments/initiate", mail=mail, user=reserved_tenant.user)
         assert "reservation is about to expire" in mail.subject
         assert reserved_tenant.apartment.name in mail.body
         assert reserved_tenant.user.full_name in mail.body

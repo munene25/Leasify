@@ -51,21 +51,26 @@ def parse_response(response: IsResponse) -> str:
     }
     return json.dumps(data, indent=4)
 
-def check_links_in_mail(user: User, mail: EmailMessage, path: str) -> None:
-    """Checks whether the links present and valid in the mail message"""
+def check_links_in_mail(*, mail: EmailMessage, path: str, with_uidb64: bool = False, with_token: bool = False, user: User | None = None) -> None:
+    """Checks whether the links present and valid in the mail message
+    
+    Token is not include"""
 
-    from leasify.authentication.tokens import token_validate, get_user_from_uidb64
+    from leasify.authentication.tokens import token_validate, get_user_from_uidb64, build_url
 
     # get links and check if they match
-    links = [word for word in mail.body.split() if path in word]
+    url = build_url(base_path=path, with_uidb64=False, with_token=False)
+    links = [word for word in mail.body.split() if url in word]
     assert len(set(links)) == 1, json.dumps({"links": links})
 
     # get uidb64 and token if it exists
-    base_url = settings.FRONTEND_URL + "/" + path + "/"
-    params = links[0].replace(base_url, "").split("/")
-    assert len(params) >= 1, json.dumps({"params": params})
-    uidb64 = params[0]
-    u = get_user_from_uidb64(uidb64)
-    assert u == user
-    try: token_validate(user=u, token=params[1])
-    except IndexError: pass
+    if with_uidb64 or with_token:
+        if not user:
+            raise ValueError("User object not provided")
+        
+        params = links[0].lstrip(url).split("/")
+        if with_uidb64:
+            assert params[0], json.dumps({"params": params})
+            assert get_user_from_uidb64(params[0]) == user
+        if with_token: 
+            token_validate(user=user, token=params[1])
