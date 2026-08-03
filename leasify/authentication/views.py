@@ -1,7 +1,7 @@
 from structlog import get_logger
 
-from django.contrib.auth import login, logout, update_session_auth_hash
-from django.http.response import JsonResponse
+from django.contrib import auth
+from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import ensure_csrf_cookie
 
 from rest_framework import status
@@ -10,7 +10,7 @@ from rest_framework.response import Response
 from rest_framework.exceptions import NotFound
 
 from leasify.common.views import BaseAPIView
-from leasify.common.throttling import EmailScopedThrottle
+from leasify.common.throttling import EmailThrottle
 
 from leasify.authentication import services as sr, serializer as sc, tasks as ts
 from leasify.authentication.tokens import token_validate, get_user_from_uidb64
@@ -30,18 +30,15 @@ class LoginView(BaseAPIView):
     authentication_classes = [ForceCSRFAuthentication]
     permission_classes = [AllowAny]
     serializer_class = sc.LoginSerializer
-    throttle_classes = [EmailScopedThrottle]
+    throttle_classes = [EmailThrottle]
     throttle_scope = "failed_login_attempts"
 
     def post(self, request):
         incoming = self.validate_serializer(data=request.data)
         user = sr.user_authenticate(**incoming)
         # initialize the session
-        login(request, user=user)
-
-        # On login success, remove the attempt from history
-        self.pop_latest_cache_entry(request)
-        return Response(data={"message": "login successful"}, status=status.HTTP_200_OK)
+        auth.login(request, user=user)
+        return Response(data={"message": "Login successful"}, status=status.HTTP_200_OK)
 
 
 class LogoutView(BaseAPIView):
@@ -52,11 +49,10 @@ class LogoutView(BaseAPIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        # First store the id to log later
         user_id = request.user.pk
-        logout(request)
+        auth.logout(request)
         logger.info("user_logged_out", target_id=user_id)
-        return Response(data={"message": "You have been logged out"}, status=status.HTTP_200_OK)
+        return Response(data={"message": "Logout successful"}, status=status.HTTP_200_OK)
 
 
 class RefreshSessionView(BaseAPIView):
@@ -68,31 +64,25 @@ class RefreshSessionView(BaseAPIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        request.session.set_expiry(None)
+        from django.conf import settings
+        request.session.set_expiry(settings.SESSION_COOKIE_AGE)
         return Response({"message": "Session extended"})
 
 
 class PasswordChangeView(BaseAPIView):
-    """
-    View orchestrates password change for logged in user.
-    Requires two passwords to match and the current password to be correct
-    Throttles based on user.email
-    """
+    """View orchestrates password change for logged in user. Throttles based on user.email"""
 
     permission_classes = [IsAuthenticated]
     serializer_class = sc.PasswordChangeSerializer
-    throttle_classes = [EmailScopedThrottle]
+    throttle_classes = [EmailThrottle]
     throttle_scope = "password_changes"
 
     def post(self, request):
         incoming = self.validate_serializer(data=request.data)
         user = sr.user_change_password(user=request.user, **incoming)
-        update_session_auth_hash(request, user)
+        auth.update_session_auth_hash(request, user)
 
-        # Allow rightful user to update password as many times as they want
-        self.pop_latest_cache_entry(request)
-
-        return Response(data={"message": "Password has been successfully updated"}, status=status.HTTP_200_OK)
+        return Response(data={"message": "Password change successful"}, status=status.HTTP_200_OK)
 
 
 class RequestPasswordResetView(BaseAPIView):
@@ -100,21 +90,21 @@ class RequestPasswordResetView(BaseAPIView):
     Forgot password route.
     Payload includes the registered email address.
     Returns a consistent response for both registered and unregistered users
-    Throttles based on email.
+    Throttles based on email in request body.
     Logs reflect which email is requesting the password reset
     """
 
     permission_classes = [AllowAny]
     serializer_class = sc.RequestPasswordResetSerializer
-    throttle_classes = [EmailScopedThrottle]
+    throttle_classes = [EmailThrottle]
     throttle_scope = "password_resets"
 
     def post(self, request):
         incoming = self.validate_serializer(data=request.data)
-        try:
-            user = user_get_by_email(incoming["email"])
-        except NotFound:
-            pass
+
+        try: user = user_get_by_email(incoming["email"])
+        except NotFound: pass
+
         else:
             ts.send_token_email.delay(
                 user_id=user.pk,
@@ -140,10 +130,9 @@ class ConfirmPasswordResetView(BaseAPIView):
         incoming = self.validate_serializer(data=request.data)
         sr.user_change_password(user=user, is_ressetting=True, **incoming)
         return Response(
-            data={"message": "password has been reset successfully"},
+            data={"message": "Password has been reset successfully"},
             status=status.HTTP_200_OK,
         )
-
 
 class RequestEmailVerificationView(BaseAPIView):
     """
@@ -153,7 +142,7 @@ class RequestEmailVerificationView(BaseAPIView):
     """
 
     permission_classes = [IsAuthenticated]
-    throttle_classes = [EmailScopedThrottle]
+    throttle_classes = [EmailThrottle]
     serializer_class = sc.RequestEmailVerificationSerializer
     throttle_scope = "email_verifications"
 
@@ -191,6 +180,11 @@ class ConfirmEmailVerificationView(BaseAPIView):
 
 
 
-@ensure_csrf_cookie
-def get_csrf(request):
-    return JsonResponse({"message": "csrf set"})
+class CsrfView(BaseAPIView):
+    """Set the CSRF cookie."""
+
+    permission_classes = [AllowAny]
+
+    @method_decorator(ensure_csrf_cookie)
+    def get(self, request):
+        return Response({"message": "csrf set"})

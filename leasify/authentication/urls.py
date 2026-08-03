@@ -6,7 +6,7 @@ app_name = "authentication"
 
 urlpatterns = [
     path("login", views.LoginView.as_view(), name="login"),
-    path("csrf", views.get_csrf, name="csrf"),
+    path("csrf", views.CsrfView.as_view(), name="csrf"),
     path("logout", views.LogoutView.as_view(), name="logout"),
     path("refresh", views.RefreshSessionView.as_view(), name="refresh"),
     path("password-change", views.PasswordChangeView.as_view(), name="password_change"),
