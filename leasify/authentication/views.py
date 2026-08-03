@@ -10,7 +10,7 @@ from rest_framework.response import Response
 from rest_framework.exceptions import NotFound
 
 from leasify.common.views import BaseAPIView
-from leasify.common.throttling import EmailThrottle
+from leasify.common.throttling import EmailThrottle, ScopedThrottle
 
 from leasify.authentication import services as sr, serializer as sc, tasks as ts
 from leasify.authentication.tokens import token_validate, get_user_from_uidb64
@@ -31,7 +31,7 @@ class LoginView(BaseAPIView):
     permission_classes = [AllowAny]
     serializer_class = sc.LoginSerializer
     throttle_classes = [EmailThrottle]
-    throttle_scope = "failed_login_attempts"
+    throttle_scope = "login"
 
     def post(self, request):
         incoming = self.validate_serializer(data=request.data)
@@ -70,12 +70,12 @@ class RefreshSessionView(BaseAPIView):
 
 
 class PasswordChangeView(BaseAPIView):
-    """View orchestrates password change for logged in user. Throttles based on user.email"""
+    """View orchestrates password change for logged in user. Throttles based on user email in payload"""
 
     permission_classes = [IsAuthenticated]
     serializer_class = sc.PasswordChangeSerializer
     throttle_classes = [EmailThrottle]
-    throttle_scope = "password_changes"
+    throttle_scope = "password_change"
 
     def post(self, request):
         incoming = self.validate_serializer(data=request.data)
@@ -97,7 +97,7 @@ class RequestPasswordResetView(BaseAPIView):
     permission_classes = [AllowAny]
     serializer_class = sc.RequestPasswordResetSerializer
     throttle_classes = [EmailThrottle]
-    throttle_scope = "password_resets"
+    throttle_scope = "password_reset"
 
     def post(self, request):
         incoming = self.validate_serializer(data=request.data)
@@ -136,15 +136,13 @@ class ConfirmPasswordResetView(BaseAPIView):
 
 class RequestEmailVerificationView(BaseAPIView):
     """
-    View sends an email to the requesting user to verify email.
-    The link points to the fronted with then posts to this view.
-    Done via post as it's an unsafe operation.
+    View sends an email to the requesting user to verify email. Throttles based on user since authenticated
     """
 
     permission_classes = [IsAuthenticated]
-    throttle_classes = [EmailThrottle]
+    throttle_classes = [ScopedThrottle]
     serializer_class = sc.RequestEmailVerificationSerializer
-    throttle_scope = "email_verifications"
+    throttle_scope = "email_verification"
 
     def post(self, request):
         user = request.user

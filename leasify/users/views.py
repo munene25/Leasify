@@ -10,7 +10,7 @@ from rest_framework import status
 from leasify.common.views import BaseAPIView
 from leasify.common.permissions import IsManager, check_perms
 from leasify.common.pagination import get_paginated_response
-from leasify.common.throttling import AnonSustained
+from leasify.common.throttling import ScopedThrottle
 
 from leasify.users import selectors as sl, serializer as sc, services as sr
 from leasify.authentication.tokens import get_user_from_uidb64
@@ -30,11 +30,16 @@ class UserListCreateView(BaseAPIView):
         is_active = serializers.BooleanField(allow_null=True)
 
     serializer_class = sc.UserCreateSerializer
-    throttle_classes = [AnonSustained]
+    throttle_classes = [ScopedThrottle]
     filter_class = FilterSerializer
+    throttle_scope = "user_create"
+    
 
     def get_permissions(self):
         return [IsAuthenticated() if self.request.method == "GET" else AllowAny()]
+
+    def get_throttles(self):
+        return [ScopedThrottle() if self.request.method == "POST" else None]
 
     def get(self, request: Request):
         check_perms(request.user, "users.view_user")

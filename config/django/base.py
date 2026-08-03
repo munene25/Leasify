@@ -94,12 +94,11 @@ REST_FRAMEWORK = {
     "PAGE_SIZE": 10,
     "EXCEPTION_HANDLER": "drf_standardized_errors.handler.exception_handler",
     "DEFAULT_THROTTLE_RATES": {
-        "anon_sustained": "50/day",
-        "user_sustained": "100/day",
-        "failed_login_attempts": "5/hour",
-        "password_changes": "3/day",
-        "password_resets": "3/day",
-        "email_verifications": "3/day",
+        "user_create": "20/hour",
+        "login": "10/hour",
+        "password_change": "5/day",
+        "password_reset": "5/day",
+        "email_verification": "3/day",
     },
 }
 
