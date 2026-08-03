@@ -4,8 +4,8 @@ from rest_framework.exceptions import ValidationError
 from leasify.tenancy.models import Tenancy
 from leasify.common.period import DateRange
 from leasify.billing.models import BillingPeriod as BP
-from payments.choices import PaymentStatus as PS
-from payments.models import Payment
+from leasify.payments.choices import PaymentStatus as PS
+from leasify.payments.models import Payment
 from leasify.tenancy.choices import TenancyStatus as TS
 from leasify.billing.choices import BillingStatus as BS
 from leasify.billing.services import billing_period_cancel, billing_period_complete, billing_period_create

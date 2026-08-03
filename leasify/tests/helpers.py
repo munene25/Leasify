@@ -54,7 +54,7 @@ def parse_response(response: IsResponse) -> str:
 def check_links_in_mail(user: User, mail: EmailMessage, path: str) -> None:
     """Checks whether the links present and valid in the mail message"""
 
-    from leasify.users.tokens import token_validate, get_user_from_uidb64
+    from leasify.authentication.tokens import token_validate, get_user_from_uidb64
 
     # get links and check if they match
     links = [word for word in mail.body.split() if path in word]

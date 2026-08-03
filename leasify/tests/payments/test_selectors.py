@@ -7,9 +7,9 @@ from leasify.users.selectors import get_group
 from leasify.tenancy.models import Tenancy
 from leasify.billing.models import BillingPeriod as BP
 from leasify.billing.choices import BillingStatus as BS
-from payments.models import Payment
-from payments.selectors import *
-from payments.choices import PaymentMode as PM, PaymentStatus as PS
+from leasify.payments.models import Payment
+from leasify.payments.selectors import *
+from leasify.payments.choices import PaymentMode as PM, PaymentStatus as PS
 
 
 class TestBaseQS:

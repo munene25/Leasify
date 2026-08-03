@@ -4,8 +4,8 @@ from django.db.models import QuerySet
 from leasify.common.period import today
 from leasify.tenancy.choices import TenancyStatus as TS, TerminationReason as TR
 from leasify.tenancy.models import Tenancy, MAX_RESERVATIONS_PER_USER
-from billing.choices import BillingStatus as BS
-from billing.models import BillingPeriod as Billings
+from leasify.billing.choices import BillingStatus as BS
+from leasify.billing.models import BillingPeriod as Billings
 from django.db.models import Q
 from leasify.common.tasks import email_task, regular_task
 
@@ -28,7 +28,7 @@ def month_start_tasks() -> dict[str, list]:
 def send_expiry_notification(reserved: list[int] = []) -> list[int]:
     from datetime import timedelta
     from leasify.common.emails import send_template_email
-    from leasify.users.tokens import build_user_url
+    from leasify.authentication.tokens import build_user_url
 
     # Get reserved whose expiry is tomorrow
     tommorow = today() + timedelta(1)
