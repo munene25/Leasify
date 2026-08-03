@@ -215,41 +215,41 @@ def csrf_client() -> APIClient:
 
 
 @pytest.fixture
-def user_client(user) -> APIClient:
+def user_client(user: User, password: str) -> APIClient:
     client = APIClient()
-    client.force_authenticate(user=user)
+    client.login(email=user.email, password=password)
     setattr(client, "user", user)
     return client
 
 
 @pytest.fixture
-def manager_client(manager_user) -> APIClient:
+def manager_client(manager_user: User, password: str) -> APIClient:
     client = APIClient()
-    client.force_authenticate(user=manager_user)
+    client.login(email=manager_user.email, password=password)
     setattr(client, "user", manager_user)
     return client
 
 
 @pytest.fixture
-def tenant_client(tenant_user) -> APIClient:
+def tenant_client(tenant_user: User, password: str) -> APIClient:
     client = APIClient()
-    client.force_authenticate(user=tenant_user)
+    client.login(email=tenant_user.email, password=password)
     setattr(client, "user", tenant_user)
     return client
 
 
 @pytest.fixture
-def caretaker_client(caretaker_user) -> APIClient:
+def caretaker_client(caretaker_user: User, password: str) -> APIClient:
     client = APIClient()
-    client.force_authenticate(user=caretaker_user)
+    client.login(email=caretaker_user.email, password=password)
     setattr(client, "user", caretaker_user)
     return client
 
 
 @pytest.fixture
-def superuser_client(superuser) -> APIClient:
+def superuser_client(superuser: User, password: str) -> APIClient:
     client = APIClient()
-    client.force_authenticate(user=superuser)
+    client.login(email=superuser.email, password=password)
     setattr(client, "user", superuser)
     return client
 
