@@ -1,7 +1,7 @@
 from leasify.common.emails import send_template_email
+from leasify.common.tasks import email_task
 from leasify.authentication.tokens import build_user_url
 from leasify.users.selectors import user_get
-from leasify.common.tasks import email_task
 
 @email_task
 def send_token_email(user_id: int, url_path: str, subject: str, action_cta: str):

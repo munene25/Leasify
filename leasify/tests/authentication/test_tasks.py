@@ -3,6 +3,7 @@ from django.core.mail import EmailMessage
 from leasify.authentication import tasks
 from leasify.users.models import User
 
+
 class TestSendEmailTokenTask:
 
     def test_send_token_email(self, user: User, mailoutbox: list[EmailMessage]):
