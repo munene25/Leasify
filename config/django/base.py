@@ -155,7 +155,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 AUTH_USER_MODEL = "users.User"
 
 ## CELERY
-CELERY_BROKER_URL = "memory://"
+CELERY_BROKER_URL = "memory://localhost:8000"
 CELERY_TASK_ALWAYS_EAGER = True
 CELERY_IGNORE_RESULT = False
 CELERY_ENABLE_UTC = True
