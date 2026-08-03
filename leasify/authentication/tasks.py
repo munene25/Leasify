@@ -15,7 +15,7 @@ def send_token_email(user_id: int, url_path: str, subject: str, action_cta: str)
         subject=subject,
         context=context,
         to=[user.email],
-        template_name="users/token"
+        template_name="auth/token"
     )
     return True
 
@@ -24,13 +24,13 @@ def notify_password_change(user_id: int, url_path: str):
     user = user_get(user_id)
     context = {
         "recipient_name": user.get_full_name(),
-        "token_url":  build_url(base_path=url_path, with_token=True, with_uidb64=True),
+        "token_url":  build_url(base_path=url_path, with_token=True, with_uidb64=True, user=user),
     }
     subject = "Account password has been changed"
     send_template_email(
         subject=subject,
         context=context,
         to=[user.email],
-        template_name="users/password_changed"
+        template_name="auth/password_changed"
     )
 
