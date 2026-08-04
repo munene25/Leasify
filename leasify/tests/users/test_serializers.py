@@ -57,9 +57,8 @@ class TestUserDetailSerializer:
 
 class TestUpdateSerializer:
     def test_serializer_ommits_unnamed_fields(self):
-        from leasify.tests.types import UserUpdatePayload
 
-        data: UserUpdatePayload = {
+        data = {
             "first_name": "Fred",
             "last_name": "Gradle",
         }
