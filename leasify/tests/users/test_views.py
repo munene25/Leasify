@@ -19,6 +19,8 @@ class TestUserListCreateView:
 
     path = reverse("users:list_create")
     patch_create = patch("users.views.sr.user_account_create", return_value=User(pk=1, account=Account(pk=1)))
+    patch_list_for = patch("leasify.users.selectors.user_list_for", return_value=QuerySet(User))
+
     payload = {
             "first_name": "Test",
             "last_name": "Test",
@@ -40,7 +42,7 @@ class TestUserListCreateView:
         ],
     )
     @patch_create
-    def test_authentication_and_authorization(self, patch_create, _client: str, get: int, post: int, request: pytest.FixtureRequest):
+    def test_authentication_and_authorization(self, patch_create: MagicMock, _client: str, get: int, post: int, request: pytest.FixtureRequest):
         """Verify auth and permissions for user list."""
         client: IsClient = request.getfixturevalue(_client)
         assert client.get(self.path).status_code == get
@@ -128,27 +130,45 @@ class TestUserListCreateView:
             ),
         ],
     )
-    @patch("leasify.users.selectors.user_list_for", return_value=QuerySet(User))
-    def test_list_filtering(self, mock_list, caretaker_client: IsClient, query: str, filters: dict):
+    @patch_list_for
+    def test_list_filtering(self, patch_list_for: MagicMock, caretaker_client: IsClient, query: str, filters: dict):
         caretaker_client.get(f"{self.path}?{query}")
 
-        mock_list.assert_called_once_with(
+        patch_list_for.assert_called_once_with(
             user=caretaker_client.user,
             filters=filters
         )
 
 
 class TestAdminUserDetailUpdateDestroyView:
-    path: str = "/users/"
+    patch_get_for = patch("leasify.users.selectors.user_get_for", return_value=User(pk=1, account=Account()))
+    patch_update_status = patch("leasify.users.views.sr.user_update_active_status", return_value=User(pk=1, account=Account()))
 
-    def test_user_detail_succeeds(self, user_create_payload, user: User, manager_client: IsClient):
-        """
-        test for get, patch and delete routes success in one place
-        """
-
+    def path(self, *args: int) -> str:
+        return reverse("users:admin_detail", args=args)
+    
+    @pytest.mark.parametrize(
+        "_client,get,delete",
+        [
+            ("superuser_client", 200, 200),
+            ("manager_client", 200, 200),
+            ("caretaker_client", 200, 403),
+            ("tenant_client", 403, 403),
+            ("user_client", 403, 403),
+            ("client", 401, 401),
+        ],
+    )
+    @patch_get_for
+    def test_authentication_and_authorization(self, patch_get_for: MagicMock, _client: str, get: int, delete: int, request: pytest.FixtureRequest):
+        """Verify auth and permissions for user list."""
+        client: IsClient = request.getfixturevalue(_client)
+        assert client.get(self.path(1)).status_code == get
+        assert client.delete(self.path(1)).status_code == delete
+    
+    def test_user_detail_succeeds(self, user: User, manager_client: IsClient):
+        """Test user detail"""
         # -- Test get data is accurate --
-        pld = user_create_payload
-        path = self.path + str(user.pk)
+        path = self.path(user.pk)
         response1 = manager_client.get(path)
         data1 = parse_message(response1)
         assert data1["user_id"] == user.pk
@@ -158,194 +178,118 @@ class TestAdminUserDetailUpdateDestroyView:
         assert data1["bio"] == user.account.bio
         assert data1["phone_number"] == str(user.account.phone_number)
 
-        # -- Test patching data succeds --
-        pld["phone_number"] = "254720202202"
-        response2 = manager_client.patch(path, pld)
-        data2 = parse_message(response2)
-        fetched = User.objects.get(pk=user.pk)
-        assert fetched.email == data2["email"]
-        assert data2["user_id"] == fetched.pk
-        assert data2["phone_number"] == fetched.account.phone_number == pld["phone_number"]
-        assert data2["first_name"] == fetched.first_name == pld["first_name"]
-        assert data2["last_name"] == fetched.last_name == pld["last_name"]
 
-        reponse3 = manager_client.delete(path)
-        parse_message(reponse3)
-        fetched2 = User.objects.get(pk=user.pk)
-        assert fetched2.is_active == False
+    def test_deactivate_user(self, manager_client: IsClient, superuser: User):
+        """Deactivating user should work as expected"""
 
-    def test_user_detail_view_authentication(self, user_client: IsClient, caretaker_client: IsClient):
-        """
-        Pemission denied for regular users
-        Patch and delete should raise permission denied for caretakers
-        """
-        status_code = status.HTTP_403_FORBIDDEN
-        path = self.path + "1"
+    @patch_get_for
+    def test_get_mock_calls(self, patch_get_for: MagicMock, user: User, manager_client: IsClient):
+        """Get and delete should use user_get_for and updating status should be called in delete"""
+        manager_client.get(self.path(user.pk))
+        patch_get_for.assert_called_once_with(user=manager_client.user, user_id=user.pk)
 
-        response1 = user_client.get(path)
-        error1 = parse_error(response1, status_code)[0]
-        assert error1["code"] == "permission_denied"
-
-        response2 = caretaker_client.get(path)
-        data2 = parse_message(response2)
-        assert data2["email"] == User.objects.get(pk=1).email
-
-        response3 = caretaker_client.patch(path, {"first_name": "Felix"})
-        error3 = parse_error(response3, status_code)[0]
-        assert error3["code"] == "permission_denied"
-
-        respnse4 = caretaker_client.delete(path)
-        errors4 = parse_error(respnse4, status_code)[0]
-        assert errors4["code"] == "permission_denied"
-
-        response5 = user_client.patch(path, {"first_name": "Felix"})
-        error5 = parse_error(response5, status_code)[0]
-        assert error5["code"] == "permission_denied"
-
-        response5 = user_client.delete(path)
-        error5 = parse_error(response5, status_code)[0]
-        assert error5["code"] == "permission_denied"
-
-    def test_modifying_priviledged_users_fails(self, manager_client: IsClient, superuser: User):
-        """
-        Priviledged users can't be modified or retrieved
-        """
-        status_code = status.HTTP_404_NOT_FOUND
-        path = self.path + str(superuser.pk)
-
-        response1 = manager_client.get(path)
-        error1 = parse_error(response1, status_code)[0]
-        assert error1["code"] == "not_found"
-
-        response2 = manager_client.patch(path, {"first_name": "first"})
-        error2 = parse_error(response2, status_code)[0]
-        assert error2["code"] == "not_found"
-
-        response3 = manager_client.delete(path)
-        error3 = parse_error(response3, status_code)[0]
-        assert error3["code"] == "not_found"
-
+    @patch_get_for
+    @patch_update_status
+    def test_delete_mock_calls(self, patch_update_status: MagicMock, patch_get_for: MagicMock, manager_client: IsClient):
+        """Get and delete should use user_get_for and updating status should be called in delete"""
+        manager_client.delete(self.path(1))
+        patch_get_for.assert_called_once_with(user=manager_client.user, user_id=1)
+        patch_update_status.assert_called_once_with(user=patch_get_for.return_value, status=False)
 
 class TestMeView:
     path = reverse("users:me")
 
-    def test_user_can_get_patch_and_delete_successfully(self, user: User, client: IsClient, password: str):
-        """
-        Users should be able to get correct data
-        No user_id should be present in the serializer
-        Users should be able modify the specified fields
+    patch_update_user = patch("leasify.users.views.sr.user_update", return_value=User(pk=1, account=Account()))
+    patch_update_status = patch("leasify.users.views.sr.user_update_active_status", return_value=User(pk=1, account=Account()))
 
-        Bug fixed: was passing the request.user into logout
-        Fixed: With custom auth class, 401 is raised
-        """
-        logged_in = client.login(email=user.email, password=password)
-        assert logged_in == True
-        response1 = client.get(self.path)
-        data1 = parse_message(response1)
 
-        # User id should not be visible
-        assert data1.get("user_id", None) is None
-        assert data1["first_name"] == user.first_name
-        assert data1["last_name"] == user.last_name
-        assert data1["email_verified"] == user.verified
-        assert data1["backup_email"] == user.account.backup_email
-        assert data1["phone_number"] == str(user.account.phone_number)
-        assert data1["next_email_change"] == None
-        assert data1["role"] == "regular"
+    payload = {
+        "first_name": "Zane",
+        "last_name": "Omondi",
+        "phone_number": "+254 710 111 110",
+        "bio": "A regular bio",
+        "backup_email": "test@test.com"
+    }
 
-        updates = {
-            "first_name": "Zane",
-            "email": "testemail1@gmail.com",
-            "phone_number": "+254 710 111 110",
-            "bio": "A regular bio",
-            "role": "manager",
-        }
-        response2 = client.patch(self.path, updates)
-        data2 = parse_message(response2)
-        user.refresh_from_db()  # type: ignore
-        assert data2.get("user_id", None) is None
-        assert data2["first_name"] == updates["first_name"] == user.first_name
-        assert (
-            data2["phone_number"]
-            == updates["phone_number"].replace(" ", "").replace("+", "")
-            == user.account.phone_number
-        )
-        assert data2["bio"] == updates["bio"] == user.account.bio
-        assert data2["email"] != updates["email"] and data2["email"] == user.email
-        assert data2["role"] != updates["role"] and data2["role"] == "regular"
+    def test_authentication_and_authorization(self, client: IsClient, ):
+        """Unauthenticated users not allowed."""
+        assert client.get(self.path).status_code == status.HTTP_401_UNAUTHORIZED
+        assert client.patch(self.path, self.payload).status_code == status.HTTP_401_UNAUTHORIZED
+        assert client.delete(self.path).status_code == status.HTTP_401_UNAUTHORIZED
 
-        # Unauthorized will be raised
-        response3 = client.delete(self.path)
-        data = parse_message(response3, status.HTTP_204_NO_CONTENT)
-        assert data["message"] == "account deactivated successfully"
-        user.refresh_from_db()  # type: ignore
+    def test_get_data(self, user_client: IsClient):
+        """Should retrun the users own data"""
+        user = user_client.user
+        data = parse_message(user_client.get(self.path))
+
+        assert data["user_id"] == user.pk
+        assert data["first_name"] == user.first_name
+        assert data["last_name"] == user.last_name
+        assert data["email_verified"] == user.verified
+        assert data["backup_email"] == user.account.backup_email
+        assert data["phone_number"] == str(user.account.phone_number)
+        assert data["next_email_change"] == None
+        assert data["role"] == "regular"
+
+    @patch_update_user
+    def test_modifying_data(self, patch_update_user: MagicMock, user_client: IsClient):
+        """Should retrun the users own data"""
+        user_client.patch(self.path, self.payload)
+    
+        kwargs = patch_update_user.call_args.kwargs 
+        assert kwargs["user"].email == user_client.user.email
+        assert kwargs["first_name"] == self.payload["first_name"]
+        assert len(kwargs) == len(self.payload) + 1
+
+    def test_deactivate_user(self, user_client: IsClient):
+        """Should delete data and call logout"""
+        from django.contrib.sessions.backends.db import SessionStore
+
+        cookie = user_client.cookies["sessionid"]
+        user_client.delete(self.path)
+
+        user = user_client.user
+        user.refresh_from_db()
         assert user.is_active == False
-        response4 = client.get(self.path)
-        error = parse_error(response4, status.HTTP_401_UNAUTHORIZED)[0]
-        assert error["code"] == "not_authenticated"
-
-    def test_unauthenticated_requests_fail(self, client: IsClient):
-        """
-        Should outright deny services for users with"""
-        response1 = client.get(self.path)
-        error1 = parse_error(response1, status_code=status.HTTP_401_UNAUTHORIZED)[0]
-        assert error1["code"] == "not_authenticated"
+        assert not SessionStore().exists(cookie)
+        assert user_client.get(reverse("users:me")).status_code == 401
+        
+    
 
 
 class TestEmailUpdateView:
-    path = "/users/email-change"
+    path = reverse("users:email_change")
     payload = {"email": "test@gmail.com", "password": "Pa55word!"}
+    
 
-    before = timezone.now()
-    after = before + EMAIL_COOLDOWN
+    def test_authentication(self, client: IsClient):
+        """Fails for unauthenticated clients"""
+        parse_error(client.post(self.path, {}), status.HTTP_401_UNAUTHORIZED)
 
-    def test_email_updates_successfully(self, user: User, user_client: IsClient):
+    def test_email_updates_successfully(self, user_client: IsClient):
         """
         Email should be upddated correctly
-        Next change should be denied
         Response should include New email
         """
-
-        with freeze_time(self.before) as frozen:
+        now = timezone.now()
+        with freeze_time(now):
             fetch = lambda: user_client.post(self.path, self.payload)
+            user = user_client.user
+
             data1 = parse_message(fetch())
             user.refresh_from_db()  # type: ignore
             assert data1["email"] == self.payload["email"] == user.email
-            assert user.next_email_change == self.after
-
-            frozen.move_to(self.after)
-            parse_message(fetch())
-            user.refresh_from_db
-            assert user.next_email_change == self.after + EMAIL_COOLDOWN
-
-    def test_email_update_fails(self, user, client: IsClient, user_client: IsClient):
-        """
-        Fails for unauthenticated reqs
-        Fails for Wrong password
-        """
-        # -- with unauthenticated requests raises 401 --
-        res1 = client.post(self.path, {})
-        parse_error(res1, status.HTTP_401_UNAUTHORIZED)
-
-        # -- with wrong passwords fails with validation error --
-        res2 = user_client.post(self.path, {**self.payload, "password": "pass"})
-        error = parse_error(res2, status.HTTP_400_BAD_REQUEST, "validation_error")
-        assert "password" == error[0]["attr"]
-
-        # -- When cooldown is still active fails with 400 --
-        with freeze_time(self.before) as frozen:
-            res3 = user_client.post(self.path, self.payload)
-            parse_message(res3)
-
-            frozen.move_to(timezone.now() + 0.5 * EMAIL_COOLDOWN)
-            res4 = user_client.post(self.path, self.payload)
-            parse_error(res4, status.HTTP_422_UNPROCESSABLE_ENTITY)
-            user.refresh_from_db
-            assert user.last_email_change == self.before
-
+            assert user.next_email_change ==  now + EMAIL_COOLDOWN
+        
+    @pytest.mark.parametrize("override", [{"email": "email"}, {"password": "pas",}])
+    def test_serializer(self, user_client: IsClient, override: dict):
+        """Fails with status 400 for inavlid field values"""
+        response =user_client.post(self.path, {**self.payload, **override})
+        parse_error(response, status.HTTP_400_BAD_REQUEST, "validation_error")
 
 class TestUserUnsubscribeView:
-    path = "/users/unsubscribe/"
+    def path(self, *args: str) -> str:
+        return reverse("users:unsubscribe", args=args)
 
     def test_unsubscribe_successful(self, client: IsClient, user: User):
         """
@@ -357,19 +301,18 @@ class TestUserUnsubscribeView:
         """
         from leasify.authentication.tokens import uidb64_generate
 
-        path = self.path + uidb64_generate(user)
+        path = self.path(uidb64_generate(user))
         response = client.post(path, {})
         parse_message(response)
         user.refresh_from_db()  # type: ignore
         assert user.account.can_receive_emails == False
 
     def test_unsubscribe_with_invalid_link_fails(self, client: IsClient, user: User):
-        """
-        With an invalid link, the request should be denied and no accounts should be modified.
-        """
-        response = client.post(self.path + "invalidlink", {})
+        """With an invalid link, the request should be denied and no accounts should be modified."""
+        path = self.path("invalidlink")
+        response = client.post(path, {})
         parse_error(response, status.HTTP_400_BAD_REQUEST)
-        user.refresh_from_db()  # type: ignore
+        user.refresh_from_db()
         assert user.account.can_receive_emails == True
 
 

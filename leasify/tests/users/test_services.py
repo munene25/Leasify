@@ -107,9 +107,8 @@ class TestAccountCreation:
         """
         Different variations of passwords that should fail validation
         """
-        self.payload["password"] = password
         with pytest.raises(ValidationError) as exc:
-            s.user_account_create(**self.payload)
+            s.user_account_create(**{**self.payload, "password": password})
         assert "password" in exc.value.detail
         assert exception in str(exc.value.detail)
         assert User.objects.count() == 0
@@ -127,11 +126,8 @@ class TestAccountCreation:
         Different variations of passwords that should fail based on user similarity
         """
 
-        self.payload[field] = value
-        self.payload["password"] = _password
-
         with pytest.raises(ValidationError) as exc:
-            s.user_account_create(**self.payload)
+            s.user_account_create(**{**self.payload, field: value, "password": _password})
         assert "password" in exc.value.detail
         assert "similar" in str(exc.value.detail)
         assert User.objects.count() == 0
@@ -176,10 +172,8 @@ class TestAccountCreation:
         """
         Assert wrong phone number formats and phone number regions are rejected
         """
-        self.payload["phone_number"] = wrong_phone_number
-        with pytest.raises(ValidationError) as exc:
-            s.user_account_create(**self.payload)
-        assert "phone_number" in exc.value.detail
+        with pytest.raises(ValidationError, match="phone_number"):
+            s.user_account_create(**{**self.payload, "phone_number": wrong_phone_number})
         assert User.objects.count() == 0
 
 
