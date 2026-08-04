@@ -12,33 +12,21 @@ logger = getLogger("users.services.create")
 
 @transaction.atomic
 def user_account_create(notify: bool=True, **kwargs) -> User:
-    """
-    Creates a user and account instance in one transaction.
-
-    :param notify: If to send a welcome email to the user after account creation.
-    :type notify: bool
-
-    :param kwargs:
-        email: str,
-        first_name: str,
-        last_name: str,
-        password: str,
-        phone_number: str (optional)
-
-    :return: The created user instance
-    :rtype: User
-    """
+    """Create user and account and send notification if notification is True"""
 
     user = user_create(email=kwargs["email"], password=kwargs["password"], first_name=kwargs["first_name"], last_name=kwargs["last_name"])
     account_create(user=user, phone_number=kwargs.get("phone_number"))
 
     if notify == True:
-        unsub = kwargs["unsubscribe_url"]
-        verify = kwargs["email_verify_url"]
+        errors = {}
+        if not (unsub := kwargs.get("unsubscribe_url")):
+            errors["unsubscribe_url"] = ["Please provide url path for user unsubscribe"]
 
-        if not unsub or verify:
-            raise ValidationError({"urls": ["Please provide urls for unsubscribe and email verification"]})
+        if not (verify := kwargs.get("email_verify_url")):
+            errors["verify_url"] = ["Please provide url path for user verification"]
 
+        if errors:
+            raise ValidationError(errors)
         transaction.on_commit(lambda: send_welcome_email.delay(user.pk, unsub, verify))
     logger.info("user_account_created", target_id=user.pk, email=user.email)
     return user
@@ -47,21 +35,16 @@ def user_account_create(notify: bool=True, **kwargs) -> User:
 
 def user_create(*, email: str, first_name: str, last_name: str, password: str) -> User:
     """
-    Creates a user instance without an account. This is used for admin user creation via the django admin panel.
-    The account will be created via the AccountInline model.
-
+    Create a User Object. 
+    
     :param email: The user's email
-    :type email: str
     :param first_name: The user's first name
-    :type first_name: str
     :param last_name: The user's last name
-    :type last_name: str
     :param password: The user's password
-    :type password: str
 
     :return: The created user instance
-    :rtype: User
     """
+
     email = User.objects.normalize_email(email)
     user = User(
         email=email,
@@ -69,6 +52,7 @@ def user_create(*, email: str, first_name: str, last_name: str, password: str) -
         last_name=last_name,
         verified=False,
     )
+    user.validate_password(password)
     user.set_password(password)
     user.full_clean()
     user.save()

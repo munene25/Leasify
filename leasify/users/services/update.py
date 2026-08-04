@@ -24,22 +24,8 @@ class UserUpdateData(TypedDict, total=False):
 
 @transaction.atomic
 def user_update(user: User, **kwargs: Unpack[UserUpdateData]):
-    """
-    User and Account model updates under a singular interface.
+    """Update user and account"""
 
-    :param user: User to be used as the related field
-    :type user: User
-    :param kwargs:
-        first_name: str,
-        last_name: str,
-        phone_number: str,
-        bio: str,
-        backup_email: str
-    :type kwargs: dict
-
-    :return: Modified User object
-    :rtype: User
-    """
     USER_FIELDS = {"first_name", "last_name"}
     ACCOUNT_FIELDS = {"phone_number", "bio", "backup_email"}
 
@@ -48,7 +34,7 @@ def user_update(user: User, **kwargs: Unpack[UserUpdateData]):
 
     # Normalize email
     try:
-        kwargs["backup_email"] = User.objects.normalize_email(kwargs["backup_email"]) # type: ignore
+        kwargs["backup_email"] = User.objects.normalize_email(kwargs["backup_email"])  # type: ignore
     except KeyError:
         pass
 
@@ -73,6 +59,7 @@ def user_update(user: User, **kwargs: Unpack[UserUpdateData]):
         logger.info("account_updated", target_id=user.pk, fields=account_updates)
 
     return user
+
 
 def account_update_mailing_status(account: Account, status: bool) -> Account:
     """
@@ -108,7 +95,6 @@ def user_update_active_status(user: User, status: bool) -> User:
     return user
 
 
-
 def user_email_update(user: User, email: str, password: str) -> User:
     """
     Email updater that limits email changes based on EMAIL_COOLDOWN in model.
@@ -123,7 +109,7 @@ def user_email_update(user: User, email: str, password: str) -> User:
     :return: user
     :rtype: User
     """
-    user.validate_password(password)
+    user.verify_password(password)
 
     # Ensure change is available
     if user.next_email_change is not None:
