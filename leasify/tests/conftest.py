@@ -17,7 +17,7 @@ from rest_framework.test import APIClient
 from leasify.tests.types import Factory
 from leasify.common.period import DateRange
 
-from leasify.users.models import User
+from leasify.users.models import User, Account
 from leasify.users.selectors import get_group
 from leasify.users.services import user_account_create, user_set_role
 
@@ -130,22 +130,38 @@ def today():
 
 
 @pytest.fixture(scope="session")
-def user_factory(fake, phone_no) -> Factory[User]:
+def user_factory(fake, phone_no: typing.Callable[..., str], password: str) -> Factory[User]:
     """Returns a callable for generating users"""
 
-    def create(quantity: int = 1, **kwargs: dict[str, str]) -> list[User]:
+    def create(
+        quantity: int = 1, 
+        first_name: str | None = None, 
+        last_name: str | None = None, 
+        email: str | None = None, 
+        password: str = password, 
+        is_active: bool = True, 
+        is_superuser: bool = False, 
+        phone_number: str | None = None
+    ) -> list[User]:
+        """Factory moved to explicit django api over service"""
         users = []
+
         for _ in range(quantity):
-            users.append(
-                user_account_create(
-                    first_name=(kwargs.get("first_name", fake.first_name())),
-                    last_name=kwargs.get("last_name", fake.last_name()),
-                    password="Pa55word!",
-                    email=kwargs.get("email", fake.email()),
-                    phone_number=kwargs.get("phone_number", phone_no()),
-                    notify=False,
-                )
+            user = User.objects.create(
+                first_name=first_name or fake.first_name(),
+                last_name=last_name or fake.last_name(),
+                email=email or fake.email(),
+                password=password or "Pa55word!",
+                is_active=is_active,
+                is_superuser=is_superuser,
             )
+
+            Account.objects.create(
+                user=user,
+                phone_number=phone_number or phone_no(),
+            )
+            users.append(user)
+
         return users
 
     return create
@@ -166,8 +182,7 @@ def roles_list() -> list[Group]:
 
 @pytest.fixture
 def superuser(user_factory: Factory[User]):
-    u = user_factory()[0]
-    u.is_superuser = True
+    u = user_factory(is_superuser=True)[0]
     u.save(update_fields=["is_superuser"])
     return u
 

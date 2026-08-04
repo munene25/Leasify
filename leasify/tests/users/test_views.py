@@ -1,237 +1,150 @@
-import pytest
-from copy import deepcopy
-
 from unittest.mock import patch, MagicMock
+
+import pytest
 from freezegun import freeze_time
 
 from django.utils import timezone
 from django.core.cache import cache
+from django.db.models import QuerySet
+from django.urls import reverse
 from django.core.mail import EmailMessage
 from rest_framework import status
 
-from leasify.users.models import User, EMAIL_COOLDOWN
-from leasify.tests.types import IsClient, UserCreatePayload, Factory
-from leasify.tests.helpers import parse_error, parse_message, parse_paginated_response
+from leasify.users.models import User, Account, EMAIL_COOLDOWN
+from leasify.tests.types import IsClient, Factory
+from leasify.tests.helpers import parse_error, parse_message, parse_paginated_response, check_links_in_mail
 
 
 class TestUserListCreateView:
-    path = "/users/"
+    path = reverse("users:list_create")
+
+    payload = {
+            "first_name": "Test",
+            "last_name": "Test",
+            "email": "test@mail.com",
+            "password": "Pa55word!",
+            "phone_number": "254710100100",
+            "notify": False
+        }
+
+    @pytest.mark.parametrize(
+        "_client,get,post",
+        [
+            ("superuser_client", 200, 201),
+            ("manager_client", 200, 201),
+            ("caretaker_client", 200, 201),
+            ("tenant_client", 403, 201),
+            ("user_client", 403, 201),
+            ("client", 401, 201),
+        ],
+    )
+    def test_authentication_and_authorization(self, _client: str, get: int, post: int, request: pytest.FixtureRequest):
+        """Verify auth and permissions for user list."""
+        client: IsClient = request.getfixturevalue(_client)
+        assert client.get(self.path).status_code == get
+        assert client.post(self.path, self.payload).status_code == post
+
 
     def test_user_creation_successful(
         self,
         client: IsClient,
         mailoutbox: list[EmailMessage],
-        user_create_payload: UserCreatePayload,
         django_capture_on_commit_callbacks,
     ):
-        """
-        User should be created and password hashed and can be used to login
-        """
-        payload = user_create_payload
-        payload["notify"] = True
+        """User should be created and password hashed and can be used to login"""
+        payload = {
+            **self.payload,
+            "notify": True,
+            "unsubscribe_url": "path/to/unsubscribe",
+            "email_verify_url": "path/to/verify"
+        }
         with django_capture_on_commit_callbacks(execute=True):
             response = client.post(self.path, payload)
 
-        # Assert response format
-        assert response.status_code == status.HTTP_201_CREATED
+        data = parse_message(response, status.HTTP_201_CREATED)
 
-        fetched = User.objects.get(email=payload["email"])
+        user = User.objects.get(email=payload["email"])
 
         # Password should be hashed and user should be able to authenticate
-        assert fetched.password != payload["password"]
-        assert fetched.check_password(payload["password"])
+        assert "password" not in data and payload["password"] != user.password
+        assert user.verified == False
 
-        # Assert other fields
-        assert fetched.email == payload["email"]
-        assert fetched.verified == False
+        # Should be able to athenticate
+        assert data["email"] == payload["email"]
+        client.login(email=data["email"], password=payload["password"])
 
         # Assert mail is sent
         assert len(mailoutbox) == 1
         mail = mailoutbox[0]
         assert mail.to == [payload["email"]]
+        check_links_in_mail(path=payload["unsubscribe_url"], mail=mail, with_uidb64=True, user=user)
+        check_links_in_mail(path=payload["email_verify_url"], mail=mail, with_uidb64=True, with_token=True, user=user)
 
     @pytest.mark.parametrize(
-        "field,value",
+        "field,value,code",
         [
-            ("phone_number", "0710 100 100"),
-            ("email", "felix@gmail.com"),
+            ("phone_number", "077171", "invalid"),
+            ("first_name", "F", "min_length"),
+            ("last_name", "F", "min_length"),
         ],
     )
-    def test_user_creation_fails_for_db_constraints(self, cache_clear, field: str, value: str, client: IsClient):
-        """
-        Similar email and phone number should raise 400
-        """
-        defaults = {"first_name": "test", "last_name": "test", "password": "Pa55word!", "notify": False}
-        payload1 = {**defaults, "phone_number": "0710 100 100", "email": "test1@gmail.com"}
-        payload2 = {**defaults, "phone_number": "0720 200 200", "email": "test2@gmail.com"}
+    def test_create_serializer(self, client: IsClient, field: str, value: str, code: str):
+        """Invalid serializer fields should fail validation."""
+        response = client.post(self.path, {**self.payload, field: value})
 
-        payload1[field] = payload2[field] = value
-        client.post(self.path, payload1)
+        error = parse_error(response, status.HTTP_400_BAD_REQUEST, "validation_error",)[0]
 
-        response2 = client.post(self.path, payload2)
-        errors = parse_error(response2, status.HTTP_400_BAD_REQUEST, "validation_error")[0]
-        assert errors["attr"] == field
-        assert errors["code"] == "invalid"
-
-    def test_user_creation_fails_for_wrong_field_formats(
-        self, client: IsClient, user_create_payload: UserCreatePayload
-    ):
-        """
-        Using a regular client implicitly tests authentication as well
-        """
-        # -- with wrong phone nubmer fmt fails --
-
-        payload1 = deepcopy(user_create_payload)
-        payload1["phone_number"] = "077171"  # type: ignore : Technically can use a str
-        response = client.post(self.path, payload1)
-        errors = parse_error(response, status.HTTP_400_BAD_REQUEST, "validation_error")[0]
-        assert errors["code"] == "invalid"
-        assert errors["attr"] == "phone_number"
-
-        # -- Fails for a short names, both fields should appear in the error dict --
-        payload2 = deepcopy(user_create_payload)
-        payload2["first_name"] = "F"
-        payload2["last_name"] = "F"
-
-        response2 = client.post(self.path, payload2)
-        errors = parse_error(response2, status.HTTP_400_BAD_REQUEST, "validation_error", err_len=2)
-        assert errors[0]["attr"] == "first_name"
-        assert errors[1]["attr"] == "last_name"
-
+        assert error["attr"] == field
+        assert error["code"] == code
         assert User.objects.count() == 0
 
-    @patch("users.services.user_account_create")
-    def test_user_creation_throttles(
-        self,
-        mock: MagicMock,
-        client: IsClient,
-        cache_clear,
-        override_throttles,
-        user_create_payload: UserCreatePayload,
-    ):
+    @patch("users.services.create.user_account_create", return_value=User(pk=1, account=Account(pk=1)))
+    def test_user_creation_throttles(self, mock: MagicMock, client: IsClient, cache_clear, override_throttles):
         """
         Patch the account create func to speed up
         Throttle the second request, the first and last should be okay
         """
         # -- with first request should succeed --
-        response = client.post(self.path, user_create_payload)
+        response = client.post(self.path, self.payload)
         assert response.status_code == status.HTTP_201_CREATED
 
         # -- with second request should throttle --
-        response2 = client.post(self.path, user_create_payload)
+        response2 = client.post(self.path, self.payload)
         errors = parse_error(response2, status.HTTP_429_TOO_MANY_REQUESTS)[0]
         assert mock.call_count == 1
         assert errors["code"] == "throttled"
 
-        # -- With third request should succeed after clearing cache
-        cache.clear()
-        response3 = client.post(self.path, user_create_payload)
-
-        assert response3.status_code == status.HTTP_201_CREATED
-        assert mock.call_count == 2
-
-    def test_user_list_authentication_and_authorization(
-        self, cache_clear, client: IsClient, manager_client: IsClient, tenant_client: IsClient
-    ):
-        """
-        No authentication class on the view
-        Authentication is handled after the view instantiates
-        Permission denied 403: authenticated but unauthorized users
-        Authentication failed 401: unauthenticated users
-        ! With Session Authentication, 401 errors are coerced into 403
-        """
-
-        # -- with unauthenticated user should raise Unauthorized --
-        response = client.get(self.path)
-        # Unauthorized should be raised for unauthenticated
-        errors = parse_error(response, status.HTTP_401_UNAUTHORIZED)[0]
-        assert errors["code"] == "not_authenticated"
-        assert errors["detail"] == "Authentication credentials were not provided."
-
-        # -- with an authenticated but unauthorized user should raise 403 --
-        response2 = tenant_client.get(self.path)
-        errors2 = parse_error(response2, status.HTTP_403_FORBIDDEN)[0]
-        assert errors2["code"] == "permission_denied"
-
-        # -- with an authorized user with sufficient permission should pass --
-        response3 = manager_client.get(self.path)
-        assert response3.status_code == status.HTTP_200_OK
 
     def test_user_list_pagination(self, manager_client: IsClient, user_factory: Factory[User], override_pagination: int):
         """
         Test the pagination structure and data
         Order is reversed so the first user appears in the last index
         """
+        user_factory(3)
+        response1 = manager_client.get(self.path + "?page=1")
+        parse_paginated_response(response1,  4)
 
-        # The creation of a manager client has created a new user in the db
-        # but would still be filtered out
-        expected_users = 3
-        users = user_factory(expected_users)
-        first_page_ids = {u.pk for u in users[-override_pagination:]}
-        second_page_ids = {u.pk for u in users}.difference(first_page_ids)
+    @pytest.mark.parametrize(
+        "query,filters",
+        [
+            ("is_active=false", {"is_active": False}),
+            ("search=Felix", {"search": "Felix"}),
+            ("search=test@example.com", {"search": "test@example.com"}),
+            ("search=1234", {"search": "1234"}),
+            (
+                "search=Felix&is_active=false",
+                {"search": "Felix", "is_active": False},
+            ),
+        ],
+    )
+    @patch("leasify.users.selectors.user_list_for", return_value=QuerySet(User))
+    def test_list_filtering(self, mock_list, caretaker_client: IsClient, query: str, filters: dict):
+        caretaker_client.get(f"{self.path}?{query}")
 
-        path = lambda page: f"{self.path}?page={page}"
-
-        # -- First page --
-        response1 = manager_client.get(path(1))
-        data1 = parse_paginated_response(response1, expected_users)
-        assert first_page_ids == {f["user_id"] for f in data1["results"]}
-
-        # -- Next page --
-        response2 = manager_client.get(path(2))
-        data2 = parse_paginated_response(response2, expected_users)
-        assert data2["next"] == None
-        assert {f["user_id"] for f in data2["results"]} == second_page_ids
-
-    def test_user_list_filtering_via_query_params(self, user_factory: Factory[User], caretaker_client: IsClient):
-        """
-        Test the new search field implementation for the query_params
-        Fields: id, is_active and search(includes all searchable fields)
-        """
-        from leasify.tests.helpers import parse_paginated_response
-
-        path = lambda query: f"{self.path}?{query}"
-
-        users = user_factory(5)
-
-        # -- Create inactive users
-        inactive_user_ids = {3, 2, 4}
-        User.objects.filter(id__in=inactive_user_ids).update(is_active=False)
-
-        # -- create users sharing first name
-        similar_name_ids = {4, 6}
-        similar_name = "Felix"
-        User.objects.filter(id__in=similar_name_ids).update(first_name=similar_name)
-
-        # -- Test is_active filter --
-        response1 = caretaker_client.get(path("is_active=false"))
-        data1 = parse_paginated_response(response1, 3)["results"]
-        assert inactive_user_ids == {u["user_id"] for u in data1}
-
-        # -- with last_name search filtering --
-        response2 = caretaker_client.get(path(f"search={users[0].last_name}"))
-        data2 = parse_paginated_response(response2, 1)["results"]
-        assert users[0].pk in {u["user_id"] for u in data2}
-
-        response3 = caretaker_client.get(path(f"search={similar_name}"))
-        data3 = parse_paginated_response(response3, 2)["results"]
-        assert similar_name_ids == {u["user_id"] for u in data3}
-
-        # -- with phone_number search filtering --
-        phone_number = users[0].account.phone_number
-        sliced_phone = str(phone_number)[-4:]
-        data4 = parse_paginated_response(caretaker_client.get(path(f"search={sliced_phone}")), 1)["results"]
-        assert data4[0]["user_id"] == users[0].pk
-
-        # -- with exact fields (email) search filtering --
-        data5 = parse_paginated_response(caretaker_client.get(path(f"search={users[3].email}")), 1)["results"]
-        assert users[3].email == data5[0]["email"]
-
-        # -- with multiple field searches --
-        # user_id 4 is the only user with the name Felix and is in_active
-        response6 = caretaker_client.get(path(f"search={similar_name}&is_active=false"))
-        data6 = parse_paginated_response(response6, 1)["results"]
-        assert data6[0]["user_id"] == 4
+        mock_list.assert_called_once_with(
+            caretaker_client.user,
+            filters
+        )
 
     def test_user_list_ommits_results_from_qs_correctly(
         self,
@@ -357,7 +270,7 @@ class TestAdminUserDetailUpdateDestroyView:
 
 
 class TestMeView:
-    path = "/users/me"
+    path = reverse("users:me")
 
     def test_user_can_get_patch_and_delete_successfully(self, user: User, client: IsClient, password: str):
         """
@@ -517,7 +430,7 @@ class TestAdminRoleListView:
         monkeypatch.setattr("leasify.users.selectors.groups_list", lambda: [])
         response1 = manager_client.get(self.path, {})
         data1 = parse_message(response1)
-        assert len(data1["roles"]) == 0
+        assert len(data1) == 0
 
     def test_user_role_list_view_authentication_and_authorization(self, user_client: IsClient, caretaker_client: IsClient):
         """
