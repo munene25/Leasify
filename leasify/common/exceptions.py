@@ -31,14 +31,12 @@ class RoleAssignmentError(APIException):
     default_code = "roles_exceeded"
 
 
-class InvalidPeriodError(APIException):
-    """
-    Raised when a user tries to book an apartment for a period that's already concluded.
-    """
+class PasswordError(APIException):
+    """Raised for incorrect passwords"""
 
-    status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
-    default_code = "invalid_period"
-    default_detail = "Start date must be before end date and the period must not be in the past."
+    status_code = status.HTTP_400_BAD_REQUEST
+    default_code = "incorrect_password"
+    default_detail = {"password": ["Password does not match"]}
 
 
 class ApartmentUnavailableError(APIException):
