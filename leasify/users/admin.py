@@ -3,7 +3,7 @@ from structlog import get_logger
 from django import forms
 from django.contrib import admin
 from django.contrib.auth.models import Group
-from django.contrib.auth.models import BaseUserManager
+from leasify.users.manager import UserManager
 from django.http import HttpRequest
 from leasify.users.models import User, Account
 from leasify.users.selectors import get_group
@@ -19,7 +19,7 @@ class AccountAdminForm(forms.ModelForm):
     def clean_backup_email(self):
         value = self.cleaned_data.get("backup_email")
         if value:
-            return BaseUserManager.normalize_email(value)
+            return UserManager.normalize_email(value)
         return value
 
 
@@ -48,7 +48,7 @@ class UserAdminForm(forms.ModelForm):
     def clean_email(self):
         value = self.cleaned_data.get("email")
         if value:
-            return BaseUserManager.normalize_email(value)
+            return UserManager.normalize_email(value)
         return value
 
 
@@ -66,10 +66,10 @@ class AccountInline(admin.StackedInline):
 
 @admin.register(User)
 class UserAdmin(admin.ModelAdmin):
-    list_display = ("email", "full_name", "is_staff", "is_superuser", "is_active", "phone_number")
+    list_display = ("email", "full_name", "is_superuser", "is_active", "phone_number")
     list_select_related = ("account",)
     search_fields = ("email", "first_name", "last_name")
-    list_filter = ("is_active", "is_staff", "is_superuser",)
+    list_filter = ("is_active", "is_superuser",)
 
     form = UserAdminForm
     exclude = ("last_login", "created_at", "last_email_change", "groups")

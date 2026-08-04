@@ -2,9 +2,8 @@ from django.contrib.auth.base_user import BaseUserManager
 
 
 class UserManager(BaseUserManager):
-    """"
-    Hooks the service layer into the user creation process.
-    """
+    """"Provide superuser creation and custom email normalization"""
+
     @classmethod
     def normalize_email(cls, email: str | None) -> str:
         """Cleaner email normalization. Lowercase email values"""
@@ -28,7 +27,6 @@ class UserManager(BaseUserManager):
             phone_number=extra_fields["phone_number"],
             notify=False,
         )
-        user.is_staff = True
         user.is_superuser = True
         user.verified = True
         user.save()
