@@ -24,8 +24,7 @@ class TestAccountCreation:
         "email": "test@mail.com",
         "password": "Pa55word!",
         "phone_number": "254710100100",
-        "notify": False
-        
+        "notify": False,
     }
 
     def test_account_creation_successful(self,):
@@ -43,7 +42,7 @@ class TestAccountCreation:
         # Assert password hashed correctly
         assert user.password != self.payload["password"]
         assert account.phone_number == self.payload["phone_number"]
-        user.validate_password(self.payload["password"])
+        user.verify_password(self.payload["password"])
         assert User.objects.count() == 1
 
     def test_skip_mail_sending_when_flag_set_to_false(self, django_capture_on_commit_callbacks, mailoutbox: list[EmailMessage]):
@@ -53,7 +52,6 @@ class TestAccountCreation:
         with django_capture_on_commit_callbacks(execute=True) as callback:
             s.user_account_create(**self.payload)
         assert len(mailoutbox) == 0
-    
 
     def test_mail_sent_upon_creation(self, mailoutbox: list[EmailMessage], django_capture_on_commit_callbacks):
         """
@@ -61,10 +59,10 @@ class TestAccountCreation:
         Requires always eager for delay calls
         """
         payload = {
-            **self.payload, 
-            "notify": True, 
-            "unsubscribe_url": "path/to/unsubscribe", 
-            "email_verify_url": "path/to/verify"
+            **self.payload,
+            "notify": True,
+            "unsubscribe_url": "path/to/unsubscribe",
+            "email_verify_url": "path/to/verify",
         }
 
         with django_capture_on_commit_callbacks(execute=True):
@@ -80,10 +78,10 @@ class TestAccountCreation:
         Regardless of cache failure i.e., celery cant reach broker, user should be created nonetheless
         """
         payload = {
-            **self.payload, 
-            "notify": True, 
-            "unsubscribe_url": "path/to/unsubscribe", 
-            "email_verify_url": "path/to/verify"
+            **self.payload,
+            "notify": True,
+            "unsubscribe_url": "path/to/unsubscribe",
+            "email_verify_url": "path/to/verify",
         }
         mock = MagicMock()
         monkeypatch.setattr("leasify.users.tasks.send_welcome_email.delay", mock)
@@ -148,7 +146,7 @@ class TestAccountCreation:
     )
     def test_account_creation_fails_with_db_contraints(self, field: str, value: str, phone_no: typing.Callable[..., str], duplicate: str):
         """Test that db constraints with similar values"""
-        data1  = {
+        data1 = {
             "first_name": "testname",
             "last_name": "lastname",
             "email": "testemail1@gmail.com",
