@@ -49,9 +49,10 @@ class TestUserModel:
         user.last_email_change = timezone.now() - EMAIL_COOLDOWN - timedelta(days=1)
         assert user.next_email_change is None
 
-    def test_full_name(self, user: User):
+    def test_full_name(self, user_factory: Factory[User]):
         """full_name should return first and last name."""
-        assert user.full_name == user.first_name + " " + user.last_name
+        user = user_factory(first_name="Kevin", last_name="Doe")[0]
+        assert user.full_name == "Kevin Doe"
 
     def test_role_property(self, superuser: User, manager_user: User, caretaker_user: User, tenant_user: User, user: User):
         """Roles should align with the users roles"""
