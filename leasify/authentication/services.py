@@ -9,20 +9,19 @@ from leasify.authentication import tasks
 
 logger = getLogger("authentication.services")
 
+
 def user_authenticate(*, email: str, password: str) -> AbstractUser:
     """
     Authenticates the user and updates their last login
     Incorrect credentials or inactive users raise Authentication Error
 
     :param email: email for the user
-    :type email: str
     :param password: user's password
-    :type password: str
 
-    :return: returns a user or will raise an 401 if authentication failed 
+    :return: returns a user or will raise an 401 if authentication failed
     :rtype: User
     """
-    
+
     normalized_email = BaseUserManager.normalize_email(email)
     user = authenticate(email=normalized_email, password=password)
     if user is None:
@@ -41,14 +40,14 @@ def user_change_password(*, user: User, new_password: str, url_path: str, passwo
     # ! CRITICAL BUG Found
     # Calling check_password does not raise an error
     # To mitigate this an explicit flag guarantees the password is checked.
-    # Also necessary to call **validate_password** not 'check_password'
+    # Also necessary to call **verify_password** not 'check_password'
 
     if not is_ressetting:
         if not password:
             raise ValidationError({"password": "Please provide a password"})
         else:
-            user.validate_password(password)
-
+            user.verify_password(password)
+    user.validate_password(new_password)
     user.set_password(new_password)
     user.full_clean()
     user.save(update_fields=["password"])
@@ -70,5 +69,3 @@ def user_email_verify(user: User) -> User:
     user.save(update_fields=["verified"])
     logger.info("user_email_verified", target_id=user.pk)
     return user
-
-
