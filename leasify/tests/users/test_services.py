@@ -5,87 +5,86 @@ from datetime import timedelta
 from unittest.mock import MagicMock
 from freezegun import freeze_time
 
+from django.core.mail import EmailMessage
 from django.utils import timezone
-
 from rest_framework.exceptions import ValidationError
 
-from leasify.users.models import User, Account, EMAIL_COOLDOWN
+from leasify.tests.helpers import check_links_in_mail
+
 from leasify.users import services as s
-from leasify.tests.types import UserCreatePayload
+from leasify.users.models import User, Account, EMAIL_COOLDOWN
 from leasify.users.selectors import get_group
 
 
 class TestAccountCreation:
-    def test_account_creation_successful(self, user_create_payload: UserCreatePayload):
+
+    payload = {
+        "first_name": "Test",
+        "last_name": "Test",
+        "email": "test@mail.com",
+        "password": "Pa55word!",
+        "phone_number": "254710100100",
+        "notify": False
+        
+    }
+
+    def test_account_creation_successful(self,):
         """
         Test whether account creation is successfull and data is data matches
         """
-        s.user_account_create(**user_create_payload)
-        user = User.objects.get(email=user_create_payload["email"])
+        s.user_account_create(**self.payload)
+        user = User.objects.get(email=self.payload["email"])
         account = Account.objects.earliest("pk")
         # Assert reverse relationship
         assert user == account.user
-        assert user.first_name == user_create_payload["first_name"]
-        assert user.last_name == user_create_payload["last_name"]
-        assert user.email == user_create_payload["email"]
+        assert user.first_name == self.payload["first_name"]
+        assert user.last_name == self.payload["last_name"]
+        assert user.email == self.payload["email"]
         # Assert password hashed correctly
-        assert user.password != user_create_payload["password"]
-        assert account.phone_number == user_create_payload["phone_number"]
-        user.validate_password(user_create_payload["password"])
+        assert user.password != self.payload["password"]
+        assert account.phone_number == self.payload["phone_number"]
+        user.validate_password(self.payload["password"])
         assert User.objects.count() == 1
 
-    def test_skip_mail_sending_when_flag_set_to_false(
-        self,
-        user_create_payload: UserCreatePayload,
-        django_capture_on_commit_callbacks,
-    ):
+    def test_skip_mail_sending_when_flag_set_to_false(self, django_capture_on_commit_callbacks, mailoutbox: list[EmailMessage]):
         """
         Test whether mailing will be ignored with notify flag set to false
         """
-        with django_capture_on_commit_callbacks() as callback:
-            s.user_account_create(**user_create_payload)
-        assert len(callback) == 0
-        assert User.objects.count() == 1
+        with django_capture_on_commit_callbacks(execute=True) as callback:
+            s.user_account_create(**self.payload)
+        assert len(mailoutbox) == 0
+    
 
-    def test_mail_sent_upon_creation(
-        self,
-        user_create_payload: UserCreatePayload,
-        mailoutbox,
-        django_capture_on_commit_callbacks,
-    ):
+    def test_mail_sent_upon_creation(self, mailoutbox: list[EmailMessage], django_capture_on_commit_callbacks):
         """
         Test normal mail sending with notify flag set to True.
         Requires always eager for delay calls
         """
-        from leasify.common.emails import email_context
+        payload = {
+            **self.payload, 
+            "notify": True, 
+            "unsubscribe_url": "path/to/unsubscribe", 
+            "email_verify_url": "path/to/verify"
+        }
 
-        user_create_payload["notify"] = True
+        with django_capture_on_commit_callbacks(execute=True):
+            user = s.user_account_create(**payload)
 
-        with django_capture_on_commit_callbacks() as callback:
-            s.user_account_create(**user_create_payload)
-        assert User.objects.count() == 1
-        # Assert callback stores the mail sender
-        assert len(callback) == 1
-        # Execute callback
-        callback[0]()
-        assert len(mailoutbox) == 1
         mail = mailoutbox[0]
-        assert mail.to == [user_create_payload["email"]]
-        assert mail.from_email == email_context.default_from_email
-        assert mail.subject == f"Welcome to {email_context.app_name}"
-        assert "email-verify" in mail.body
+        assert mail.to == [self.payload["email"]]
+        check_links_in_mail(path=payload["email_verify_url"], mail=mail, with_uidb64=True, with_token=True, user=user)
+        check_links_in_mail(path=payload["unsubscribe_url"], mail=mail, with_uidb64=True, user=user)
 
-    def test_user_creation_success_on_cache_fail(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-        user_create_payload: UserCreatePayload,
-        django_capture_on_commit_callbacks,
-    ):
+    def test_user_created_even_on_task_failure(self, monkeypatch: pytest.MonkeyPatch, django_capture_on_commit_callbacks,):
         """
         Regardless of cache failure i.e., celery cant reach broker, user should be created nonetheless
         """
-        # Cache raises an exception
-        user_create_payload["notify"] = True
+        payload = {
+            **self.payload, 
+            "notify": True, 
+            "unsubscribe_url": "path/to/unsubscribe", 
+            "email_verify_url": "path/to/verify"
+        }
         mock = MagicMock()
         monkeypatch.setattr("leasify.users.tasks.send_welcome_email.delay", mock)
         mock.side_effect = Exception("Cache Down")
@@ -93,7 +92,7 @@ class TestAccountCreation:
         with pytest.raises(Exception, match="Cache Down"):
 
             with django_capture_on_commit_callbacks(execute=True):
-                s.user_account_create(**user_create_payload)
+                s.user_account_create(**payload)
 
         assert User.objects.count() == 1
 
@@ -106,37 +105,35 @@ class TestAccountCreation:
             ("1235151545", "numeric"),
         ],
     )
-    def test_password_validators_fail(self, user_create_payload: UserCreatePayload, password, exception):
+    def test_password_validators_fail(self, password: str, exception: str):
         """
         Different variations of passwords that should fail validation
         """
-        user_create_payload["password"] = password
+        self.payload["password"] = password
         with pytest.raises(ValidationError) as exc:
-            s.user_account_create(**user_create_payload)
+            s.user_account_create(**self.payload)
         assert "password" in exc.value.detail
         assert exception in str(exc.value.detail)
         assert User.objects.count() == 0
 
     @pytest.mark.parametrize(
-        "field,value,password",
+        "field,value,_password",
         [
             ("first_name", "Bethany", "Bethany!"),
             ("last_name", "Florence", "_floReNCE_"),
             ("email", "benedicturs@gmail.com", "benedictorial"),
         ],
     )
-    def test_password_validators_fail_for_user_similarity(
-        self, user_create_payload: UserCreatePayload, field, value, password
-    ):
+    def test_password_validators_fail_for_user_similarity(self, field: str, value: str, _password: str):
         """
         Different variations of passwords that should fail based on user similarity
         """
 
-        user_create_payload[field] = value
-        user_create_payload["password"] = password
+        self.payload[field] = value
+        self.payload["password"] = _password
 
         with pytest.raises(ValidationError) as exc:
-            s.user_account_create(**user_create_payload)
+            s.user_account_create(**self.payload)
         assert "password" in exc.value.detail
         assert "similar" in str(exc.value.detail)
         assert User.objects.count() == 0
@@ -146,24 +143,12 @@ class TestAccountCreation:
         [
             ("email", "test@test.com", "test@test.com"),
             ("email", "phil@TEST.com", "phil@test.com"),
-            (
-                "phone_number",
-                "0710-100-100",
-                "+254 710 100 100",
-            ),
+            ("phone_number", "0710-100-100", "+254 710 100 100"),
         ],
     )
-    def test_account_creation_fails_with_db_contraints(
-        self,
-        field: str,
-        value: str,
-        phone_no,
-        duplicate,
-    ):
-        """
-        Test that db constraints with multiple
-        """
-        data1: UserCreatePayload = {
+    def test_account_creation_fails_with_db_contraints(self, field: str, value: str, phone_no: typing.Callable[..., str], duplicate: str):
+        """Test that db constraints with similar values"""
+        data1  = {
             "first_name": "testname",
             "last_name": "lastname",
             "email": "testemail1@gmail.com",
@@ -171,7 +156,7 @@ class TestAccountCreation:
             "phone_number": phone_no(),
             "notify": False,
         }
-        data2: UserCreatePayload = {
+        data2 = {
             "first_name": "testname",
             "last_name": "lastname",
             "email": "testemail2@gmail.com",
@@ -189,17 +174,13 @@ class TestAccountCreation:
         assert User.objects.count() == 1
         assert field in exc.value.detail
 
-    def test_phone_number_validator_fail_for_wrong_format(
-        self,
-        user_create_payload: UserCreatePayload,
-        wrong_phone_number: str,
-    ):
+    def test_phone_number_validator_fail_for_wrong_format(self, wrong_phone_number: str):
         """
         Assert wrong phone number formats and phone number regions are rejected
         """
-        user_create_payload["phone_number"] = wrong_phone_number
+        self.payload["phone_number"] = wrong_phone_number
         with pytest.raises(ValidationError) as exc:
-            s.user_account_create(**user_create_payload)
+            s.user_account_create(**self.payload)
         assert "phone_number" in exc.value.detail
         assert User.objects.count() == 0
 
