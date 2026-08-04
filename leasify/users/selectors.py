@@ -2,7 +2,6 @@ from typing import Any
 from functools import lru_cache
 from django.db.models import Q
 from django.http import QueryDict
-from django.contrib.auth.models import UserManager
 from django.db.models.query import QuerySet
 from django.contrib.auth.models import Group
 from leasify.users.models import User
@@ -18,13 +17,13 @@ user_not_found = raise_not_found("user_id", "User with given id not found")
 
 class UserFilterPolicy(FilteringPolicy):
     SUPERUSER = Q()
-    MANAGER = Q(is_superuser=True)
-    CARETAKER = MANAGER | Q(groups__name="manager")
-    TENANT = CARETAKER | Q(groups__name="caretaker")
-    REGULAR = TENANT
+    MANAGER = Q(is_superuser=False)
+    CARETAKER = Q(is_superuser=False) & ~Q(groups__name__in=["manager", "caretaker"])
+    TENANT = lambda user: Q(pk=user.pk)
+    REGULAR = lambda user: Q(pk=user.pk)
 
 
-def user_list_for(*, user: User, filters: dict[str, Any] | QueryDict | None = None) -> QuerySet:
+def user_list_for(*, user: User, filters: dict[str, Any] | QueryDict = {}) -> QuerySet:
     """
     Fetches the visible user list for the requesting user
     Allows filtering based on fileds "search" and "is_active"
@@ -32,7 +31,7 @@ def user_list_for(*, user: User, filters: dict[str, Any] | QueryDict | None = No
     """
     import django_filters
 
-    class UserFilter(django_filters.FilterSet):
+    class F(django_filters.FilterSet):
         search = django_filters.CharFilter(method="search_fields")
 
         class Meta:
@@ -47,9 +46,9 @@ def user_list_for(*, user: User, filters: dict[str, Any] | QueryDict | None = No
                 | Q(account__phone_number__contains=value)
             )
 
-    exclusions = UserFilterPolicy.for_user(user)
-    users = BASE_QS.exclude(exclusions).exclude(pk=user.pk)
-    return UserFilter(filters, users).qs
+    u_filters = UserFilterPolicy.for_user(user)
+    users = BASE_QS.filter(u_filters).exclude(pk=user.pk)
+    return F(filters, users).qs
 
 
 @user_not_found
@@ -68,7 +67,7 @@ def user_get_for(*, user: User, user_id: int) -> User:
     """
 
     exclusions = UserFilterPolicy.for_user(user)
-    return BASE_QS.exclude(exclusions).get(pk=user_id)
+    return BASE_QS.filter(exclusions).get(pk=user_id)
 
 
 @raise_not_found("email", "User with given email not found")
@@ -78,7 +77,7 @@ def user_get_by_email(user_email: str) -> User:
     Should first normalize the email then try to get the user
     """
 
-    email = UserManager.normalize_email(user_email)
+    email = User.objects.normalize_email(user_email)
     return BASE_QS.get(email=email)
 
 
