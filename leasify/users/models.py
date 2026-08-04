@@ -1,13 +1,17 @@
 from __future__ import annotations
 from datetime import timedelta, datetime
+
 from django.db import models
 from django.utils import timezone
 from django.contrib.auth.models import AbstractUser
-from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django.contrib.auth.password_validation import validate_password
+
 from rest_framework.exceptions import ValidationError
+
 from leasify.common.models import BaseModel
 from leasify.users.manager import UserManager
+from leasify.common.exceptions import PasswordError
 from leasify.common.fields import NameModelField, PhoneNumberModelField
 
 EMAIL_COOLDOWN: timedelta = timedelta(days=14)
@@ -15,10 +19,10 @@ EMAIL_COOLDOWN: timedelta = timedelta(days=14)
 
 class User(BaseModel, AbstractUser):
     username = None
-    first_name = NameModelField(verbose_name="first name")
-    last_name = NameModelField(verbose_name="last name")
-    email = models.EmailField(unique=True, blank=False, db_index=True)
-    verified = models.BooleanField(null=False, default=False)
+    email = models.EmailField(unique=True, db_index=True,)
+    verified = models.BooleanField(null=False, blank=False, default=False)
+    first_name = NameModelField(verbose_name="first name", null=True, blank=True)
+    last_name = NameModelField(verbose_name="last name", null=True, blank=True)
     last_email_change = models.DateTimeField(null=True, blank=True)
 
     USERNAME_FIELD = "email"
@@ -27,21 +31,17 @@ class User(BaseModel, AbstractUser):
     account: Account
     objects = UserManager()  # type: ignore
 
-    def clean(self):
-        """Properly attatch password requirement messages to the error message"""
-
-        password = getattr(self, "_password", None)
-        if password is not None:
-            try:
-                validate_password(password, self)
-            except DjangoValidationError as exc:
-                raise ValidationError({"password": exc.messages})
-
-    def validate_password(self, password: str) -> None:
-        """Wrapper for check_password. Raises exc if passwords do not match"""
+    def verify_password(self, password: str) -> None:
+        """Raise PasswordError if password does not match"""
         if not self.check_password(password):
-            err = "Password is incorrect"
-            raise ValidationError({"password": [err]})
+            raise PasswordError()
+
+    def validate_password(self, password: str,):
+        """Validate against settings.AUTH_PASSWORD_VALIDATORS"""
+        try:
+            validate_password(password, self)
+        except DjangoValidationError as exc:
+            raise ValidationError({"password": exc.messages})
 
     @property
     def next_email_change(self) -> None | datetime:
