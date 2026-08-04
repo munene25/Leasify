@@ -39,7 +39,7 @@ class UserListCreateView(BaseAPIView):
         return [IsAuthenticated() if self.request.method == "GET" else AllowAny()]
 
     def get_throttles(self):
-        return [ScopedThrottle() if self.request.method == "POST" else None]
+        return [ScopedThrottle()] if self.request.method == "POST" else []
 
     def get(self, request: Request):
         check_perms(request.user, "users.view_user")
