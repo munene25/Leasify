@@ -39,7 +39,7 @@ class TestUserLoginView:
 
     def test_csrf_required(self, user: User, csrf_client: IsClient, password: str):
         """Login should require a valid CSRF token."""
-        credentials = {"email": user.email, "password": password,}
+        credentials = {"email": user.email, "password": password}
 
         # No CSRF token
         response = csrf_client.post(self.path, credentials)
@@ -113,7 +113,7 @@ class TestPasswordChangeView:
         client = request.getfixturevalue(_client)
         response = client.post(self.path, self.payload)
         assert response.status_code == code
-        
+
     def test_password_changes_successfully(self, user_client: IsClient, mailoutbox: list[EmailMessage]):
         """Password should be changed successfully."""
         res = user_client.post(self.path, self.payload)
@@ -121,7 +121,7 @@ class TestPasswordChangeView:
         assert "Password" in data["message"]
 
         user = user_client.user
-        user.refresh_from_db() # type: ignore
+        user.refresh_from_db()  # type: ignore
         assert not user.check_password(self.payload["password"])
         assert user.check_password(self.payload["new_password"])
 
@@ -140,7 +140,6 @@ class TestPasswordChangeView:
         args = mock.call_args.args
         assert isinstance(args[0], Request)
         assert args[1] == user_client.user
-        
 
     @pytest.mark.parametrize("wrong_pass", ["wrongpassword", ""])
     def test_wrong_passwords_fail(self, wrong_pass: str, user_client: IsClient):
@@ -149,19 +148,17 @@ class TestPasswordChangeView:
         """
         payload = {**self.payload, "password": wrong_pass}
         res = user_client.post(self.path, payload)
-        parse_error(res, status.HTTP_400_BAD_REQUEST,err_type="validation_error")
-
+        parse_error(res, status.HTTP_400_BAD_REQUEST, err_type="validation_error")
 
     def test_password_change_throttles(self, user_client: IsClient, override_throttles, cache_clear):
         """Requests should be throttled after exceeding the limit."""
         wrong_credentials = {**self.payload, "password": "Password"}
-        
+
         response1 = user_client.post(self.path, wrong_credentials)
         parse_error(response1, status.HTTP_400_BAD_REQUEST, "validation_error")
 
         response2 = user_client.post(self.path, wrong_credentials)
         parse_error(response2, status.HTTP_429_TOO_MANY_REQUESTS)
-
 
         # New implementation does not pop last cache entry
         cache.clear()
@@ -179,6 +176,7 @@ class TestPasswordChangeView:
         response = client.post(self.path, self.payload)
         assert response.status_code == code
 
+
 class TestRequestPasswordResetView:
     path = reverse("authentication:send_password_reset")
 
@@ -190,7 +188,6 @@ class TestRequestPasswordResetView:
         mail = mailoutbox[0]
         assert mail.to == [user.email]
         check_links_in_mail(user=user, mail=mail, path="path/to/action", with_token=True, with_uidb64=True)
-
 
     def test_throttles_based_on_email(self, client: IsClient, user_client: IsClient, override_throttles, cache_clear):
         """Should throttle based on the email address provided in the request body."""
@@ -228,15 +225,15 @@ class TestConfirmPasswordResetView:
 
         user = user_client.user
         # We need to refetch the user with updated logins
-        user.refresh_from_db() # type: ignore
-        
+        user.refresh_from_db()  # type: ignore
+
         path = self.path(uidb64_generate(user), token_generate(user))
 
         res2 = client.post(path, self.payload)
         parse_message(res2)
 
         user.refresh_from_db()  # type: ignore
-        user.validate_password(self.payload["new_password"])
+        user.verify_password(self.payload["new_password"])
 
         # Oringinal user_client should be logged out
         res3 = user_client.get("/users/me")
@@ -244,14 +241,21 @@ class TestConfirmPasswordResetView:
 
     def test_mail_links(self, user_client: IsClient, mailoutbox: list[EmailMessage]):
         user = user_client.user
-        user.refresh_from_db() # type: ignore
-        
+        user.refresh_from_db()  # type: ignore
+
         path = self.path(uidb64_generate(user), token_generate(user))
         user_client.post(path, self.payload)
         assert len(mailoutbox) == 1
-        user.refresh_from_db() # type: ignore
-        
-        check_links_in_mail(mail=mailoutbox[0], path=self.payload["url_path"], with_uidb64=True, with_token=True, user=user)
+        user.refresh_from_db()  # type: ignore
+
+        check_links_in_mail(
+            mail=mailoutbox[0], 
+            path=self.payload["url_path"], 
+            with_uidb64=True, 
+            with_token=True,
+            user=user,
+        )
+
 
 class TestRequestEmailVerificationView:
     path = reverse("authentication:send_email_verification")
@@ -269,7 +273,7 @@ class TestRequestEmailVerificationView:
         assert mail.to == [user.email]
         check_links_in_mail(user=user, mail=mail, path=payload["url_path"])
 
-    def test_reqest_does_not_send_email_for_verified_user(self, user_client: IsClient,  mailoutbox: list[EmailMessage]):
+    def test_reqest_does_not_send_email_for_verified_user(self, user_client: IsClient, mailoutbox: list[EmailMessage]):
         """
         message response will always be 202 but email will not be sent
         """
@@ -305,7 +309,8 @@ class TestConfirmEmailVerificationView:
         response = client.post(self.path("user", "invalid-token"), {"url_path": "path/to/action"})
         errors = parse_error(response, status.HTTP_400_BAD_REQUEST)
         assert errors[0]["code"] == "link_malformed"
-        
+
+
 class TestGetCSRFView:
     path = reverse("authentication:csrf")
 

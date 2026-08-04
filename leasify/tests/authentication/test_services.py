@@ -43,14 +43,16 @@ class TestLoginService:
         assert authd_user == user
 
 
-
 class TestUserEmailVerifyConfirmation:
-    def test_email_set_as_verified(self, user: User,):
+    def test_email_set_as_verified(
+        self,
+        user: User,
+    ):
         """
         Verified status should reflect
         """
         mod_user = s.user_email_verify(user)
-        mod_user.refresh_from_db() # type: ignore
+        mod_user.refresh_from_db()  # type: ignore
         assert mod_user == user
         assert mod_user.verified == True
 
@@ -63,30 +65,34 @@ class TestUserChangePassword:
         The old password should not work
         """
         new_password = "TimT@tman!"
-        user.validate_password(password)
-        modified = s.user_change_password(user=user, new_password=new_password, password=password, url_path="some-path")
+        user.verify_password(password)
+        modified = s.user_change_password(user=user, new_password=new_password, password=password, url_path="path/to/verify")
         assert user == modified == User.objects.get(pk=user.pk)
         # Password should be hashed
         assert modified.password != new_password
         # Should not raise error
-        modified.validate_password(new_password)
+        modified.verify_password(new_password)
         # Should raise error
         with pytest.raises(ValidationError) as exc:
-            modified.validate_password(password)
+            modified.verify_password(password)
         assert "password" in exc.value.detail
+
+        patch_notify_password_change.assert_called_once_with(user.pk, "path/to/verify")
 
     def test_case_when_resetting_password(self, user: User, password: str, patch_notify_password_change: MagicMock):
         """In case of resetting, password is not required"""
 
         new_password = "NewPassword"
-        modified = s.user_change_password(user=user, new_password=new_password, is_ressetting=True, url_path="some-path")
-        user.refresh_from_db()
+        modified = s.user_change_password(
+            user=user, new_password=new_password, is_ressetting=True, url_path="some-path"
+        )
+        user.refresh_from_db() # type: ignore
         assert modified == user
 
-        user.validate_password(new_password)
+        user.verify_password(new_password)
 
         with pytest.raises(ValidationError, match="password"):
-            user.validate_password(password)
+            user.verify_password(password)
 
     def test_mail_sending_called_with_correct_args(self, user: User, patch_notify_password_change: MagicMock, password: str):
         """Patch delay and confirm called with correct args"""
