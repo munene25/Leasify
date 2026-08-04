@@ -2,8 +2,9 @@ import pytest
 from unittest.mock import MagicMock
 
 
-from rest_framework.exceptions import ValidationError, AuthenticationFailed
+from rest_framework.exceptions import AuthenticationFailed
 
+from leasify.common.exceptions import PasswordError
 from leasify.authentication import services as s
 from leasify.users.models import User
 
@@ -73,7 +74,7 @@ class TestUserChangePassword:
         # Should not raise error
         modified.verify_password(new_password)
         # Should raise error
-        with pytest.raises(ValidationError) as exc:
+        with pytest.raises(PasswordError) as exc:
             modified.verify_password(password)
         assert "password" in exc.value.detail
 
@@ -91,7 +92,7 @@ class TestUserChangePassword:
 
         user.verify_password(new_password)
 
-        with pytest.raises(ValidationError, match="password"):
+        with pytest.raises(PasswordError, match="password"):
             user.verify_password(password)
 
     def test_mail_sending_called_with_correct_args(self, user: User, patch_notify_password_change: MagicMock, password: str):

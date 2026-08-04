@@ -7,7 +7,7 @@ from leasify.users.selectors import user_get
 def send_token_email(user_id: int, url_path: str, subject: str, action_cta: str):
     user = user_get(user_id)
     context = {
-        "recipient_name": user.get_full_name(),
+        "recipient_name": user.full_name,
         "token_url":  build_url(base_path=url_path, with_token=True, with_uidb64=True, user=user),
         "action_cta": action_cta
     }
@@ -23,7 +23,7 @@ def send_token_email(user_id: int, url_path: str, subject: str, action_cta: str)
 def notify_password_change(user_id: int, url_path: str):
     user = user_get(user_id)
     context = {
-        "recipient_name": user.get_full_name(),
+        "recipient_name": user.full_name,
         "token_url":  build_url(base_path=url_path, with_token=True, with_uidb64=True, user=user),
     }
     subject = "Account password has been changed"

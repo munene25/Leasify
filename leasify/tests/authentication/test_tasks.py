@@ -20,7 +20,7 @@ class TestSendEmailTokenTask:
         assert mail.subject == "Reset your password"
         assert mail.to == [user.email]
         assert "reset-password" in mail.body
-        assert user.get_full_name() in mail.body
+        assert user.full_name in mail.body
 
 class TestNotifyPasswordChangeTask:
 
@@ -36,4 +36,4 @@ class TestNotifyPasswordChangeTask:
         assert mail.subject == "Account password has been changed"
         assert mail.to == [user.email]
         assert "recover-account" in mail.body
-        assert user.get_full_name() in mail.body
+        assert user.full_name in mail.body

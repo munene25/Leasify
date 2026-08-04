@@ -74,7 +74,7 @@ class PasswordChangeView(BaseAPIView):
 
     permission_classes = [IsAuthenticated]
     serializer_class = sc.PasswordChangeSerializer
-    throttle_classes = [EmailThrottle]
+    throttle_classes = [ScopedThrottle]
     throttle_scope = "password_change"
 
     def post(self, request):
