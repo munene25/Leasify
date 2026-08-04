@@ -5,6 +5,14 @@ class UserManager(BaseUserManager):
     """"
     Hooks the service layer into the user creation process.
     """
+    @classmethod
+    def normalize_email(cls, email: str | None) -> str:
+        """Cleaner email normalization. Lowercase email values"""
+
+        if not email:
+            raise ValueError("Email is not none")
+        return email.strip().lower()
+    
     def create_superuser(self, email: str, password: str | None = None, **extra_fields):
         """Creates a superuser with the given email and password."""
 
