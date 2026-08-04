@@ -147,15 +147,15 @@ def user_factory(fake, phone_no: typing.Callable[..., str], password: str) -> Fa
         users = []
 
         for _ in range(quantity):
-            user = User.objects.create(
+            user = User(
                 first_name=first_name or fake.first_name(),
                 last_name=last_name or fake.last_name(),
                 email=email or fake.email(),
-                password=password or "Pa55word!",
                 is_active=is_active,
                 is_superuser=is_superuser,
             )
-
+            user.set_password(password or "Pa55word!")
+            user.save()
             Account.objects.create(
                 user=user,
                 phone_number=phone_number or phone_no(),
