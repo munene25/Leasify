@@ -54,14 +54,8 @@ class UserListCreateView(BaseAPIView):
         return Response(data=outgoing.data, status=status.HTTP_201_CREATED)
 
 
-class AdminDetailUpdateDestroyView(BaseAPIView):
-    """
-    Allows Admins or Authroized groups to modify users details
-    All methods require priviledged access
-    Selectors with _for should be used
-    """
-
-    serializer_class = sc.AdminUserUpdateSerializer
+class AdminDetailDestroyView(BaseAPIView):
+    """Allows Admins or Authroized groups to obtain users details"""
     permission_classes = [IsAuthenticated]
 
     def get(self, request, user_id):
@@ -69,15 +63,6 @@ class AdminDetailUpdateDestroyView(BaseAPIView):
         user = sl.user_get_for(user=request.user, user_id=user_id)
         serialzer_class = sc.UserDetailSerializer(instance=user)
         return Response(status=status.HTTP_200_OK, data=serialzer_class.data)
-
-    def patch(self, request, user_id):
-        check_perms(request.user, "users.change_user")
-        incoming = self.validate_serializer(data=request.data, partial=True)
-        user = sl.user_get_for(user=request.user, user_id=user_id)
-        mod = sr.user_update(user, **incoming)
-
-        outgoing = sc.UserDetailSerializer(instance=mod)
-        return Response(data=outgoing.data, status=status.HTTP_200_OK)
 
     def delete(self, request, user_id):
         check_perms(request.user, "users.delete_user")

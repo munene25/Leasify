@@ -63,18 +63,6 @@ class UserDetailSerializer(serializers.Serializer):
     role = serializers.CharField()
 
 
-class AdminUserUpdateSerializer(serializers.Serializer):
-    """
-    Fields an admin can modify for other user.
-    Allows only a subset of fields
-    """
-
-    first_name = NameSerializerField()
-    last_name = NameSerializerField()
-    # Account fields
-    phone_number = PhoneNumberSerializerField()
-
-
 class UserEmailUpdateSerializer(serializers.Serializer):
     """
     Update serializer for users to update their own emails.
