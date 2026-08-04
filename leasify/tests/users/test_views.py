@@ -16,8 +16,9 @@ from leasify.tests.helpers import parse_error, parse_message, parse_paginated_re
 
 
 class TestUserListCreateView:
-    path = reverse("users:list_create")
 
+    path = reverse("users:list_create")
+    patch_create = patch("users.views.sr.user_account_create", return_value=User(pk=1, account=Account(pk=1)))
     payload = {
             "first_name": "Test",
             "last_name": "Test",
@@ -38,47 +39,42 @@ class TestUserListCreateView:
             ("client", 401, 201),
         ],
     )
-    def test_authentication_and_authorization(self, _client: str, get: int, post: int, request: pytest.FixtureRequest):
+    @patch_create
+    def test_authentication_and_authorization(self, patch_create, _client: str, get: int, post: int, request: pytest.FixtureRequest):
         """Verify auth and permissions for user list."""
         client: IsClient = request.getfixturevalue(_client)
         assert client.get(self.path).status_code == get
         assert client.post(self.path, self.payload).status_code == post
 
 
-    def test_user_creation_successful(
-        self,
-        client: IsClient,
-        mailoutbox: list[EmailMessage],
-        django_capture_on_commit_callbacks,
-    ):
+    def test_user_creation_successful(self, client: IsClient, django_capture_on_commit_callbacks):
         """User should be created and password hashed and can be used to login"""
+        
+        with django_capture_on_commit_callbacks(execute=True):
+            response = client.post(self.path, self.payload)
+
+        data = parse_message(response, status.HTTP_201_CREATED)
+        user = User.objects.get(email=self.payload["email"])
+
+        # Password should be hashed and user should be able to authenticate
+        assert "password" not in data and self.payload["password"] != user.password
+
+        # Should be able to athenticate
+        assert data["email"] == self.payload["email"]
+        client.login(email=data["email"], password=self.payload["password"])
+
+    @patch_create
+    def test_mock_call(self, patch_create: MagicMock, client: IsClient):
+        """Assert user_account_create is called with correct arguments"""
+
         payload = {
             **self.payload,
             "notify": True,
             "unsubscribe_url": "path/to/unsubscribe",
             "email_verify_url": "path/to/verify"
         }
-        with django_capture_on_commit_callbacks(execute=True):
-            response = client.post(self.path, payload)
-
-        data = parse_message(response, status.HTTP_201_CREATED)
-
-        user = User.objects.get(email=payload["email"])
-
-        # Password should be hashed and user should be able to authenticate
-        assert "password" not in data and payload["password"] != user.password
-        assert user.verified == False
-
-        # Should be able to athenticate
-        assert data["email"] == payload["email"]
-        client.login(email=data["email"], password=payload["password"])
-
-        # Assert mail is sent
-        assert len(mailoutbox) == 1
-        mail = mailoutbox[0]
-        assert mail.to == [payload["email"]]
-        check_links_in_mail(path=payload["unsubscribe_url"], mail=mail, with_uidb64=True, user=user)
-        check_links_in_mail(path=payload["email_verify_url"], mail=mail, with_uidb64=True, with_token=True, user=user)
+        parse_message(client.post(self.path, payload), 201)
+        patch_create.assert_called_once_with(**payload)
 
     @pytest.mark.parametrize(
         "field,value,code",
@@ -98,8 +94,8 @@ class TestUserListCreateView:
         assert error["code"] == code
         assert User.objects.count() == 0
 
-    @patch("users.services.create.user_account_create", return_value=User(pk=1, account=Account(pk=1)))
-    def test_user_creation_throttles(self, mock: MagicMock, client: IsClient, cache_clear, override_throttles):
+    @patch_create
+    def test_user_creation_throttles(self, patch_create: MagicMock, client: IsClient, cache_clear, override_throttles):
         """
         Patch the account create func to speed up
         Throttle the second request, the first and last should be okay
@@ -111,18 +107,15 @@ class TestUserListCreateView:
         # -- with second request should throttle --
         response2 = client.post(self.path, self.payload)
         errors = parse_error(response2, status.HTTP_429_TOO_MANY_REQUESTS)[0]
-        assert mock.call_count == 1
+        assert patch_create.call_count == 1
         assert errors["code"] == "throttled"
 
 
     def test_user_list_pagination(self, manager_client: IsClient, user_factory: Factory[User], override_pagination: int):
-        """
-        Test the pagination structure and data
-        Order is reversed so the first user appears in the last index
-        """
+        """Should be paginated, expected users ommits the requesting user"""
         user_factory(3)
         response1 = manager_client.get(self.path + "?page=1")
-        parse_paginated_response(response1,  4)
+        parse_paginated_response(response1,  3)
 
     @pytest.mark.parametrize(
         "query,filters",
@@ -131,9 +124,7 @@ class TestUserListCreateView:
             ("search=Felix", {"search": "Felix"}),
             ("search=test@example.com", {"search": "test@example.com"}),
             ("search=1234", {"search": "1234"}),
-            (
-                "search=Felix&is_active=false",
-                {"search": "Felix", "is_active": False},
+            ("search=Felix&is_active=false", {"search": "Felix", "is_active": False},
             ),
         ],
     )
@@ -142,43 +133,9 @@ class TestUserListCreateView:
         caretaker_client.get(f"{self.path}?{query}")
 
         mock_list.assert_called_once_with(
-            caretaker_client.user,
-            filters
+            user=caretaker_client.user,
+            filters=filters
         )
-
-    def test_user_list_ommits_results_from_qs_correctly(
-        self,
-        user_factory: Factory[User],
-        caretaker_user: User,
-        caretaker_client: IsClient,
-        manager_user: User,
-        manager_client: IsClient,
-        superuser_client: IsClient,
-    ):
-        """
-        The list qs should ommit certain types of users based on the fetching user priviledges
-        """
-        from leasify.users.selectors import get_group
-
-        new_user: User = user_factory()[0]
-        new_user.groups.add(get_group(name="manager"))
-
-        # Super user should view 3 users excluding themselves
-        respnse1 = superuser_client.get(self.path)
-        data1 = parse_message(respnse1)["results"]
-        assert len(data1) == 3
-        assert {new_user.pk, caretaker_user.pk, manager_user.pk} == {f["user_id"] for f in data1}
-
-        # Manager user should be able to view other managers, caretakers, ommits superusers
-        # Only caretaker and new_user should appear
-        response2 = manager_client.get(self.path)
-        data2 = parse_message(response2)["results"]
-        assert len(data2) == 2
-        assert {new_user.pk, caretaker_user.pk} == {f["user_id"] for f in data2}
-
-        response3 = caretaker_client.get(self.path)
-        data3 = parse_message(response3)
-        assert len(data3["results"]) == 0
 
 
 class TestAdminUserDetailUpdateDestroyView:

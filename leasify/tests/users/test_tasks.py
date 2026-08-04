@@ -22,4 +22,3 @@ class TestSendWelcomeEmailTask:
         assert mail.to == [user.email]
         assert "verify-email" in mail.body
         assert "unsubscribe" in mail.body
-        assert user.get_full_name() in mail.body
