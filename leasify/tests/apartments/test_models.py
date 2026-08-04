@@ -1,8 +1,7 @@
 import pytest
 from decimal import Decimal
 
-from django.db import transaction
-from django.db import IntegrityError
+from django.db import transaction, IntegrityError
 from rest_framework.exceptions import ValidationError
 
 from leasify.tests.types import Factory
