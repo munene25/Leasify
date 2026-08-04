@@ -3,7 +3,8 @@ from datetime import timedelta, datetime
 
 from django.db import models
 from django.utils import timezone
-from django.contrib.auth.models import AbstractUser
+from django.contrib.auth.base_user import AbstractBaseUser
+from django.contrib.auth.models import PermissionsMixin
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.contrib.auth.password_validation import validate_password
 
@@ -17,22 +18,25 @@ from leasify.common.fields import NameModelField, PhoneNumberModelField
 EMAIL_COOLDOWN: timedelta = timedelta(days=14)
 
 
-class User(BaseModel, AbstractUser):
-    username = None
-    email = models.EmailField(unique=True, db_index=True,)
+class User(BaseModel, AbstractBaseUser, PermissionsMixin):
+    """Primary User model with email field"""
+
+  
+    email = models.EmailField(unique=True, db_index=True, null=False, blank=False)
     verified = models.BooleanField(null=False, blank=False, default=False)
-    first_name = NameModelField(verbose_name="first name", null=True, blank=True)
-    last_name = NameModelField(verbose_name="last name", null=True, blank=True)
+    first_name = NameModelField(verbose_name="First name", null=False, blank=False)
+    last_name = NameModelField(verbose_name="Last name", null=False, blank=False)
     last_email_change = models.DateTimeField(null=True, blank=True)
+    is_active = models.BooleanField(null=False, blank=False, default=True)
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = ["first_name", "last_name"]
 
     account: Account
-    objects = UserManager()  # type: ignore
+    objects: UserManager = UserManager()
 
     def verify_password(self, password: str) -> None:
-        """Raise PasswordError if password does not match"""
+        """Raise PasswordError if Password does not match"""
         if not self.check_password(password):
             raise PasswordError()
 
@@ -58,7 +62,7 @@ class User(BaseModel, AbstractUser):
 
     @property
     def full_name(self) -> str:
-        return self.get_full_name()
+        return f"{self.first_name.capitalize()} {self.last_name.capitalize()}"
 
     @property
     def role(self) -> str:
