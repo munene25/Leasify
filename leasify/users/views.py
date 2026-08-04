@@ -49,8 +49,9 @@ class UserListCreateView(BaseAPIView):
 
     def post(self, request):
         incoming = self.validate_serializer(data=request.data)
-        sr.user_account_create(**incoming)
-        return Response(data={"message": "Account has been created"}, status=status.HTTP_201_CREATED)
+        user = sr.user_account_create(**incoming)
+        outgoing = sc.UserDetailSerializer(user)
+        return Response(data=outgoing.data, status=status.HTTP_201_CREATED)
 
 
 class AdminDetailUpdateDestroyView(BaseAPIView):
