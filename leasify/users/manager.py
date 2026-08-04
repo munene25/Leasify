@@ -5,36 +5,20 @@ class UserManager(BaseUserManager):
     """"
     Hooks the service layer into the user creation process.
     """
-    def create_user(self, email: str, password: str | None = None, **extra_fields):
-        """
-        Creates and saves a User with the given email and password.
-        """
+    def create_superuser(self, email: str, password: str | None = None, **extra_fields):
+        """Creates a superuser with the given email and password."""
+
         from leasify.users.services import user_account_create
 
-        if not password:
-            raise ValueError("Password must be provided")
-        
-        extra_fields.setdefault('is_staff', False)
-        extra_fields.setdefault('is_superuser', False)
+        extra_fields.setdefault("phone_number", None)
 
         user = user_account_create(
             email=email,
             password=password,
             first_name=extra_fields['first_name'],
             last_name=extra_fields['first_name'],
-            phone_number=extra_fields.get("phone_number", None),
-            notify=True,
-        )
-        return user
-    
-    def create_superuser(self, email: str, password: str | None = None, **extra_fields):
-        """
-        Creates and saves a superuser with the given email and password.
-        """
-        user = self.create_user(
-            email=email,
-            password=password,
-            **extra_fields,
+            phone_number=extra_fields["phone_number"],
+            notify=False,
         )
         user.is_staff = True
         user.is_superuser = True
