@@ -25,7 +25,7 @@ class LoginView(BaseAPIView):
     Throttles based on failed attempts, Successful request do not count as attempts.
     """
 
-    from config.settings.auth import ForceCSRFAuthentication
+    from leasify.authentication.sessions import ForceCSRFAuthentication
 
     authentication_classes = [ForceCSRFAuthentication]
     permission_classes = [AllowAny]
