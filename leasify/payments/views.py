@@ -1,4 +1,3 @@
-from django.views.decorators.csrf import csrf_exempt
 from django.urls import reverse
 from rest_framework import status, serializers
 from rest_framework.permissions import IsAuthenticated
@@ -105,7 +104,9 @@ class PaymentStatusQueryView(BaseAPIView):
 class PaymentMpesaCallbackView(BaseAPIView):
     """Processes an M-PESA STK push callback."""
 
-    @csrf_exempt
+    authentication_classes = []
+    permission_classes = []
+
     def post(self, request) -> Response:
         # IP filtering done in reverse proxy
         stk_result = parse_callback_response(request.data)
