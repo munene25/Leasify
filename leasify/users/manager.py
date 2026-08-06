@@ -28,6 +28,7 @@ class UserManager(BaseUserManager):
             notify=False,
         )
         user.is_superuser = True
+        user.is_staff = True
         user.verified = True
         user.save()
         return user

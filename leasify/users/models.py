@@ -28,7 +28,8 @@ class User(BaseModel, AbstractBaseUser, PermissionsMixin):
     last_name = NameModelField(verbose_name="Last name", null=False, blank=False)
     last_email_change = models.DateTimeField(null=True, blank=True)
     is_active = models.BooleanField(null=False, blank=False, default=True)
-
+    is_staff = models.BooleanField(null=False, blank=False, default=False)
+    
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = ["first_name", "last_name"]
 
