@@ -1,5 +1,6 @@
 from typing import Any
 import requests
+
 from leasify.payments.mpesa.types import STKResult
 
 
@@ -29,15 +30,17 @@ def parse_callback_response(response: dict[str, Any]) -> STKResult:
     return cb
 
 
-def parse_error(error: requests.exceptions.RequestException) -> tuple[int | None, dict | str | None]:
-    """Parses request exceptions to extract data for logging"""
+def parse_error(error: requests.exceptions.RequestException) -> tuple[int | None, dict | str]:
+    """Parse a requests exception into a status code and message."""
+
     response = getattr(error, "response", None)
-    if response:
-        status: int = response.status_code
-        try:
-            message: str | dict = response.json()
-        except AttributeError:
-            message = str(response)
-        return status, message
-    else:
-        return None, None
+
+    if response is None:
+        return None, str(error)
+
+    try:
+        message = response.json()
+    except ValueError:
+        message = response.text or str(error)
+
+    return response.status_code, message
