@@ -1,13 +1,13 @@
-from structlog import get_logger
+from datetime import date
+
 from django.contrib import admin
 from django.db import transaction
-from leasify.billing.models import BillingPeriod as BP
-from leasify.billing.choices import BillingStatus as BS
 from django.urls import reverse
 from django.utils.html import format_html
+
 from leasify.billing.services import billing_period_cancel
-from datetime import date
-logger = get_logger("tenancy.admin")
+from leasify.billing.models import BillingPeriod as BP
+from leasify.billing.choices import BillingStatus as BS
 
 
 
@@ -24,8 +24,13 @@ class BillingPeriodAdmin(admin.ModelAdmin):
         "created_at",
         "total_due",
         "status",
-        "duration_months",
     )
+
+    readonly_fields = (
+        "created_at",
+        "total_due",
+    )
+
     def tenant(self, obj: BP) -> str:
         url = reverse("admin:tenancy_tenancy_change", args=(obj.tenancy.pk,))
         return format_html(f'<a href="{url}">{obj.tenancy.user.full_name}</a>')
@@ -52,3 +57,14 @@ class BillingPeriodAdmin(admin.ModelAdmin):
         for billing in queryset.all():
             if billing.status == BS.UNPAID:
                 billing_period_cancel(billing)
+
+    def save_model(self, request, obj: BP, form, change) -> None:
+        from leasify.common.period import DateRange
+
+        if "start_date" in form.cleaned_data or "end_date" in form.cleaned_data:
+            r = DateRange(obj.start_date, obj.end_date)
+            obj.start_date = r.start_date
+            obj.end_date = r.end_date
+            obj.total_due = obj.tenancy.apartment.rent * obj.duration_months
+
+        super().save_model(request, obj, form, change)

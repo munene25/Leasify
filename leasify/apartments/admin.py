@@ -1,10 +1,12 @@
 from structlog import get_logger
+
 from django.contrib import admin
 from django.db.models.query import QuerySet
 from django.http import HttpRequest
-from leasify.apartments.models import Apartment
 from django.urls import reverse
 from django.utils.html import format_html
+
+from leasify.apartments.models import Apartment
 
 logger = get_logger("apartments.admin")
 
@@ -18,6 +20,8 @@ class ApartmentAdmin(admin.ModelAdmin):
 
     fields = (
         "block",
+        "floor",
+        "wing",
         "unit_number",
         "rentable",
         "rent",
