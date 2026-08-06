@@ -12,7 +12,7 @@ from leasify.billing.choices import BillingStatus as BS
 from leasify.billing.models import BillingPeriod as BP
 from leasify.payments.mpesa import initiate_stk_push, query_payment_status, make_timestamp, parse_error
 
-logger = get_logger("payments")
+logger = get_logger("payments.services")
 
 if TYPE_CHECKING:
     from leasify.payments.mpesa import STKResult
@@ -61,9 +61,9 @@ def payment_mpesa_initiate(*, billing: "BP", phone_number: str, idempotency_key:
     except (requests.exceptions.RequestException) as e:
         status_code, message = parse_error(e)
         logger.error("stk_push_failed", status_code=status_code, response=message)
-        raise MpesaAPIError() from e
+        raise MpesaAPIError(message if e.response else None) from e
 
-    payment = Payment.objects.create(
+    payment = Payment(
         billing=billing,
         amount=billing.total_due,
         status=PS.PENDING,
@@ -73,6 +73,8 @@ def payment_mpesa_initiate(*, billing: "BP", phone_number: str, idempotency_key:
         idempotency_key=idempotency_key,
         timestamp=timestamp,
     )
+    payment.full_clean()
+    payment.save()
 
     logger.info("payment_initiated", payment_id=payment.pk, billing_id=billing.pk, idemp_key=idempotency_key)
     return payment
@@ -148,7 +150,7 @@ def payment_mpesa_query(payment: Payment) -> "STKResult":
     :raises ValidationError: If the payment is not an M-PESA payment or has already completed (non-PENDING status)
 
     """
-    if not payment.checkout_id or not payment.timestamp:
+    if not payment.checkout_id or not payment.timestamp or not payment.mode == PM.MPESA:
         raise ValidationError("Only M-PESA payments can be queried")
 
     if payment.status != PS.PENDING:
