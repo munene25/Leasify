@@ -11,8 +11,8 @@ class EmailConfig:
     app_name: str = settings.APP_NAME
     company_name: str = settings.COMPANY_NAME
     company_address: str = settings.COMPANY_ADDRESS
-    support_email: str = f"support@{settings.FRONTEND_DOMAIN}"
-    default_from_email: str = f"noreply@{settings.FRONTEND_DOMAIN}"
+    support_email: str = settings.SUPPORT_EMAIL
+    default_from_email: str = settings.DEFAULT_FROM_EMAIL
     
     @property
     def as_dict(self) -> dict[str, str]:
@@ -30,7 +30,7 @@ def send_template_email(
     template_name: str,
     from_email: str | None = None,
     attachment: Any | None = None,
-    attachment_name: str = "attachment",
+    attachment_name: str| None = None,
     attachment_type: str | None = None,
 ) -> None:
     """Inject additional context to the email renders and send the email"""
@@ -51,6 +51,7 @@ def send_template_email(
             "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
         }
     if attachment:
+        attachment_name = attachment_name or "attatchment"
         email.attach(attachment_name, attachment, attachment_type)
 
     email.attach_alternative(html_content, "text/html")

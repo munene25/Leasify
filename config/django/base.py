@@ -27,14 +27,13 @@ COMPANY_ADDRESS = "Embu, Kenya"
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 
-
 LOCAL_APPS = [
     "leasify.users.apps.UsersConfig",
     "leasify.billing.apps.BillingConfig",
     "leasify.tenancy.apps.TenancyConfig",
     "leasify.payments.apps.PaymentsConfig",
     "leasify.apartments.apps.ApartmentsConfig",
-    "leasify.authentication.apps.AuthenticationConfig"
+    "leasify.authentication.apps.AuthenticationConfig",
 ]
 
 THIRD_PARTY_APPS = [
@@ -43,7 +42,7 @@ THIRD_PARTY_APPS = [
     "django_structlog",
     "rest_framework",
     "corsheaders",
-    "django_celery_results"
+    "django_celery_results",
 ]
 
 
@@ -111,12 +110,7 @@ configure_logging()
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR("db.sqlite3")
-    }
-}
+DATABASES = {"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": BASE_DIR("db.sqlite3")}}
 
 ## Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
@@ -129,7 +123,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 ## Caching
 CACHES = {
-    "default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache", "LOCATION": "memory://"},
+    "default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"},
 }
 
 # Internationalization
@@ -180,3 +174,4 @@ from config.settings.security import *
 # We import security first to obtain FRONTEND_DOMAIN
 SERVER_EMAIL = f"server@{FRONTEND_DOMAIN}"
 DEFAULT_FROM_EMAIL = f"noreply@{FRONTEND_DOMAIN}"
+SUPPORT_EMAIL = f"suport@{FRONTEND_DOMAIN}"
