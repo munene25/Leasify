@@ -38,12 +38,12 @@ class TestPaymentMpesaInitiate:
         # create a billing
         billing = billing_factory(statuses=[BS.UNPAID], starting=date(2025, 1, 1))[0]
         payment = payment_mpesa_initiate(
-            billing=billing, phone_number="0700", idempotency_key="XYZ", callback_url="https://example.com/confirm"
+            billing=billing, phone_number="0700000000", idempotency_key="XYZ", callback_url="https://example.com/confirm"
         )
         assert payment is not None
 
         stk_push.assert_called_once_with(
-            phone_number="0700",
+            phone_number="0700000000",
             amount=int(billing.total_due),
             account_ref="Jan 2025",
             description="Rent Payment",
@@ -61,7 +61,7 @@ class TestPaymentMpesaInitiate:
         monkeypatch.setattr(
             "leasify.payments.services.initiate_stk_push", lambda **kwargs: {"checkout_id": "unique_checkout"}
         )
-        initiate = partial(payment_mpesa_initiate, phone_number="0000", callback_url="")
+        initiate = partial(payment_mpesa_initiate, phone_number="0700000000", callback_url="")
 
         with pytest.raises(ValidationError, match="paid billing"):
             initiate(billing=billings[0], idempotency_key="XYZ1")
@@ -75,7 +75,7 @@ class TestPaymentMpesaInitiate:
         2. For a duplicate payment with the same idemp-key
         3. Missing idemp should ignore.
         """
-        initiate = partial(payment_mpesa_initiate, phone_number="000", callback_url="")
+        initiate = partial(payment_mpesa_initiate, phone_number="0700000000", callback_url="")
         monkeypatch.setattr(
             "leasify.payments.services.initiate_stk_push", lambda **kwargs: {"checkout_id": "unique_checkout"}
         )
@@ -95,7 +95,11 @@ class TestPaymentMpesaInitiate:
         # For pending payment on billing
         bill2 = billing_factory(statuses=[BS.UNPAID])[0]
         pending = payment_factory(statuses=[PS.PENDING], billing=bill2)[0]
-        assert initiate(billing=bill2, idempotency_key="XYZ3") == pending
+
+        with pytest.raises(ValidationError, match="Pending") as exc:
+            initiate(billing=bill2, idempotency_key="XYZ3")
+        assert int(exc.value.detail["payment_id"]) == pending.pk # type: ignore
+
 
     def test_stk_push_raises_exception(
         self,
@@ -119,7 +123,7 @@ class TestPaymentMpesaInitiate:
         billing = billing_factory(statuses=[BS.UNPAID])[0]
 
         with pytest.raises(MpesaAPIError, match="Service is unavailable"):
-            payment_mpesa_initiate(billing=billing, phone_number="0000", idempotency_key="XYZ", callback_url="")
+            payment_mpesa_initiate(billing=billing, phone_number="0700000000", idempotency_key="XYZ", callback_url="")
         assert Payment.objects.count() == 0
 
         log = caplog[-1]
@@ -130,7 +134,8 @@ class TestPaymentMpesaInitiate:
 
     def test_query_count(self, monkeypatch: pytest.MonkeyPatch, django_assert_num_queries, billing_factory: Factory[BP]):
         """
-        1. Strart transaction
+        1. Full clean: 3
+        1. Start transaction
         2. Lock billing
         3. Check for idemp key
         4. Check for pending
@@ -142,7 +147,7 @@ class TestPaymentMpesaInitiate:
         )
         billing = billing_factory(statuses=[BS.UNPAID])[0]
         with django_assert_num_queries(6):
-            payment_mpesa_initiate(billing=billing, phone_number="0000", idempotency_key="XYZ", callback_url="")
+            payment_mpesa_initiate(billing=billing, phone_number="0700000000", idempotency_key="XYZ", callback_url="")
 
 
 class TestPaymentAltCreate:
@@ -209,18 +214,6 @@ class TestPaymentMpesaProcess:
         with pytest.raises(ValidationError, match="payment cannot be queried"):
             payment_mpesa_process(stk)
 
-    @pytest.mark.skip
-    def test_extra_recepients_called(self, monkeypatch: pytest.MonkeyPatch, pending_payment: Payment, stk_result):
-        """Extra recepients should be called"""
-        mock = MagicMock()
-        monkeypatch.setattr("leasify.payments.selectors.payment_get_extra_recipients", mock)
-
-        # mock to avoid sending email
-        monkeypatch.setattr("leasify.payments.tasks.send_payment_notification.delay", lambda *args: None)
-        stk_result_success = stk_result(True, pending_payment.checkout_id)
-        payment_mpesa_process(stk_result_success)
-        mock.assert_called_once()
-
 
     def test_no_queries(self, pending_payment: Payment, stk_result, django_assert_num_queries):
         """
@@ -269,12 +262,12 @@ class TestPaymentMpesaQuery:
         exception = requests.exceptions.Timeout()
         exception.response = MagicMock()
         exception.response.status_code = 409
-        message = {"ResponseCode": "409"}
+        message = {"errorCode": "409", "errorMessage": "Response Timeout"}
         exception.response.json.return_value = message
         mock = MagicMock(side_effect=exception)
         monkeypatch.setattr("leasify.payments.services.query_payment_status", mock)
 
-        with pytest.raises(MpesaAPIError, match="Service is unavailable"):
+        with pytest.raises(MpesaAPIError, match="Response Timeout"):
             payment_mpesa_query(pending_payment)
 
         pending_payment.refresh_from_db()

@@ -40,13 +40,14 @@ def payment_mpesa_initiate(*, billing: "BP", phone_number: str, idempotency_key:
     if billing.status != BS.UNPAID:
         raise ValidationError(f"Payment not allowed for {billing.status} billing")
 
+    # Check for Pending
+    if pending := billing.payments.filter(status=PS.PENDING).first():
+        raise ValidationError({"message": "Pending payment already underway", "payment_id": pending.pk})
+    
     # Check for Idempotency
     if idempotency_key and (existing := billing.payments.filter(idempotency_key=idempotency_key).first()):
         return existing
 
-    # Check for Pending
-    if pending := billing.payments.filter(status=PS.PENDING).first():
-        return pending
 
     try:
         timestamp = make_timestamp()
@@ -59,9 +60,9 @@ def payment_mpesa_initiate(*, billing: "BP", phone_number: str, idempotency_key:
             callback_url=callback_url
         )
     except (requests.exceptions.RequestException) as e:
-        status_code, message = parse_error(e)
-        logger.error("stk_push_failed", status_code=status_code, response=message)
-        raise MpesaAPIError(message if e.response else None) from e
+        code, error, outbound = parse_error(e)
+        logger.error("stk_push_failed", status_code=code, response=error)
+        raise MpesaAPIError(outbound) from e
 
     payment = Payment(
         billing=billing,
@@ -73,7 +74,7 @@ def payment_mpesa_initiate(*, billing: "BP", phone_number: str, idempotency_key:
         idempotency_key=idempotency_key,
         timestamp=timestamp,
     )
-    payment.full_clean()
+    payment.full_clean(exclude=("billing", "checkout_id", "idempotency_key"))
     payment.save()
 
     logger.info("payment_initiated", payment_id=payment.pk, billing_id=billing.pk, idemp_key=idempotency_key)
@@ -159,9 +160,9 @@ def payment_mpesa_query(payment: Payment) -> "STKResult":
     try:
         stk_result = query_payment_status(checkout_id=payment.checkout_id, timestamp=payment.timestamp)
     except (requests.exceptions.RequestException) as e:
-        status_code, message = parse_error(e)
-        logger.error("payment_query_failed", status_code=status_code, response=message)
-        raise MpesaAPIError(message if e.response else None) from e
+        code, error, outbound = parse_error(e)
+        logger.error("payment_query_failed", status_code=code, response=error)
+        raise MpesaAPIError(outbound) from e
 
     logger.info(
         "payment_queried",

@@ -30,18 +30,30 @@ def parse_callback_response(response: dict[str, Any]) -> STKResult:
     return cb
 
 
-def parse_error(error: requests.exceptions.RequestException) -> tuple[int | None, str]:
-    """Parse a requests exception into a status code and message."""
+def parse_error(error: requests.exceptions.RequestException) -> tuple[int | None, dict , str]:
+    """Parse a requests exception into a status code error_log message."""
 
-    response = getattr(error, "response", None)
+    status: int | None = None
+    err: dict =  {"error": str(error)}
+    outbound: str = "Service is unavailable at the moment. Please try again later."
 
-    if response is None:
-        return None, str(error)
+    response: requests.Response | None = getattr(error, "response", None)
 
-    try:
-        payload = response.json()
-        message = payload.get("errorMessage", str(payload))
-    except ValueError:
-        message = response.text or str(error)
+    if  response is not None:
+        status = response.status_code
 
-    return response.status_code, message
+        try:
+            payload = response.json()
+            if isinstance(payload, dict):
+                err = payload
+
+                if errorMessage := payload.get("errorMessage"):
+                    outbound = errorMessage
+
+            else:
+                err = {"error": payload}
+
+        except (requests.JSONDecodeError):
+            err = {"error_text": response.text}
+
+    return status, err, outbound
