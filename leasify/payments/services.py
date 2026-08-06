@@ -161,7 +161,7 @@ def payment_mpesa_query(payment: Payment) -> "STKResult":
     except (requests.exceptions.RequestException) as e:
         status_code, message = parse_error(e)
         logger.error("payment_query_failed", status_code=status_code, response=message)
-        raise MpesaAPIError() from e
+        raise MpesaAPIError(message if e.response else None) from e
 
     logger.info(
         "payment_queried",
