@@ -30,7 +30,7 @@ def parse_callback_response(response: dict[str, Any]) -> STKResult:
     return cb
 
 
-def parse_error(error: requests.exceptions.RequestException) -> tuple[int | None, dict | str]:
+def parse_error(error: requests.exceptions.RequestException) -> tuple[int | None, str]:
     """Parse a requests exception into a status code and message."""
 
     response = getattr(error, "response", None)
@@ -39,7 +39,8 @@ def parse_error(error: requests.exceptions.RequestException) -> tuple[int | None
         return None, str(error)
 
     try:
-        message = response.json()
+        payload = response.json()
+        message = payload.get("errorMessage", str(payload))
     except ValueError:
         message = response.text or str(error)
 
