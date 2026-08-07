@@ -11,7 +11,7 @@ from leasify.apartments.models import Apartment
 from leasify.tenancy.services import tenancy_create
 from leasify.apartments.services import apartment_create
 from leasify.payments.services import payment_alt_create
-from leasify.users.services import user_account_create
+from leasify.users.services import user_create
 from leasify.payments.choices import PaymentMode
 
 ITERATIONS = list(range(20))
@@ -43,11 +43,14 @@ def run():
         load_data("test_users.json")
         users = User.objects.all()
     except Exception:
+        from leasify.users.choices import AccountType
+        
         users = [
-            user_account_create(
+            user_create(
                 password="Pa55word!",
                 email=f.email(),
                 phone_number=f.numerify("+2547########"),
+                account_type=AccountType.EMAIL,
                 first_name=f.first_name(),
                 last_name=f.last_name(),
                 notify=False,
