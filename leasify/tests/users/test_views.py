@@ -55,7 +55,7 @@ class TestUserListCreateView:
             response = client.post(self.path, self.payload)
 
         data = parse_message(response, status.HTTP_201_CREATED)
-        user: User = User.objects.get(email=self.payload["email"])
+        user = User.objects.get(email=self.payload["email"])
         assert user.is_active == True
         assert user.is_staff == False
         assert user.is_superuser == False
