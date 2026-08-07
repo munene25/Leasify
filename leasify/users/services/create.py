@@ -21,12 +21,18 @@ def user_create(email: str, first_name: str, last_name: str, account_type: Accou
         email=email,
         first_name=first_name,
         last_name=last_name,
-        is_active=kwargs.get("is_active", True),
-        is_staff = kwargs.get("is_staff", False),
-        is_superuser = kwargs.get("is_superuser", False)
+        is_staff=kwargs.get("is_staff"),
+        is_active=kwargs.get("is_active"),
+        is_superuser=kwargs.get("is_superuser"),
     )
 
-    account = Account(user=user, type=account_type, phone_number=kwargs.get("phone_number"))
+    backup_email = User.objects.normalize_email(kwargs.get("backup_email"))
+    account = Account(
+        user=user, 
+        type=account_type, 
+        phone_number=kwargs.get("phone_number"), 
+        backup_email=backup_email,
+    )
 
     providers.HANDLERS[account_type](user=user, account=account, kwargs=kwargs)
     user.full_clean()
