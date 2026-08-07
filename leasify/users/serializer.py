@@ -12,7 +12,7 @@ class UserCreateSerializer(serializers.Serializer):
     last_name = NameSerializerField()
     email = serializers.EmailField()
     password = serializers.CharField()
-    phone_number = PhoneNumberSerializerField()
+    phone_number = PhoneNumberSerializerField(required=False)
     notify = serializers.BooleanField(required=False, default=True)
     unsubscribe_url = serializers.CharField(required=False)
     email_verify_url = serializers.CharField(required=False)
@@ -40,7 +40,6 @@ class UserUpdateSerializer(serializers.Serializer):
     first_name = NameSerializerField()
     last_name = NameSerializerField()
     # Account fields
-    bio = serializers.CharField()
     backup_email = serializers.EmailField()
     phone_number = PhoneNumberSerializerField()
 
@@ -59,7 +58,6 @@ class UserDetailSerializer(serializers.Serializer):
     next_email_change = serializers.DateTimeField(allow_null=True)
     phone_number = PhoneNumberSerializerField(source="account.phone_number")
     backup_email = serializers.EmailField(source="account.backup_email", allow_null=True)
-    bio = serializers.CharField(source="account.bio")
     role = serializers.CharField()
 
 
