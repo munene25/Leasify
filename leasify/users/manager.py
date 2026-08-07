@@ -1,5 +1,9 @@
+import typing
+
 from django.contrib.auth.base_user import BaseUserManager
 
+if typing.TYPE_CHECKING:
+    from leasify.users.models import User
 
 
 class UserManager(BaseUserManager):
@@ -13,13 +17,12 @@ class UserManager(BaseUserManager):
         
         return email.strip().lower()
 
-    def create_user(self, email: str, password: str | None = None, **extra_fields):
-        """Default User creation"""
+    def create_user(self, email: str, password: str | None = None, **extra_fields) -> "User":
+        """Default User creation with default staff and superuser attributes"""
 
         from leasify.users.services import create
         from leasify.users.models import AccountType
 
-        extra_fields.setdefault("phone_number", None)
         extra_fields.setdefault("account_type", AccountType.EMAIL)
         extra_fields.setdefault("is_active", True)
         extra_fields.setdefault("notify", False)
@@ -27,7 +30,6 @@ class UserManager(BaseUserManager):
 
         extra_fields.setdefault("is_superuser", False)
         extra_fields.setdefault("is_staff", False)
-        extra_fields.setdefault("verified", False)
 
         return create.user_create(
             email=email,
@@ -36,12 +38,11 @@ class UserManager(BaseUserManager):
 
         )
 
-    def create_superuser(self, email: str, password: str | None = None, **extra_fields):
-        """Creates a superuser with the given email and password."""
+    def create_superuser(self, email: str, password: str | None = None, **extra_fields) -> "User":
+        """Creates a superuser with default attributes."""
   
         extra_fields.setdefault("is_superuser", True)
         extra_fields.setdefault("is_staff", True)
-        extra_fields.setdefault("verified", True)
 
         return self.create_user(email=email, password=password, **extra_fields)
         
