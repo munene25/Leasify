@@ -12,6 +12,7 @@ from rest_framework.exceptions import ValidationError
 
 from leasify.common.models import BaseModel
 from leasify.users.manager import UserManager
+from leasify.users.choices import AccountType
 from leasify.common.exceptions import PasswordError
 from leasify.common.fields import NameModelField, PhoneNumberModelField
 
@@ -26,7 +27,9 @@ class User(BaseModel, AbstractBaseUser, PermissionsMixin):
     verified = models.BooleanField(null=False, blank=False, default=False)
     first_name = NameModelField(verbose_name="First name", null=False, blank=False)
     last_name = NameModelField(verbose_name="Last name", null=False, blank=False)
+
     last_email_change = models.DateTimeField(null=True, blank=True)
+
     is_active = models.BooleanField(null=False, blank=False, default=True)
     is_staff = models.BooleanField(null=False, blank=False, default=False)
     
@@ -82,13 +85,15 @@ class User(BaseModel, AbstractBaseUser, PermissionsMixin):
             return "regular"
 
 
-# Account Model
 class Account(BaseModel):
     """Extra information on the user"""
-
-    user_id: int
+    
     user = models.OneToOneField(User, on_delete=models.CASCADE)
+    type = models.CharField(null=False, blank=False, choices=AccountType.choices)
+    provider_id = models.CharField(unique=True, blank=True, null=True)
+
     phone_number = PhoneNumberModelField(unique=True, null=True, blank=True)
-    bio = models.TextField(null=True, blank=True, max_length=300)
     backup_email = models.EmailField(null=True, blank=True)
     can_receive_emails = models.BooleanField(default=True)
+
+    user_id: int
