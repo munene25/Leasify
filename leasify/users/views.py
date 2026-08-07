@@ -14,6 +14,7 @@ from leasify.common.throttling import ScopedThrottle
 
 from leasify.users import selectors as sl, serializer as sc, services as sr
 from leasify.authentication.tokens import get_user_from_uidb64
+from leasify.users.models import User
 
 logger = get_logger("users.views")
 
@@ -49,7 +50,7 @@ class UserListCreateView(BaseAPIView):
 
     def post(self, request):
         incoming = self.validate_serializer(data=request.data)
-        user = sr.user_account_create(**incoming)
+        user = User.objects.create_user(**incoming)
         outgoing = sc.UserDetailSerializer(user)
         return Response(data=outgoing.data, status=status.HTTP_201_CREATED)
 
