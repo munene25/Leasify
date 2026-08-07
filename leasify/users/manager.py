@@ -6,7 +6,7 @@ if typing.TYPE_CHECKING:
     from leasify.users.models import User
 
 
-class UserManager(BaseUserManager):
+class UserManager(BaseUserManager[User]):
     """"Provide superuser creation and custom email normalization"""
 
     @classmethod
