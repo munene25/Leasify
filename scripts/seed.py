@@ -44,16 +44,14 @@ def run():
         users = User.objects.all()
     except Exception:
         from leasify.users.choices import AccountType
-        
+
         users = [
-            user_create(
+            User.objects.create_user(
                 password="Pa55word!",
                 email=f.email(),
                 phone_number=f.numerify("+2547########"),
-                account_type=AccountType.EMAIL,
                 first_name=f.first_name(),
                 last_name=f.last_name(),
-                notify=False,
             )
             for _ in ITERATIONS
         ]
@@ -64,8 +62,7 @@ def run():
             first_name="Edwin",
             last_name="Munene",
             phone_number="+254-791-573-104",
-            notify=False
-        )  # type: ignore
+        )
         dump_data("test_users.json", "users")
 
     # ============================================= Apartments =============================================
