@@ -48,8 +48,8 @@ def user_create(email: str, first_name: str, last_name: str, account_type: Accou
             lambda: tasks.send_welcome_email.delay(
                 user.pk,
                 unsubscribe_url=kwargs["unsubscribe_url"],
-                email_verify_url=kwargs["verify_url"],
+                email_verify_url=kwargs["email_verify_url"],
             )
         )
-    logger.info("user_created", email=email, account_type=account_type)
+    logger.info("user_created", email=email, account_type=account_type, name=user.full_name)
     return user
