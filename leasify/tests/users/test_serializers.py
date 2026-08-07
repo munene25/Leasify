@@ -36,7 +36,6 @@ class TestUserDetailSerializer:
         s = dict(instance.data)
         assert s["backup_email"] == u.account.backup_email
         assert s["email_verified"] == u.verified
-        assert s["bio"] == bio == u.account.bio
         # Assert null fields are present and serialized
         assert s["next_email_change"] == None
         assert s["role"] == u.role

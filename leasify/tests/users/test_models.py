@@ -3,13 +3,13 @@ from datetime import timedelta
 
 from django.utils import timezone
 from django.core.exceptions import ValidationError
-from django.contrib.auth.password_validation import validate_password
 from django.db import transaction, IntegrityError
-
 from rest_framework.exceptions import ValidationError
-from leasify.users.models import User, EMAIL_COOLDOWN
-from leasify.tests.types import Factory
+
 from leasify.common.exceptions import PasswordError
+from leasify.users.models import User, EMAIL_COOLDOWN
+from leasify.users.choices import AccountType
+from leasify.tests.types import Factory
 
 
 class TestUserModel:
@@ -24,14 +24,17 @@ class TestUserModel:
     def test_password_validate(self, user: User):
         """validate_password should raise based on password validators."""
 
+        # Srong password
         user.validate_password("StrongPassword123!")
 
+        # Too short
         with pytest.raises(ValidationError, match="password"):
             user.validate_password("123")  # too short
 
+        # User similarity
         with pytest.raises(ValidationError, match="password"):
-            user.validate_password(user.email.split("@")[0]) 
-        
+            user.validate_password(user.email.split("@")[0])
+
     def test_next_email_change_none_if_no_last_change(self, user: User):
         """next_email_change should return None if last_email_change is not set."""
         user.last_email_change = None
@@ -68,6 +71,18 @@ class TestUserModel:
             with transaction.atomic():
                 User.objects.create(email=user.email, password=password, first_name="", last_name="")
 
+    def test_phone_number_validator_fail_for_wrong_format(self, wrong_phone_number: str, password: str):
+        """Wrong phone formats and phone number regions are rejected"""
+        with pytest.raises(ValidationError, match="phone_number"):
+            User.objects.create_user(
+                email="test@email.com",
+                first_name="Test",
+                last_name="Test",
+                phone_number=wrong_phone_number,
+                password=password,
+            )
+
+        assert User.objects.count() == 0
 
     @pytest.mark.parametrize(
         "overrides,match",
@@ -81,12 +96,13 @@ class TestUserModel:
     def test_non_nullable_fields(self, overrides: dict, match: str):
         """Call full_clean on a model and assert whether it raises."""
         default = {
-            "email": "test@email.com",
+            "email": "test@test.com",
             "first_name": "Test",
             "last_name": "User",
         }
         with pytest.raises(ValidationError, match=match):
             User(**{**default, **overrides}).full_clean()
+
 
 class TestAccountModel:
 
@@ -104,21 +120,38 @@ class TestAccountModel:
                 user2.account.phone_number = user1.account.phone_number
                 user2.account.save()
 
+    def test_db_constraints(self, user_factory: Factory[User]):
+        """Should raise validation Error for non unique provider id"""
+        user = user_factory(account_type=AccountType.GOOGLE)[0]
+
+        with pytest.raises(ValidationError, match="provider_id"):
+            User.objects.create_user(
+                email="testemail@gmail.com",
+                first_name="Test",
+                last_name="Test",
+                account_type=AccountType.GOOGLE,
+                provider_id=user.account.provider_id,
+            )
+
+
 class TestUserManager:
 
-    def test_superuser_creation(self, password: str):
-        """Should be superuser, active, staff. Does not require phone number."""
-        user = User.objects.create_superuser(
+    def test_create_user(self, password: str):
+        """Should have correct defaults"""
+        user = User.objects.create_user(
             email="ADMIN@LEASIFY.COM",
             password=password,
             first_name="Admin",
             last_name="User",
         )
-        assert user.is_superuser is True
-        assert user.is_active is True
         assert user.email == "admin@leasify.com"  # normalized
+        assert user.is_superuser is False
+        assert user.is_active is True
+        assert user.is_staff == False
+        assert user.account.provider_id is None
+        assert user.account.type == AccountType.EMAIL
 
-    def test_email_normalization(self, password: str):
+    def test_superuser_creation(self, password: str):
         """Email should be lowercased and stripped on creation."""
         user = User.objects.create_superuser(
             email="  EDWIN@LEASIFY.COM  ",
@@ -127,3 +160,19 @@ class TestUserManager:
             last_name="User",
         )
         assert user.email == "edwin@leasify.com"
+        assert user.is_superuser == True
+        assert user.is_staff == True
+        assert user.is_active == True
+
+    def test_allows_different_account_type(self, password: str):
+        """Should allow for non EMAIL account types"""
+        user = User.objects.create_user(
+            email=" EMAIL@email.com  ",
+            first_name="Test",
+            last_name="Test",
+            provider_id="xyz",
+            account_type=AccountType.GOOGLE,
+        )
+        assert user.email == "email@email.com"
+        assert user.account.type == AccountType.GOOGLE
+        assert user.account.provider_id == "xyz"

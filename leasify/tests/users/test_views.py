@@ -4,13 +4,12 @@ import pytest
 from freezegun import freeze_time
 
 from django.utils import timezone
-from django.core.cache import cache
 from django.db.models import QuerySet
 from django.urls import reverse
-from django.core.mail import EmailMessage
 from rest_framework import status
 
 from leasify.users.models import User, Account, EMAIL_COOLDOWN
+from leasify.users.choices import AccountType
 from leasify.tests.types import IsClient, Factory
 from leasify.tests.helpers import parse_error, parse_message, parse_paginated_response, check_links_in_mail
 
@@ -18,7 +17,7 @@ from leasify.tests.helpers import parse_error, parse_message, parse_paginated_re
 class TestUserListCreateView:
 
     path = reverse("users:list_create")
-    patch_create = patch("users.views.sr.user_account_create", return_value=User(pk=1, account=Account(pk=1)))
+    patch_create = patch("leasify.users.services.create.user_create", return_value=User(pk=1, account=Account(pk=1)))
     patch_list_for = patch("leasify.users.selectors.user_list_for", return_value=QuerySet(User))
 
     payload = {
@@ -56,7 +55,10 @@ class TestUserListCreateView:
             response = client.post(self.path, self.payload)
 
         data = parse_message(response, status.HTTP_201_CREATED)
-        user = User.objects.get(email=self.payload["email"])
+        user: User = User.objects.get(email=self.payload["email"])
+        assert user.is_active == True
+        assert user.is_staff == False
+        assert user.is_superuser == False
 
         # Password should be hashed and user should be able to authenticate
         assert "password" not in data and self.payload["password"] != user.password
@@ -76,7 +78,7 @@ class TestUserListCreateView:
             "email_verify_url": "path/to/verify"
         }
         parse_message(client.post(self.path, payload), 201)
-        patch_create.assert_called_once_with(**payload)
+        patch_create.assert_called_once_with(**payload, is_active=True, is_superuser=False, is_staff=False, account_type=AccountType.EMAIL)
 
     @pytest.mark.parametrize(
         "field,value,code",
@@ -142,7 +144,7 @@ class TestUserListCreateView:
 
 class TestAdminUserDetailUpdateDestroyView:
     patch_get_for = patch("leasify.users.selectors.user_get_for", return_value=User(pk=1, account=Account()))
-    patch_update_status = patch("leasify.users.views.sr.user_update_active_status", return_value=User(pk=1, account=Account()))
+    patch_update_status = patch("leasify.users.services.update.user_update_active_status", return_value=User(pk=1, account=Account()))
 
     def path(self, *args: int) -> str:
         return reverse("users:admin_detail", args=args)
@@ -175,12 +177,17 @@ class TestAdminUserDetailUpdateDestroyView:
         assert data1["email"] == user.email
         assert data1["first_name"] == user.first_name
         assert data1["last_name"] == user.last_name
-        assert data1["bio"] == user.account.bio
+        assert data1["account_type"] == user.account.type
         assert data1["phone_number"] == str(user.account.phone_number)
 
 
-    def test_deactivate_user(self, manager_client: IsClient, superuser: User):
+    def test_deactivate_user(self, manager_client: IsClient, user: User):
         """Deactivating user should work as expected"""
+        path = self.path(user.pk)
+        response = manager_client.delete(path)
+        assert response.status_code == 200
+        user.refresh_from_db()
+        assert user.is_active == False
 
     @patch_get_for
     def test_get_mock_calls(self, patch_get_for: MagicMock, user: User, manager_client: IsClient):
@@ -199,15 +206,14 @@ class TestAdminUserDetailUpdateDestroyView:
 class TestMeView:
     path = reverse("users:me")
 
-    patch_update_user = patch("leasify.users.views.sr.user_update", return_value=User(pk=1, account=Account()))
-    patch_update_status = patch("leasify.users.views.sr.user_update_active_status", return_value=User(pk=1, account=Account()))
+    patch_update_user = patch("leasify.users.services.update.user_update", return_value=User(pk=1, account=Account()))
+    patch_update_status = patch("leasify.users.services.update.user_update_active_status", return_value=User(pk=1, account=Account()))
 
 
     payload = {
         "first_name": "Zane",
         "last_name": "Omondi",
         "phone_number": "+254 710 111 110",
-        "bio": "A regular bio",
         "backup_email": "test@test.com"
     }
 

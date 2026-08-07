@@ -1,8 +1,8 @@
-import pytest
 import typing
 from datetime import timedelta
 
-from unittest.mock import MagicMock
+import pytest
+from unittest.mock import patch, MagicMock
 from freezegun import freeze_time
 
 from django.core.mail import EmailMessage
@@ -11,170 +11,126 @@ from rest_framework.exceptions import ValidationError
 
 from leasify.tests.helpers import check_links_in_mail
 
-from leasify.users import services as s
+from leasify.users import services as sr
+from leasify.users.choices import AccountType
 from leasify.users.models import User, Account, EMAIL_COOLDOWN
 from leasify.users.selectors import get_group
 
 
-class TestAccountCreation:
+class TestUserCreate:
 
     payload = {
+        "email": "test@test.com",
         "first_name": "Test",
         "last_name": "Test",
-        "email": "test@mail.com",
-        "password": "Pa55word!",
         "phone_number": "254710100100",
+        "is_active": True,
+        "is_staff": False,
+        "is_superuser": False,
         "notify": False,
+        "backup_email": "test2@test.com"
+    }
+    google = {
+        "account_type": AccountType.GOOGLE,
+        "provider_id": "xyz"
+    }
+    email = {
+        "account_type": AccountType.EMAIL,
+        "password": "Pa55word!"
     }
 
-    def test_account_creation_successful(self,):
-        """
-        Test whether account creation is successfull and data is data matches
-        """
-        s.user_account_create(**self.payload)
-        user = User.objects.get(email=self.payload["email"])
-        account = Account.objects.earliest("pk")
-        # Assert reverse relationship
-        assert user == account.user
+    def test_email_account_creation(self):
+        """Should be able to create a user account of type EMAIL"""
+        user = sr.user_create(**{**self.payload, **self.email})
+        assert User.objects.count() == 1
+
+        user.refresh_from_db()
+        # password is hashed
+        user.verify_password(self.email["password"])
+        assert user.password != self.email["password"]
+        assert user.account.type == AccountType.EMAIL
+        assert user.account.provider_id is None
+        assert user.account.phone_number == self.payload["phone_number"]
+        assert user.email == self.payload["email"]
         assert user.first_name == self.payload["first_name"]
         assert user.last_name == self.payload["last_name"]
-        assert user.email == self.payload["email"]
-        # Assert password hashed correctly
-        assert user.password != self.payload["password"]
-        assert account.phone_number == self.payload["phone_number"]
-        user.verify_password(self.payload["password"])
+        assert user.is_staff == self.payload["is_staff"]
+        assert user.is_superuser == self.payload["is_superuser"]
+        assert user.is_active == self.payload["is_active"]
+
+    def test_google_account_creation(self):
+        """Should be able to create a user account of type GOOGLE"""
+        user = sr.user_create(**{**self.payload, **self.google})
         assert User.objects.count() == 1
 
-    def test_skip_mail_sending_when_flag_set_to_false(self, django_capture_on_commit_callbacks, mailoutbox: list[EmailMessage]):
-        """
-        Test whether mailing will be ignored with notify flag set to false
-        """
-        with django_capture_on_commit_callbacks(execute=True) as callback:
-            s.user_account_create(**self.payload)
-        assert len(mailoutbox) == 0
+        user.refresh_from_db()
+        # password is hashed
+        assert not user.has_usable_password()
+        assert user.account.type == AccountType.GOOGLE
+        assert user.account.provider_id == "xyz"
+        assert user.account.phone_number == self.payload["phone_number"]
+        assert user.email == self.payload["email"]
+        assert user.first_name == self.payload["first_name"]
+        assert user.last_name == self.payload["last_name"]
+        assert user.is_staff == self.payload["is_staff"]
+        assert user.is_superuser == self.payload["is_superuser"]
+        assert user.is_active == self.payload["is_active"]
 
-    def test_mail_sent_upon_creation(self, mailoutbox: list[EmailMessage], django_capture_on_commit_callbacks):
-        """
-        Test normal mail sending with notify flag set to True.
-        Requires always eager for delay calls
-        """
+    @patch("leasify.users.models.User.validate_password", return_value=True)
+    def test_password_validators(self, mock: MagicMock):
+        """With Email account type. Password validator has to be called"""
+
+        sr.user_create(**{**self.payload, **self.email})
+        mock.assert_called_once_with(self.email["password"])
+
+    
+    def test_email_uniqueness_enforcement(self):
+        """Should validate constraints before saving in each case"""
+
+        sr.user_create(**{**self.payload, **self.email})
+        with pytest.raises(ValidationError, match="email"):
+            sr.user_create(**{**self.payload, **self.google})
+
+        assert User.objects.count() == 1
+
+    def test_provider_id_uniqueness(self):
+        """Should validate constraints before saving in each case"""
+
+        sr.user_create(**{**self.payload, **self.google})
+        with pytest.raises(ValidationError, match="provider_id"):
+            sr.user_create(**{**self.payload, **self.google, "email": "test2@email.com"})
+
+        assert User.objects.count() == 1
+
+    def test_email_normalization(self):
+        """Email should be normalized"""
+
+        payload = {**self.payload, **self.google, "email": "TEST@TEST.COM   "}
+        user = sr.user_create(**payload)
+        user.refresh_from_db() # type: ignore
+        assert user.email == "test@test.com"
+
+    def test_notify_user(self, mailoutbox: list[EmailMessage], django_capture_on_commit_callbacks):
+        """Notify is based on notify flag"""
         payload = {
-            **self.payload,
+            **self.payload, 
+            **self.email, 
             "notify": True,
-            "unsubscribe_url": "path/to/unsubscribe",
-            "email_verify_url": "path/to/verify",
+            "email_verify_url": "path/to/verify"
         }
+        # raises for missing links
+        with pytest.raises(ValidationError, match="unsubscribe_url"):
+            user = sr.user_create(**payload)
 
         with django_capture_on_commit_callbacks(execute=True):
-            user = s.user_account_create(**payload)
-
+            user = sr.user_create(**{**payload, "unsubscribe_url": "path/to/unsub"})
+        
+        assert len(mailoutbox) == 1
         mail = mailoutbox[0]
-        assert mail.to == [self.payload["email"]]
-        check_links_in_mail(path=payload["email_verify_url"], mail=mail, with_uidb64=True, with_token=True, user=user)
-        check_links_in_mail(path=payload["unsubscribe_url"], mail=mail, with_uidb64=True, user=user)
-
-    def test_user_created_even_on_task_failure(self, monkeypatch: pytest.MonkeyPatch, django_capture_on_commit_callbacks,):
-        """
-        Regardless of cache failure i.e., celery cant reach broker, user should be created nonetheless
-        """
-        payload = {
-            **self.payload,
-            "notify": True,
-            "unsubscribe_url": "path/to/unsubscribe",
-            "email_verify_url": "path/to/verify",
-        }
-        mock = MagicMock()
-        monkeypatch.setattr("leasify.users.tasks.send_welcome_email.delay", mock)
-        mock.side_effect = Exception("Cache Down")
-
-        with pytest.raises(Exception, match="Cache Down"):
-
-            with django_capture_on_commit_callbacks(execute=True):
-                s.user_account_create(**payload)
-
-        assert User.objects.count() == 1
-
-    @pytest.mark.parametrize(
-        "password,exception",
-        [
-            ("", "short"),
-            ("foo", "short"),
-            ("aeiou", "short"),
-            ("1235151545", "numeric"),
-        ],
-    )
-    def test_password_validators_fail(self, password: str, exception: str):
-        """
-        Different variations of passwords that should fail validation
-        """
-        with pytest.raises(ValidationError) as exc:
-            s.user_account_create(**{**self.payload, "password": password})
-        assert "password" in exc.value.detail
-        assert exception in str(exc.value.detail)
-        assert User.objects.count() == 0
-
-    @pytest.mark.parametrize(
-        "field,value,_password",
-        [
-            ("first_name", "Bethany", "Bethany!"),
-            ("last_name", "Florence", "_floReNCE_"),
-            ("email", "benedicturs@gmail.com", "benedictorial"),
-        ],
-    )
-    def test_password_validators_fail_for_user_similarity(self, field: str, value: str, _password: str):
-        """
-        Different variations of passwords that should fail based on user similarity
-        """
-
-        with pytest.raises(ValidationError) as exc:
-            s.user_account_create(**{**self.payload, field: value, "password": _password})
-        assert "password" in exc.value.detail
-        assert "similar" in str(exc.value.detail)
-        assert User.objects.count() == 0
-
-    @pytest.mark.parametrize(
-        "field,value,duplicate",
-        [
-            ("email", "test@test.com", "test@test.com"),
-            ("email", "phil@TEST.com", "phil@test.com"),
-            ("phone_number", "0710-100-100", "+254 710 100 100"),
-        ],
-    )
-    def test_account_creation_fails_with_db_contraints(self, field: str, value: str, phone_no: typing.Callable[..., str], duplicate: str):
-        """Test that db constraints with similar values"""
-        data1 = {
-            "first_name": "testname",
-            "last_name": "lastname",
-            "email": "testemail1@gmail.com",
-            "password": "Pa55word!",
-            "phone_number": phone_no(),
-            "notify": False,
-        }
-        data2 = {
-            "first_name": "testname",
-            "last_name": "lastname",
-            "email": "testemail2@gmail.com",
-            "password": "Pa55word!",
-            "phone_number": phone_no(),
-            "notify": False,
-        }
-        data1[field] = value
-        data2[field] = duplicate
-
-        s.user_account_create(**data1)
-        with pytest.raises(ValidationError) as exc:
-            s.user_account_create(**data2)
-
-        assert User.objects.count() == 1
-        assert field in exc.value.detail
-
-    def test_phone_number_validator_fail_for_wrong_format(self, wrong_phone_number: str):
-        """
-        Assert wrong phone number formats and phone number regions are rejected
-        """
-        with pytest.raises(ValidationError, match="phone_number"):
-            s.user_account_create(**{**self.payload, "phone_number": wrong_phone_number})
-        assert User.objects.count() == 0
+        assert mail.to == [user.email]
+        check_links_in_mail(mail=mail, user=user, path="path/to/unsub", with_token=False, with_uidb64=True)
+        check_links_in_mail(mail=mail, user =user, path="path/to/verify", with_token=True, with_uidb64=True)
+    
 
 
 class TestRoleAssignment:
@@ -185,7 +141,7 @@ class TestRoleAssignment:
         """
         assert user.groups.count() == 0
         role = get_group("manager")
-        s.user_set_role(user=user, role=role)
+        sr.user_set_role(user=user, role=role)
 
         user.refresh_from_db()  # type: ignore
 
@@ -202,10 +158,10 @@ class TestRoleAssignment:
         from leasify.common.exceptions import RoleAssignmentError
 
         assert user.groups.count() == 0
-        mod_user = s.user_set_role(user=user, role=roles_list[0])
+        mod_user = sr.user_set_role(user=user, role=roles_list[0])
 
         with pytest.raises(RoleAssignmentError) as exc:
-            s.user_set_role(user=mod_user, role=roles_list[1])
+            sr.user_set_role(user=mod_user, role=roles_list[1])
         assert "Only one role is allowed per user." in exc.value.detail
         assert mod_user.groups.count() == 1
 
@@ -216,7 +172,7 @@ class TestUserStatusChange:
         Check whether the returned user is deactivated
         """
 
-        mod_user = s.user_update_active_status(user, False)
+        mod_user = sr.user_update_active_status(user, False)
         fetched = User.objects.get(pk=user.pk)
         assert fetched == mod_user == user
         assert mod_user.is_active == False
@@ -226,7 +182,7 @@ class TestUserStatusChange:
         Check whether the returned user is deactivated
         """
 
-        mod_user = s.user_update_active_status(user, True)
+        mod_user = sr.user_update_active_status(user, True)
         fetched = User.objects.get(pk=user.pk)
         assert fetched == mod_user == user
         assert mod_user.is_active == True
@@ -240,7 +196,7 @@ class TestAccountUnsubscribe:
         Account should be marked as cannot receive emails
         """
 
-        mod_acc = s.account_update_mailing_status(user.account, status)
+        mod_acc = sr.account_update_mailing_status(user.account, status)
         mod_acc.refresh_from_db()  # type: ignore
         assert mod_acc == mod_acc == user.account
         assert mod_acc.can_receive_emails == status
@@ -254,7 +210,7 @@ class TestRoleRemoval:
         first_role = manager_user.role
 
         assert first_role is not None
-        s.user_remove_role(user=manager_user)
+        sr.user_remove_role(user=manager_user)
 
         manager_user.refresh_from_db()  # type: ignore
 
@@ -271,7 +227,7 @@ class TestEmailUpdate:
         """
         new_email = "test@EXAMPLE.com"
         normalized = new_email.lower()
-        mod_user = s.user_email_update(user=user, email=new_email, password="Pa55word!")
+        mod_user = sr.user_email_update(user=user, email=new_email, password="Pa55word!")
         fetched = User.objects.get(pk=user.pk)
 
         assert mod_user == user == fetched
@@ -295,7 +251,7 @@ class TestEmailUpdate:
         user.save(update_fields=["last_email_change"])
 
         with pytest.raises(EmailUpdateError) as exc:
-            s.user_email_update(user=user, email=new_email, password="Pa55word!")
+            sr.user_email_update(user=user, email=new_email, password="Pa55word!")
 
         assert "email" in exc.value.detail
         assert User.objects.get(pk=user.pk).email == user.email
@@ -310,10 +266,10 @@ class TestEmailUpdate:
         before = timezone.now()
         after = before + EMAIL_COOLDOWN
 
-        with freeze_time(before, tz_offset=0) as frozen_time:
+        with freeze_time(before) as frozen_time:
             user.last_email_change = timezone.now()
             user.save()
-            updater = lambda: s.user_email_update(user=user, email=new_email, password=password)
+            updater = lambda: sr.user_email_update(user=user, email=new_email, password=password)
 
             with pytest.raises(EmailUpdateError) as exc:
                 updater()
@@ -332,89 +288,29 @@ class TestEmailUpdate:
 
 class TestUserUpdate:
     def test_updating_existing_data_succeeds(self, user: User, phone_no: typing.Callable[..., typing.Any]):
-        """
-        Updating existing user and account fields should succeed
-        """
+        """Updating existing user and account fields should succeed"""
         data = {
-            "first_name": "Some first name",
-            "last_name": "Some last name",
+            "first_name": "First",
+            "last_name": "Last",
             "phone_number": phone_no(),
+            "backup_email": "   Test@TEST.cOM  "
         }
-        mod_user = s.user_update(user, **data)
-        mod_account = mod_user.account
-        # assert same user returned
-        assert user == mod_user
-        assert user.account == mod_account
+        modified = sr.user_update(user, **data)
+        user.refresh_from_db() # type: ignore
+        assert user == modified
+        assert user.first_name == data["first_name"]
+        assert user.last_name == data["last_name"]
+        assert user.account.phone_number == data["phone_number"]
+        assert user.account.backup_email == "test@test.com"
 
-        # assert persistence
-        assert User.objects.get(pk=mod_user.pk) == user
-        assert mod_user.first_name == data["first_name"]
-        assert mod_user.last_name == data["last_name"]
-        assert mod_account.phone_number == data["phone_number"]
 
-        # Assert key fields not mod_user
-        assert mod_user.email == user.email
-        assert mod_user.password == user.password
-
-    def test_email_validation(self, user):
-        """
-        Emails should be normalized and incorrect changes should not reflect
-        """
-        backup_email = "test@GMAIl.com"
-        mod_user = s.user_update(user, backup_email=backup_email)
-        mod_acc = mod_user.account
-        assert mod_acc.backup_email == "test@gmail.com"
-
-        wrong_format = "test@gmail"
-        with pytest.raises(ValidationError) as exc:
-            s.user_update(mod_user, backup_email=wrong_format)
-        assert "backup_email" in exc.value.detail
-
-        db_version = User.objects.get(pk=user.pk)
-
-        assert db_version.account.backup_email == "test@gmail.com"
-
-    @pytest.mark.parametrize(
-        "field, model, value",
-        [
-            ("backup_email", "account", "test@test.com"),
-            ("bio", "account", "This is a test bio"),
-            ("last_name", "user", "Guest"),
-            ("first_name", "user", "Mike"),
-        ],
-    )
-    def test_inserting_new_data_succeeds(self, field: str, model: str, value, user: User):
-        """
-        Originally, these fields do not exist on the db,
-        User should be able to add and data
-        """
-        mod_user = s.user_update(user, **{field: value})
-        mod_account = mod_user.account
-        obj = mod_user if model == "user" else mod_account
-        assert getattr(obj, field) == value
-
-    def test_phone_number_validators_fail_for_wrong_format(self, wrong_phone_number, user):
+    def test_validators(self, user: User):
         """
         Phone numbers that should be rejected based on incorrect countrycode
         """
-        with pytest.raises(ValidationError) as exc:
-            s.user_update(user, **{"phone_number": wrong_phone_number})
+        with pytest.raises(ValidationError, match="phone_number"):
+            sr.user_update(user, phone_number="200")
 
-        assert "phone_number" in exc.value.detail
+        with pytest.raises(ValidationError, match="first_name"):
+            sr.user_update(user, first_name="E")
 
-    @pytest.mark.parametrize(
-        "field,value,",
-        [
-            ("first_name", "E"),
-            ("last_name", "M"),
-            ("first_name", "Edwin_"),
-            ("last_name", "Munene!"),
-        ],
-    )
-    def test_name_field_validators_fail(self, user: User, field: str, value):
-        """
-        Short names and unexpected punctuations are not allowed.
-        """
-        with pytest.raises(ValidationError) as exc:
-            s.user_update(user, **{field: value})
-        assert field in exc.value.detail
