@@ -13,7 +13,7 @@ from leasify.common.pagination import get_paginated_response
 from leasify.common.throttling import ScopedThrottle
 
 from leasify.users import selectors as sl, serializer as sc, services as sr
-from leasify.authentication.tokens import get_user_from_uidb64
+from leasify.authentication import tokens
 from leasify.users.models import User
 
 logger = get_logger("users.views")
@@ -68,10 +68,10 @@ class AdminDetailDestroyView(BaseAPIView):
     def delete(self, request, user_id):
         check_perms(request.user, "users.delete_user")
         user = sl.user_get_for(user=request.user, user_id=user_id)
-        sr.user_update_active_status(user=user, status=False)
+        sr.update.user_update_active_status(user=user, status=False)
         return Response(
             status=status.HTTP_200_OK,
-            data={"message": f"{user.full_name}'s account deactivated successfully"},
+            data={"message": f"{user.full_name} deactivated"},
         )
 
 
@@ -90,13 +90,13 @@ class MeView(BaseAPIView):
 
     def patch(self, request):
         incoming = self.validate_serializer(data=request.data, partial=True)
-        user = sr.user_update(user=request.user, **incoming)
+        user = sr.update.user_update(user=request.user, **incoming)
 
         outgoing = sc.UserDetailSerializer(instance=user)
         return Response(data=outgoing.data, status=status.HTTP_200_OK)
 
     def delete(self, request):
-        sr.user_update_active_status(user=request.user, status=False)
+        sr.update.user_update_active_status(user=request.user, status=False)
         # flush the session
         # Fixed bug: Logout requires the request object not request.user
         logout(request)
@@ -115,7 +115,7 @@ class EmailUpdateView(BaseAPIView):
 
     def post(self, request):
         incoming = self.validate_serializer(data=request.data, partial=False)
-        user = sr.user_email_update(user=request.user, **incoming)
+        user = sr.update.user_email_update(user=request.user, **incoming)
 
         # In this case its better to respond with the email instead of the whole payload
         # Helps in front end rendering.
@@ -131,9 +131,9 @@ class UserUnsubscribeView(BaseAPIView):
     permission_classes = [AllowAny]
 
     def post(self, request, uidb64):
-        user = get_user_from_uidb64(uidb64)
+        user = tokens.get_user_from_uidb64(uidb64)
         if user.account.can_receive_emails:
-            sr.account_update_mailing_status(user.account, status=False)
+            sr.update.account_update_mailing_status(user.account, status=False)
         return Response(
             data={"message": "You have been unsubscribed from all non-essential emails"},
             status=status.HTTP_200_OK,
@@ -173,12 +173,12 @@ class AdminRoleDetailView(BaseAPIView):
         user = sl.user_get_for(user=request.user, user_id=user_id)
         incoming = self.validate_serializer(data=request.data)
         # Explicitly acknowledge that an existing role will be replaced if it exists by setting replace to true. This prevents accidental role replacement.
-        u = sr.user_set_role(user=user, role=incoming["role"], replace=True)
+        u = sr.groups.user_set_role(user=user, role=incoming["role"], replace=True)
         serializer = sc.AdminRoleDetailSerializer(instance=u)
         return Response(status=status.HTTP_200_OK, data=serializer.data)
 
     def delete(self, request, user_id):
         user = sl.user_get_for(user=request.user, user_id=user_id)
-        u = sr.user_remove_role(user=user)
+        u = sr.groups.user_remove_role(user=user)
         serializer = sc.AdminRoleDetailSerializer(instance=u)
         return Response(status=status.HTTP_200_OK, data=serializer.data)
