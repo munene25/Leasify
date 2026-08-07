@@ -53,12 +53,14 @@ class UserDetailSerializer(serializers.Serializer):
     email = serializers.EmailField()
     first_name = NameSerializerField()
     last_name = NameSerializerField()
-    joined_at = serializers.DateTimeField(source="created_at")
+    role = serializers.CharField()
     email_verified = serializers.BooleanField(source="verified")
+    joined_at = serializers.DateTimeField(source="created_at")
     next_email_change = serializers.DateTimeField(allow_null=True)
+
+    account_type = serializers.CharField(source="account.type")
     phone_number = PhoneNumberSerializerField(source="account.phone_number")
     backup_email = serializers.EmailField(source="account.backup_email", allow_null=True)
-    role = serializers.CharField()
 
 
 class UserEmailUpdateSerializer(serializers.Serializer):
