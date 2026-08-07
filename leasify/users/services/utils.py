@@ -5,7 +5,7 @@ def require(kwargs: dict, *fields: str) -> None:
     errors = {}
     for field in fields:
         if not kwargs.get(field):
-            errors[field] = ["This field is required"]
+            errors[field] = "This field is required"
     if errors:
         raise ValidationError(errors)
 
