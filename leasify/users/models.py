@@ -66,7 +66,7 @@ class User(BaseModel, AbstractBaseUser, PermissionsMixin):
 
     @property
     def full_name(self) -> str:
-        return f"{self.first_name.capitalize()} {self.last_name.capitalize()}"
+        return f"{self.first_name} {self.last_name}".title()
 
     @property
     def role(self) -> str:
