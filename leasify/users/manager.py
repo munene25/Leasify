@@ -16,7 +16,7 @@ class UserManager(BaseUserManager):
     def create_user(self, email: str, password: str | None = None, **extra_fields):
         """Default User creation"""
 
-        from leasify.users.services import user_create
+        from leasify.users.services import create
         from leasify.users.models import AccountType
 
         extra_fields.setdefault("phone_number", None)
@@ -29,7 +29,7 @@ class UserManager(BaseUserManager):
         extra_fields.setdefault("is_staff", False)
         extra_fields.setdefault("verified", False)
 
-        return user_create(
+        return create.user_create(
             email=email,
             password=password,
             **extra_fields
