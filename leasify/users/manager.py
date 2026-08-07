@@ -12,29 +12,39 @@ class UserManager(BaseUserManager):
         email = email or ""
         
         return email.strip().lower()
-    
-    def create_superuser(self, email: str, password: str | None = None, **extra_fields):
-        """Creates a superuser with the given email and password."""
+
+    def create_user(self, email: str, password: str | None = None, **extra_fields):
+        """Default User creation"""
 
         from leasify.users.services import user_create
         from leasify.users.models import AccountType
 
         extra_fields.setdefault("phone_number", None)
+        extra_fields.setdefault("account_type", AccountType.EMAIL)
+        extra_fields.setdefault("is_active", True)
+        extra_fields.setdefault("notify", False)
+        
 
-        user = user_create(
+        extra_fields.setdefault("is_superuser", False)
+        extra_fields.setdefault("is_staff", False)
+        extra_fields.setdefault("verified", False)
+
+        return user_create(
             email=email,
             password=password,
-            first_name=extra_fields['first_name'],
-            last_name=extra_fields['last_name'],
-            phone_number=extra_fields["phone_number"],
-            account_type=AccountType.EMAIL,
-            notify=False,
-            is_superuser=True,
-            is_staff=True,
-            verified=True,
+            **extra_fields
 
         )
-        return user
+
+    def create_superuser(self, email: str, password: str | None = None, **extra_fields):
+        """Creates a superuser with the given email and password."""
+  
+        extra_fields.setdefault("is_superuser", True)
+        extra_fields.setdefault("is_staff", True)
+        extra_fields.setdefault("verified", True)
+
+        return self.create_user(email=email, password=password, **extra_fields)
+        
 
 
 
