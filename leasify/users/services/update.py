@@ -18,7 +18,6 @@ class UserUpdateData(TypedDict, total=False):
     first_name: str
     last_name: str
     phone_number: str
-    bio: str
     backup_email: str
 
 
@@ -27,16 +26,13 @@ def user_update(user: User, **kwargs: Unpack[UserUpdateData]):
     """Update user and account"""
 
     USER_FIELDS = {"first_name", "last_name"}
-    ACCOUNT_FIELDS = {"phone_number", "bio", "backup_email"}
+    ACCOUNT_FIELDS = {"phone_number", "backup_email"}
 
     user_updates, account_updates = [], []
     account = user.account
 
-    # Normalize email
-    try:
-        kwargs["backup_email"] = User.objects.normalize_email(kwargs["backup_email"])  # type: ignore
-    except KeyError:
-        pass
+    if backup_email := kwargs.get("backup_email"):
+        kwargs["backup_email"] = User.objects.normalize_email(backup_email)
 
     for field, value in kwargs.items():
 
@@ -51,12 +47,12 @@ def user_update(user: User, **kwargs: Unpack[UserUpdateData]):
     if user_updates:
         user.full_clean()
         user.save(update_fields=user_updates)
-        logger.info("user_updated", target_id=user.pk, fields=user_updates)
 
     if account_updates:
         account.full_clean()
         account.save(update_fields=account_updates)
-        logger.info("account_updated", target_id=user.pk, fields=account_updates)
+
+    logger.info("user_updated", target_id=user.pk, fields=[*user_updates, *account_updates])
 
     return user
 
