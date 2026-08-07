@@ -19,7 +19,8 @@ from leasify.common.period import DateRange
 
 from leasify.users.models import User, Account
 from leasify.users.selectors import get_group
-from leasify.users.services import user_account_create, user_set_role
+from leasify.users.services import user_create, user_set_role
+from leasify.users.choices import AccountType
 
 from leasify.apartments.models import Apartment
 from leasify.apartments.choices import Block, Wing
@@ -135,30 +136,32 @@ def user_factory(fake, phone_no: typing.Callable[..., str], password: str) -> Fa
 
     def create(
         quantity: int = 1, 
+        email: str | None = None, 
         first_name: str | None = None, 
         last_name: str | None = None, 
-        email: str | None = None, 
+        account_type: AccountType = AccountType.EMAIL,
         password: str = password, 
         is_active: bool = True, 
-        is_superuser: bool = False, 
-        phone_number: str | None = None
+        is_superuser: bool = False,
+        is_staff: bool = False,
+        phone_number: str | None = None,
     ) -> list[User]:
         """Factory moved to explicit django api over service"""
         users = []
 
         for _ in range(quantity):
-            user = User(
+            user = user_create(
                 first_name=first_name or fake.first_name(),
                 last_name=last_name or fake.last_name(),
                 email=email or fake.email(),
+                password=password,
+                account_type=account_type,
+                provider_id=fake.uuid4(),
                 is_active=is_active,
+                is_staff=is_staff,
                 is_superuser=is_superuser,
-            )
-            user.set_password(password or "Pa55word!")
-            user.save()
-            Account.objects.create(
-                user=user,
                 phone_number=phone_number or phone_no(),
+                notify=False,
             )
             users.append(user)
 
