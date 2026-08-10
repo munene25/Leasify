@@ -12,6 +12,7 @@ from rest_framework.exceptions import NotFound
 from leasify.common.views import BaseAPIView
 from leasify.common.throttling import EmailThrottle, ScopedThrottle
 
+from leasify.authentication.sessions import ForceCSRFAuthentication
 from leasify.authentication import services as sr, serializer as sc, tasks as ts
 from leasify.authentication.tokens import token_validate, get_user_from_uidb64
 from leasify.users.selectors import user_get_by_email
@@ -25,8 +26,6 @@ class LoginView(BaseAPIView):
     Throttles based on failed attempts, Successful request do not count as attempts.
     """
 
-    from leasify.authentication.sessions import ForceCSRFAuthentication
-
     authentication_classes = [ForceCSRFAuthentication]
     permission_classes = [AllowAny]
     serializer_class = sc.LoginSerializer
@@ -36,10 +35,21 @@ class LoginView(BaseAPIView):
     def post(self, request):
         incoming = self.validate_serializer(data=request.data)
         user = sr.user_authenticate(**incoming)
-        # initialize the session
         auth.login(request, user=user)
         return Response(data={"message": "Login successful"}, status=status.HTTP_200_OK)
 
+class GoogleLoginView(BaseAPIView):
+
+    authentication_classes = [ForceCSRFAuthentication]
+    permission_classes = [AllowAny]
+    serializer_class = sc.GoogleLoginSerializer
+
+    def post(self, request):
+        incoming = self.validate_serializer(data=request.data)
+        user = sr.google_authenticate(**incoming)
+        auth.login(request, user)
+
+        return Response(data={"message": "Login successful"}, status=status.HTTP_200_OK)
 
 class LogoutView(BaseAPIView):
     """
@@ -177,7 +187,6 @@ class ConfirmEmailVerificationView(BaseAPIView):
         return Response(data={"message": "email has been verified successfully"}, status=status.HTTP_200_OK)
 
 
-
 class CsrfView(BaseAPIView):
     """Set the CSRF cookie."""
 
@@ -186,3 +195,4 @@ class CsrfView(BaseAPIView):
     @method_decorator(ensure_csrf_cookie)
     def get(self, request):
         return Response({"message": "csrf set"})
+    

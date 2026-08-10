@@ -34,3 +34,8 @@ class RequestEmailVerificationSerializer(serializers.Serializer):
     """Provide url path for the frontend path"""
 
     url_path = serializers.CharField()
+
+
+class GoogleLoginSerializer(serializers.Serializer):
+    """Google login code from frontend"""
+    token = serializers.CharField()
