@@ -2,8 +2,9 @@ from structlog import getLogger
 
 from django.contrib.auth import authenticate
 from django.contrib.auth.models import AbstractUser, BaseUserManager
-from rest_framework.exceptions import ValidationError, AuthenticationFailed
+from rest_framework.exceptions import ValidationError, AuthenticationFailed, NotFound
 
+from leasify.authentication import google
 from leasify.users.models import User
 from leasify.authentication import tasks
 
@@ -17,9 +18,7 @@ def user_authenticate(*, email: str, password: str) -> AbstractUser:
 
     :param email: email for the user
     :param password: user's password
-
     :return: returns a user or will raise an 401 if authentication failed
-    :rtype: User
     """
 
     normalized_email = BaseUserManager.normalize_email(email)
@@ -69,3 +68,27 @@ def user_email_verify(user: User) -> User:
     user.save(update_fields=["verified"])
     logger.info("user_email_verified", target_id=user.pk)
     return user
+
+
+def google_authenticate(token: str) -> User:
+    from leasify.users.choices import AccountType
+
+    claims = google.verify_claims(token)
+
+    # Try by provider_id first (most reliable)
+    try:
+        return User.objects.get(account__provider_id=claims["provider_id"])
+    except User.DoesNotExist:
+        pass
+
+    try:
+        return User.objects.get(email=claims["email"])
+    except User.DoesNotExist:
+        pass
+        
+    # Create new user
+    return User.objects.create_user(
+        account_type=AccountType.GOOGLE,
+        notify=False,
+        **claims
+    )
