@@ -170,6 +170,7 @@ ADMINS = [tuple(admin.split(":", 1)) for admin in env.list("ADMINS")]
 
 from config.settings.mpesa import *
 from config.settings.security import *
+from config.settings.google import *
 
 # We import security first to obtain FRONTEND_DOMAIN
 SERVER_EMAIL = f"server@{FRONTEND_DOMAIN}"
