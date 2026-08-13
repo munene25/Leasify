@@ -17,11 +17,11 @@ Including another URLconf
 
 from django.contrib import admin
 from django.urls import path, include
-from leasify.common.views import HealthCheckView
+
 
 urlpatterns = [
     path("admin/", admin.site.urls),
-    path("health/", HealthCheckView.as_view(), name="health"),
+    path("api/", include("leasify.api.urls"), name="api"),
     path("users/", include("leasify.users.urls", namespace="users")),
     path("auth/", include("leasify.authentication.urls", namespace="authentication")),
     path("billing/", include("leasify.billing.urls", namespace="billing")),
