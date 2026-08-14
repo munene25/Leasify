@@ -9,7 +9,7 @@ from rest_framework.response import Response
 from rest_framework.serializers import Serializer
 from rest_framework.exceptions import ValidationError
 
-from leasify.common.health import check_celery, check_db, check_redis
+
 
 
 class BaseAPIView(APIView):
@@ -56,19 +56,4 @@ class BaseAPIView(APIView):
             raise ValidationError("Empty values not allowed")
         return validated
 
-
-class HealthCheckView(BaseAPIView):
-    """Health check for the api and dependencies"""
-    def get(self, request) -> Response:
-        checks = {
-            "db": check_db(),
-            "redis": check_redis(),
-            "celery": check_celery(),
-        }
-        healthy = all(v == "ok" for v in checks.values())
-        checks["status"] = "ok" if healthy else "dedgraded"
-        return Response(
-            checks,
-            status=status.HTTP_200_OK if healthy else status.HTTP_503_SERVICE_UNAVAILABLE,
-        )
 
