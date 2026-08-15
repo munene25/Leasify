@@ -1,6 +1,6 @@
 # Leasify
 
-A property management SaaS backend built with Django REST Framework. Leasify handles the full lifecycle of rental property management — from apartment listings and tenant onboarding to billing, payments, and notifications.
+A property management backend built with Django REST Framework. Leasify handles the full lifecycle of rental property management — from apartment listings and tenant onboarding to billing, payments, and notifications.
 
 ---
 
@@ -38,21 +38,28 @@ A property management SaaS backend built with Django REST Framework. Leasify han
 ```
 leasify/
 ├── apps/
+│   ├── api/              # Health check
 │   ├── apartments/       # Apartment model, CRUD, overview analytics
-│   ├── authentication/   # Login, logout, Google OAuth, password flows
+│   ├── authentication/   # Login, logout, Google OAuth, password flows, email-verification
 │   ├── billing/          # Billing periods, status transitions
 │   ├── payments/         # M-Pesa STK push, callbacks, manual payments
 │   ├── tenancy/          # Tenancy lifecycle management
 │   └── users/            # User model, accounts, roles, permissions
 ├── common/
+│   ├── domain.py         # FilterPolicy for selectors
+│   ├── pagination.py     # Pagination helper
 │   ├── period.py         # DateRange — date normalization utility
+│   ├── views.py          # BaseView with utilities
+│   ├── models.py         # Base model with default fields
 │   ├── emails.py         # Centralized email sending
 │   ├── exceptions.py     # Custom exception classes
 │   └── models.py         # BaseModel with created_at/updated_at
 ├── fixtures/
-│   ├── roles.json        # Role and permission fixtures
-│   └── dummy_data.json   # Development seed data
+│   ├── roles.json            # Role and permission fixtures
+│   ├── test_apartments.json  # Development seed apartments
+│   └── test_users.json       # Development seed users
 ├── templates/
+│   ├── payments.json     # Sample receipt template(WeasyPrint)
 │   └── emails/           # HTML and plain-text email templates
 └── tests/                # Test suite mirroring app structure
 config/
@@ -62,9 +69,10 @@ config/
 │   └── test.py           # Test overrides (MD5 hasher, fast setup)
 ├── settings/
 │   ├── celery.py
-│   ├── email.py
-│   ├── redis.py
-│   └── sentry.py
+│   ├── google.py
+│   ├── logging.py
+│   ├── mpesa.py
+│   └── security.py
 └── env.py                # django-environ instance
 ```
 
@@ -81,7 +89,7 @@ Leasify follows the [HackSoft Django Styleguide](https://github.com/HackSoftware
 - **Serializers** — input validation and output formatting only
 
 ```
-Request → View → Serializer (validate) → Service (write) / Selector (read) → Response
+Request → View → Serializer (validate) → Selector (read) → Service (write) → Response
 ```
 
 ---
@@ -119,7 +127,7 @@ Celery processes callback (idempotent, retries on failure)
 
 ```bash
 # Clone the repo
-git clone https://github.com/your-handle/leasify.git
+git clone https://github.com/munene25/leasify.git
 cd leasify
 
 # Create virtual environment
@@ -133,14 +141,19 @@ pip install -r requirements/local.txt
 cp .env.example .env
 # Fill in your values
 
+# Option 1: [Manual]
 # Run migrations
 python manage.py migrate
 
 # Seed roles and permissions
-python manage.py seed_roles
+python manage.py setup_roles
 
 # Seed development data (optional)
-python manage.py seed_dev_data
+python manage.py runscript seed
+
+# Option 2: [bash script]
+chmod +x ./reset.sh
+./reset.sh # This will reset db migrate and seed the db with test values.
 
 # Start the development server
 python manage.py runserver
@@ -171,12 +184,13 @@ pytest --cov=leasify --cov-report=term-missing
 
 | Resource | Endpoints |
 |---|---|
-| Auth | `POST /auth/login/` `POST /auth/logout/` `POST /auth/google/login` `POST /auth/password/reset/` |
-| Users | `GET /users/` `GET /users/{id}/` `PATCH /users/{id}/` |
-| Apartments | `GET /apartments/` `POST /apartments/` `GET /apartments/{id}/` `PATCH /apartments/{id}/` `DELETE /apartments/{id}/` `GET /apartments/overview/` |
+| Api | `GET /api/health/` |
+| Authentication | `POST /auth/login/` `POST /auth/logout/` `POST /auth/google/login` `POST /auth/password/reset/` `POST /auth/refresh/` `POST /auth/password-change/` `POST /auth/password-reset/request` `POST /auth/password-reset/confirm` `POST /auth/email-verification/request` `POST /auth/email-verification/confirm` |
+| Users | `GET /users/` `POST /users/` `GET /users/{id}/` `DELETE /users/{id}/` `GET /users/me/` `PATCH /users/me/` `DELETE users/me/` `GET /users/{id}/role` `PATCH /users/{id}/role` `DELETE /users/{id}/role` `GET /users/roles/` `POST /users/email-change` `POST /users/unsubscribe/{uuidb4}` |
+| Apartments | `GET /apartments/` `POST /apartments/` `GET /apartments/{id}/` `PATCH /apartments/{id}/` `DELETE /apartments/{id}/` `GET /apartments/choices/` |
 | Tenancy | `GET /tenancies/` `POST /tenancies/` `GET /tenancies/{id}/` `PATCH /tenancies/{id}/` |
 | Billing | `GET /billings/` `GET /billings/{id}/` |
-| Payments | `GET /payments/` `GET /payments/{id}/` `POST /payments/initiate/mpesa/` `POST /payments/create/` `POST /payments/callback/mpesa/` |
+| Payments | `GET /payments/` `GET /payments/{id}/` `POST /payments/mpesa/initiate/` `POST /payments/alt/` `POST /payments/callback/mpesa/` `POST /payments/mpesa/query/` |
 
 Full API documentation via Postman collection — coming soon.
 
