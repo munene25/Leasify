@@ -128,6 +128,7 @@ class UserUnsubscribeView(BaseAPIView):
     Route to unregister users from mailing list and misc notifications
     """
 
+    authentication_classes = []
     permission_classes = [AllowAny]
 
     def post(self, request, uidb64):
