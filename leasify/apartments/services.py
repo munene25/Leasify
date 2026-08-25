@@ -52,17 +52,16 @@ def apartment_create(*, block: Block, unit_number: int, floor: int, rent: Decima
 
 
 def apartment_update(*, apartment: Apartment, **kwargs: Unpack[ApartmentUpdateData]) -> Apartment:
-    """Update an existing apartment record.
+    """Update an existing apartment.
 
     Updates the specified fields of an apartment and validates the changes.
     Only updates fields that have changed from their current values.
 
     :param apartment: The apartment instance to update
     :param kwargs: Dictionary of field names and new values to update
-
     :returns: The updated Apartment instance
 
-    :raises ValidationError: If validation fails during clean()
+    :raises ValidationError: If validation fails during full clean
     """
     updates = [k for k, v in kwargs.items() if getattr(apartment, k) != v]
     if not updates:
@@ -85,6 +84,7 @@ def apartment_delete(apartment: Apartment) -> None:
     without setting the apartment to unrentable first.
 
     :param apartment: The apartment instance to delete
+    :returns: None
 
     :raises ValidationError: If the apartment is protected by existing tenancies
     """
