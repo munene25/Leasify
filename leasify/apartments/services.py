@@ -61,7 +61,7 @@ def apartment_update(*, apartment: Apartment, **kwargs: Unpack[ApartmentUpdateDa
     :param kwargs: Dictionary of field names and new values to update
     :returns: The updated Apartment instance
 
-    :raises ValidationError: If validation fails during full clean
+    :raises ValidationError: If validation fails during full clean.
     """
     updates = [k for k, v in kwargs.items() if getattr(apartment, k) != v]
     if not updates:
