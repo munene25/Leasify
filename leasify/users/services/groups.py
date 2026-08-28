@@ -10,25 +10,18 @@ logger = get_logger("users.services.roles")
 
 def user_set_role(*, user: User, role: Group, replace: bool = False) -> User:
     """
-    Responsible for adding a user to a group.
-    Ensures that only one role can be assigned to a user at a time.
-    replace flag explicitly requires the caller to acknowledge that an existing role will be replaced if it exists.
+    Assign a group role to a user.
+    Replace forces overwriting user role
 
-    :param user: The user to whom the role will be added.
-    :type user: User
+    :param user: The user to assign the role to.
+    :param role: The group representing the role to assign.
+    :param replace: Whether to replace any existing roles on the user.
 
-    :param role: The role (Group) to be added to the user.
-    :type role: Group
-
-    :param replace: If True, allows replacing an existing role.
-    :type replace: bool
-
-    :raises RoleAssignmentError: If the user already has a role and replace is False.
-    
-    :return: The user with the newly added role.
-    :rtype: User
+    :return: The user with the assigned role.
+    :raises RoleAssignmentError: If the user has another role and ``replace`` is False.
     """
-    groups = list(user.groups.values_list('pk', flat=True))
+
+    groups = list(user.groups.values_list("pk", flat=True))
     if role.pk in groups:
         logger.debug("user_role_already_exists", target_id=user.pk, role=role.name)
         return user
@@ -41,16 +34,12 @@ def user_set_role(*, user: User, role: Group, replace: bool = False) -> User:
     return user
 
 
-
 def user_remove_role(user: User) -> User:
     """
-    Responsible for removing a user from all groups.
-    Since only one role can be assigned to a user at a time, only one group will be removed.
+    Remove all group roles assigned to a user.
 
-    :param user: The user from whom the role will be removed.
-    :type user: User
-    :return: The user with the role removed.
-    :rtype: User
+    :param user: The user whose roles should be removed.
+    :return: The user without any assigned roles.
     """
 
     user.groups.clear()
