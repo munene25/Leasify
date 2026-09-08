@@ -1,6 +1,6 @@
 # Leasify
 
-A property management backend built with Django REST Framework. Leasify handles the full lifecycle of rental property management — from apartment listings and tenant onboarding to billing, payments, and notifications.
+A property management backend built with Django REST Framework. Leasify handles the full lifecycle of rental property management, from apartment listings and tenant onboarding to billing, payments, and notifications.
 
 ---
 
