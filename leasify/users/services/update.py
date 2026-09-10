@@ -23,7 +23,19 @@ class UserUpdateData(TypedDict, total=False):
 
 @transaction.atomic
 def user_update(user: User, **kwargs: Unpack[UserUpdateData]):
-    """Update user and account"""
+    """
+    Updates user and account information in a single transaction.
+
+    Updates first_name, last_name for the user and phone_number, backup_email
+    for the account. Only fields that differ from their current values are updated.
+
+    :param user: User obj
+    :param kwargs: Dictionary containing user and account update fields
+
+    :return: Updated user instance
+
+    :raises EmailUpdateError: If email update is attempted during cooldown period
+    """
 
     USER_FIELDS = {"first_name", "last_name"}
     ACCOUNT_FIELDS = {"phone_number", "backup_email"}
@@ -62,10 +74,9 @@ def account_update_mailing_status(account: Account, status: bool) -> Account:
     Changes ability of a user to receive non-critical mail in their inbox.
 
     :param account: account obj
-    :type account: Account
-
+    :param status: Status to update to
+    
     :return: unsubed account instance
-    :rtype: Account
     """
     account.can_receive_emails = status
     account.save(update_fields=["can_receive_emails"])
@@ -79,10 +90,9 @@ def user_update_active_status(user: User, status: bool) -> User:
     This service serves both the user and admin deactiavations
 
     :param user: The user obj
-    :type user: User
+    :param status: Status to update to
 
     :return: deactivated user
-    :rtype: User
     """
     user.is_active = status
     status_change = {True: "activated", False: "deactivated"}[status]
@@ -96,14 +106,10 @@ def user_email_update(user: User, email: str, password: str) -> User:
     Email updater that limits email changes based on EMAIL_COOLDOWN in model.
 
     :param user: User obj
-    :type user: User
     :param email: the intended email to change to
-    :type email: str
     :param password: current password for the user
-    :type password: str
 
     :return: user
-    :rtype: User
     """
     user.verify_password(password)
 
