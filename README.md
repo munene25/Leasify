@@ -7,7 +7,7 @@ A property management backend built with Django REST Framework. Leasify handles 
 ## Features
 
 - **Apartments** — Full CRUD with role-based visibility, filtering, ordering, and an overview dashboard with occupancy and rent analytics
-- **Tenancy** — Tenant onboarding, status lifecycle (reserved → active → defaulting → terminated), and role-based access control
+- **Tenancy** — Tenant onboarding, status lifecycle (reserved > active > defaulting > terminated), and role-based access control
 - **Billing** — Billing period management with automatic status transitions and period completion logic
 - **Payments** — M-Pesa STK push integration via Daraja API with idempotency, async callback processing, and manual payment recording
 - **Authentication** — Session-based auth with email/password and Google OAuth (id_token flow), password reset, email verification, and throttling
