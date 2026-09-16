@@ -18,8 +18,16 @@ logger = get_logger("billing.services")
 
 def billing_period_create(*, tenancy: "Tenancy", date_r: DateRange) -> BillingPeriod:
     """
-    Can't create a billing period if the previous one is not cleared.
-    Duration months cannot exceed 4, this prevents locking rent if rent hikes will be introduced mid period.
+    Create a billing period for a tenancy.
+
+    Creates and saves a BillingPeriod for the provided tenancy over the given date range.
+    The total due is calculated from the apartment rent and the requested duration,
+    and the maximum billing duration is enforced before creation.
+
+    :param tenancy: The tenancy for which the billing period is being created.
+    :param date_r: The requested date range for the billing period.
+    :returns: The created BillingPeriod instance.
+    :raises ValidationError: If the requested billing duration exceeds the maximum allowed.
     """
     # Cap max billing period
     if date_r.duration_months > MAX_BILLING_PERIOD:
@@ -48,8 +56,14 @@ def billing_period_create(*, tenancy: "Tenancy", date_r: DateRange) -> BillingPe
 @transaction.atomic
 def billing_period_cancel(billing: BillingPeriod) -> BillingPeriod:
     """
-    Cancel an existing unpaid billing period.
-    Irrelevant to lock billing period, can only move one of two ways: paid or canceled.
+    Cancel an unpaid billing period.
+
+    Marks the specified billing period as cancelled when it is still in the UNPAID state.
+    This action is only valid for billing periods that have not yet been paid.
+
+    :param billing: The billing period to cancel.
+    :returns: The updated BillingPeriod instance.
+    :raises ValidationError: If the billing period is not currently unpaid.
     """
     if billing.status != BillingStatus.UNPAID:
         raise ValidationError("Billing cannot be canceled")
@@ -67,7 +81,16 @@ def billing_period_cancel(billing: BillingPeriod) -> BillingPeriod:
 
 @transaction.atomic
 def billing_period_complete(billing: BillingPeriod) -> BillingPeriod:
-    """Update billing period status to PAID and update tenancy status if billing current"""
+    """
+    Complete a billing period after successful payment.
+
+    Validates that a successful payment exists before marking a billing period as paid.
+    If the billing period is the current one, the associated tenancy is also activated.
+
+    :param billing: The billing period to complete.
+    :returns: The updated BillingPeriod instance.
+    :raises ValidationError: If no successful payment is associated with the billing period.
+    """
 
     payment = billing.payments.filter(status=PaymentStatus.SUCCESS).first()
     if not payment or payment.status != PaymentStatus.SUCCESS:
