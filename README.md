@@ -212,4 +212,4 @@ Backend complete. Frontend under active development.
 
 ---
 
-*Built by Edwin Munene*
+*Built entirely by Edwin Munene*
