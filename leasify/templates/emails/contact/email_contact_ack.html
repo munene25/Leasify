@@ -1,0 +1,11 @@
+{% extends "emails/base.html" %}
+
+{% block body %}
+<p style="font-size: 13px; color: #888; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px;">Contact</p>
+<h1>Thanks for reaching out, {{ full_name }}</h1>
+<p>We've received your message and someone from the {{ app_name }} team will get back to you shortly, usually within a day.</p>
+
+<p style="font-size: 12px; color: #bbb; border-top: 1px solid #f0f0f0; padding-top: 16px; margin: 24px 0 0;">
+  If you didn't send this message, you can safely ignore this email.
+</p>
+{% endblock %}

@@ -1,0 +1,11 @@
+{% extends 'emails/base.txt' %}
+
+{% block body %}
+Contact
+Thanks for reaching out, {{ full_name }}
+
+We've received your message and someone from the {{ app_name }} team
+will get back to you shortly, usually within a day.
+
+If you didn't send this message, you can safely ignore this email.
+{% endblock %}

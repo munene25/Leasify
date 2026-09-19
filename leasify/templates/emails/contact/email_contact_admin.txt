@@ -1,0 +1,17 @@
+{% extends 'emails/base.txt' %}
+
+{% block body %}
+Website Inquiry
+New message from {{ full_name }}
+
+Someone submitted the reach-out form on the website. Details below.
+
+Name: {{ full_name }}
+Email: {{ email }}
+{% if phone_number %}Phone: {{ phone_number }}
+{% endif %}
+Message:
+{{ message }}
+
+Reply directly to {{ email }} to respond.
+{% endblock %}
