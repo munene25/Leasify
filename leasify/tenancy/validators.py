@@ -57,4 +57,4 @@ def validate_db_constraint(*, user_id: int, apartment_id: int) -> None:
     qs = tenancy_in(ACTIVE_RESERVED_OR_DEFAULTING)
     conflict = qs.filter(Q(apartment_id=apartment_id) | Q(user_id=user_id)).exists()
     if conflict:
-        raise ValidationError("This Aparment or User is already associated with a tenancy")
+        raise ValidationError("Aparment or User is already associated with a tenancy")
