@@ -45,5 +45,5 @@ def reply_to_email(email: str, full_name: str, reply_message: str, original_mess
             "reply_message": reply_message,
             "original_message": original_message,
         },
-        template_name="contact/email_reply_user"
+        template_name="contact/send_message"
     )
