@@ -5,6 +5,8 @@ from leasify.tenancy.serializer import TenancyListSerializer
 class ApartmentListSerializer(serializers.Serializer):
     apartment_id = serializers.IntegerField(source="pk")
     name = serializers.CharField()
+    floor = serializers.IntegerField()
+    wing = serializers.ChoiceField(choices=Wing.choices)
     rent = serializers.DecimalField(max_digits=10, decimal_places=2)
     rentable = serializers.BooleanField()
     is_occupied = serializers.BooleanField(allow_null=True)
