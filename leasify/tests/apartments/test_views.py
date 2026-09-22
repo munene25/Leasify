@@ -66,6 +66,7 @@ class TestApartmentListCreateView:
         assert data["apartment_id"] == apartment.pk
         assert data["name"] == apartment.name
         assert data["floor"] == apartment.floor
+        assert data["block"] == apartment.block
         assert data["wing"] == apartment.wing
         assert Decimal(data["rent"]) == apartment.rent
         assert data["is_occupied"] == False
