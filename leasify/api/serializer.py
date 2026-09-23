@@ -10,7 +10,7 @@ class ContactSerializer(serializers.Serializer):
     phone_number = PhoneNumberSerializerField(required=False)
     reply_url = serializers.URLField()
 
-class ContactReplySerializer(serializers.Serializer):
+class SendMessageSerializer(serializers.Serializer):
     email = serializers.EmailField()
     full_name = serializers.CharField()
     message = serializers.CharField()
