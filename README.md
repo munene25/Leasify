@@ -4,6 +4,15 @@ A property management backend built with Django REST Framework. Leasify handles 
 
 ---
 
+## Demo
+A search, booking and payment flow derived from figma design screens.
+![Booking image](demo/Booking.jpg)
+![Listing image](demo/Listing.jpg)
+![Payment image](demo/Payment.png)
+![Lease signing](<demo/Sign Lease.jpg>)
+
+---
+
 ## Features
 
 - **Apartments** — Full CRUD with role-based visibility, filtering, ordering, and an overview dashboard with occupancy and rent analytics
@@ -212,4 +221,5 @@ Backend complete. Frontend under active development.
 
 ---
 
-*Built entirely by Edwin Munene*
+
+*Built by Edwin Munene*
