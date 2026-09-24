@@ -5,11 +5,31 @@ A property management backend built with Django REST Framework. Leasify handles 
 ---
 
 ## Demo
-A search, booking and payment flow derived from figma design screens.
-![Booking image](demo/Booking.jpg)
+A search, booking, and payment flow derived from Figma design screens.
+
+### 1. Search & Listings
+
+Browse available apartments and view their details, pricing, and availability before making a reservation.
+
 ![Listing image](demo/Listing.jpg)
+
+### 2. Booking
+
+Complete and provide extra information for booking.
+
+![Booking image](demo/Booking.jpg)
+
+### 3. Payment
+
+Choose a payment method and complete the payment process securely.
+
 ![Payment image](demo/Payment.png)
-![Lease signing](<demo/Sign Lease.jpg>)
+
+### 4. Lease Signing
+
+Downloadable lease agreements for tenants to sign.
+
+![Lease signing](<demo/Sign-Lease.jpg>)
 
 ---
 
