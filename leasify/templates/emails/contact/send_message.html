@@ -1,0 +1,16 @@
+{% extends "emails/base.html" %}
+
+{% block body %}
+<p style="font-size: 13px; color: #888; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px;">Reply</p>
+<h1>Hi, {{ full_name }}</h1>
+
+<div style="background: #fafafa; border-left: 3px solid #000; padding: 16px 20px; margin: 24px 0; font-size: 14px; color: #333; line-height: 1.6;">
+  {{ reply_message|linebreaks }}
+</div>
+
+{% if original_message %}
+<p style="font-size: 12px; color: #bbb; border-top: 1px solid #f0f0f0; padding-top: 16px; margin: 24px 0 0;">
+  Your original message: &ldquo;{{ original_message }}&rdquo;
+</p>
+{% endif %}
+{% endblock %}

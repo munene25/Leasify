@@ -1,0 +1,9 @@
+{% extends 'emails/base.txt' %}
+
+{% block body %}
+Hi, {{full_name}}
+{{ reply_message }}
+{% if original_message %}
+Your original message: "{{ original_message }}"
+{% endif %}
+{% endblock %}
