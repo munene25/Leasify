@@ -3,19 +3,20 @@ import { useNavigate } from "react-router-dom";
 import logoLight from "@assets/logo/logo-light.svg";
 import MenuItem from "@components/header/components/menu-item";
 import Button from "@components/button";
+import { MdLogin } from "react-icons/md";
 
 export default function Header() {
-  const navigate = useNavigate()
+  const navigate = useNavigate();
   return (
-    <header className="flex items-center justify-center h-20 bg-primary-foreground position-fix">
-      <div className="flex items-center max-w-6xl y-between h-fill">
+    <header className="flex items-center justify-center h-16 bg-primary-foreground position-fix">
+      <div className="flex items-center justify-between w-full h-full max-w-7xl">
         {/* Left-most Logo icon and text */}
         <figure className="w-fit">
-          <img src={logoLight} alt="Leasify Logo" />
+          <img src={logoLight} alt="Leasify Logo" className="scale-110" />
         </figure>
 
         {/* Navlinks Center*/}
-        <nav className="flex gap-8 w-fit h-fill">
+        <nav className="inline-flex h-full gap-2 w-fit">
           <MenuItem text="Home" navigateTo="/" />
           <MenuItem text="Apartments" navigateTo="/apartments" />
           <MenuItem text="How-it-works" navigateTo="/flow" />
@@ -24,9 +25,22 @@ export default function Header() {
         </nav>
 
         {/* Sign up sign in */}
-        <div className="flex items-center gap-2">
-          <Button variant="secondaryAlt" onClick={() => navigate("/login")} >Log in</Button>
-          <Button variant="primaryAlt" onClick={() => navigate("/signup")} >Sign up</Button>
+        <div className="flex items-center gap-4">
+          <Button
+            variant="tertiaryStyle"
+            className="text-sm shadow-none text-background"
+            onClick={() => navigate("/login")}
+          >
+            Login
+            <MdLogin />
+          </Button>
+          <Button
+            variant="secondaryAltStyle"
+            className="text-sm"
+            onClick={() => navigate("/signup")}
+          >
+            Sign up
+          </Button>
         </div>
       </div>
     </header>
