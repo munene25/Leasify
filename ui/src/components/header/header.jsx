@@ -29,8 +29,8 @@ export default function Header() {
           
           {/* Login */}
           <Button
-            variant="tertiaryStyle"
-            className="text-sm"
+            variant="tertiaryAltStyle"
+            className="text-sm text-primary hover:border-b-primary"
             onClick={() => navigate("/login")}
           >
             Login
