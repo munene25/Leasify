@@ -17,10 +17,10 @@ const buttonVariants = {
     "text-background bg-foreground/30 hover:bg-foreground/40 active:opacity-60",
 
   tertiaryStyle:
-    "p-0 text-primary-foreground underline-offset-4 hover:underline",
+    "p-0.5 border-b rounded-none shadow-none border-b-primary text-primary hover:opacity-80",
 
   tertiaryAltStyle:
-    "p-0 underline text-primary-foreground underline-offset-4 hover:opacity-80",
+    "p-0.5 rounded-none shadow-none border-b-transparent text-primary-foreground hover:border-b-primary-foreground",
 };
 
 export default function Button({
