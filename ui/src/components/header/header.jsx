@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 
 import logoLight from "@assets/logo/logo-light.svg";
-import MenuItem from "@components/header/components/menu-item";
+import MenuItem from "@components/header/menu-item";
 import Button from "@components/button";
 import { MdLogin } from "react-icons/md";
 
@@ -26,14 +26,18 @@ export default function Header() {
 
         {/* Sign up sign in */}
         <div className="flex items-center gap-4">
+          
+          {/* Login */}
           <Button
             variant="tertiaryStyle"
-            className="text-sm shadow-none text-background"
+            className="text-sm"
             onClick={() => navigate("/login")}
           >
             Login
             <MdLogin />
           </Button>
+          
+          {/* Signup */}
           <Button
             variant="secondaryAltStyle"
             className="text-sm"
