@@ -1,20 +1,12 @@
 import { twMerge } from "tailwind-merge";
-import { FadeLoader } from "react-spinners";
+import { MoonLoader } from "react-spinners";
 
-import useForm from "@hooks/use-form-submit";
-import FormContext from "@context/form-context";
+import useForm from "@hooks/use-form";
+import { FormContext } from "@context/form-context";
 
-const formClass = {
-	baseStyle: "px-4 py-2 border rounded bg-primary",
-};
-
-const Form = ({
-	title = "",
-	description = "",
-	className = "",
-	handleSubmit,
-	children,
-}) => {
+const Form = ({ title = "", description = "", className = "", handleSubmit, children }) => {
+	// Custom form hook
+	// Consider adding form setForm state?
 	const { onSubmit, loading, errors } = useForm(handleSubmit);
 
 	return (
@@ -23,19 +15,16 @@ const Form = ({
 				onSubmit,
 				loading,
 				errors,
-			}}
-		>
-			<div className={twMerge(formClass.baseStyle, className)}>
+			}}>
+			<div className={twMerge("px-8 py-4 border rounded-md shadow bg-primary", className)}>
 				{/* Title and loader */}
-				<div className="flex items-center justify-between">
-					<h4 className="text-primary-foreground">{title}</h4>
-					<FadeLoader
-						size={5}
-						color="var(--color-primary)"
-						speedMultiplier={0.65}
-					/>
+				<div className="py-2">
+					<div className="flex items-center justify-between py-2">
+						<h3 className="text-primary-foreground">{title}</h3>
+						<MoonLoader loading={loading} color="var(--color-primary-foreground)" speedMultiplier={0.65} size={20} />
+					</div>
+					<p className="text-sm text-secondary-foreground">{description}</p>
 				</div>
-				<p className="text-sm text-secondary-foreground">{description}</p>
 
 				{/* Form Section */}
 				<form className="py-2 space-y-2" onSubmit={onSubmit}>
