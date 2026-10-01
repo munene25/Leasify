@@ -1,7 +1,5 @@
 const HowToPage = () => {
-    return (
-        <p> HowToPage</p>
-    )
-}
+	return <p> HowToPage</p>;
+};
 
-export default  HowToPage
+export default HowToPage;
