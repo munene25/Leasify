@@ -1,4 +1,5 @@
-import { BsExclamationCircle } from "react-icons/bs";
+import { CircleAlert } from "lucide-react";
+
 import { useFormContext } from "@context/form-context";
 
 export function Errors() {
@@ -13,7 +14,7 @@ export function Errors() {
 					key={error}
 					className="flex items-center gap-2 px-4 py-2 text-sm rounded bg-destructive/50 text-secondary-foreground"
 				>
-					<BsExclamationCircle size={15} className="shrink-0" />
+					<CircleAlert size={15} className="shrink-0" />
 					<span>{error}</span>
 				</div>
 			))}
