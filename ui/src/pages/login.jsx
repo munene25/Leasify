@@ -23,7 +23,7 @@ const LoginPage = () => {
 				description="Login to access your account"
 				loading={loading}
 				onSubmit={onSubmit}>
-				<div className="flex items-end gap-4">
+				<div className="flex items-start gap-4">
 					<InputField
 						name="first_name"
 						type="text"
@@ -47,7 +47,7 @@ const LoginPage = () => {
 						<User size={15} />
 					</InputField>
 				</div>
-				<PasswordField onChange={handleChange} form={form} />
+				<PasswordField onChange={handleChange} form={form} errors={errors} />
 
 				<div className="py-4">
 					<Button type="submit" className="w-full" loading={loading}>

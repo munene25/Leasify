@@ -1,26 +1,27 @@
-import InputField from "@components/form/input-field";
-import { Eye, EyeClosed, Lock } from "lucide-react";
 import { useState } from "react";
+import { Eye, EyeClosed, Lock } from "lucide-react";
 
-const PasswordField = ({ form, onChange, errors }) => {
+import InputField from "@components/form/input-field";
+
+const PasswordField = ({ form, onChange, errors, name = "password", label = "Password" }) => {
 	const [isPassword, setIsPassword] = useState(true);
 
 	return (
-		<div className="flex items-end justify-between gap-4">
+		<div className="flex items-start justify-between gap-4">
 			<InputField
-				name="password"
+				name={name}
 				type={isPassword ? "password" : "text"}
 				required={false}
-				value={form.password}
+				value={form[name]}
 				onChange={onChange}
 				errors={errors}
-				label="Password"
+				label={label}
 				placeholder="e.g., Doe">
 				<Lock size={15} />
 			</InputField>
 
 			<button
-				className="p-2 border rounded-md cursor-pointer bg-input text-primary-foreground hover:bg-input-50"
+				className="p-2 mt-5 border rounded-md cursor-pointer bg-input text-primary-foreground"
 				onClick={() => setIsPassword((val) => !val)}
 				type="button">
 				{isPassword ? <Eye size={18} /> : <EyeClosed size={18} />}

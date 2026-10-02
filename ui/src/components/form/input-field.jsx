@@ -1,4 +1,5 @@
 import InputError from "@components/form/input-error";
+import { twMerge } from "cn";
 
 const InputField = ({
 	name,
@@ -12,7 +13,7 @@ const InputField = ({
 	placeholder = "",
 }) => {
 	return (
-		<div className="w-full text-sm transition-all duration-100">
+		<div className={twMerge("w-full text-sm transition-all duration-100", !label && "pt-5")}>
 			{/* Label if any*/}
 			<label htmlFor={name} className="font-medium text-secondary-foreground">
 				{label}
