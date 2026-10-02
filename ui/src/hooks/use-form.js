@@ -1,9 +1,18 @@
 import { useState } from "react";
-import { parseErrors } from '@api/parse-errors';
+import { parseErrors } from "@api/parse-errors";
 
 export default function useForm(handleSubmit) {
 	const [loading, setLoading] = useState(false);
 	const [errors, setErrors] = useState({});
+	const [form, setForm] = useState({});
+
+	const handleChange = (e) => {
+		// setErrors({});
+		setForm((prev) => ({
+		  ...prev,
+		  [e.target.name]: e.target.value,
+		}));
+	  };
 
 	const onSubmit = async (event) => {
 		event.preventDefault();
@@ -11,7 +20,7 @@ export default function useForm(handleSubmit) {
 		setErrors({});
 
 		try {
-			await handleSubmit();
+			await handleSubmit(form);
 		} catch (err) {
 			console.log(err);
 			setErrors(parseErrors(err));
@@ -20,5 +29,5 @@ export default function useForm(handleSubmit) {
 		}
 	};
 
-	return { onSubmit, loading, errors, setErrors};
+	return { form, setForm, errors, setErrors, loading, handleChange, onSubmit };
 }
