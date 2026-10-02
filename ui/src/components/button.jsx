@@ -1,9 +1,8 @@
 import { twMerge } from "tailwind-merge";
-import { useFormContext } from "@context/form-context";
 
 const buttonVariants = {
 	baseStyle:
-		"inline-flex transition-all duration-100 items-center justify-center gap-1.5 px-6 py-2 border border-transparent rounded-md shadow-md cursor-pointer font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none",
+		"inline-flex items-center justify-center gap-2 px-6 py-2 font-medium transition-all duration-100 border border-transparent rounded-md shadow-md cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none",
 
 	primaryStyle:
 		"bg-primary-foreground text-primary hover:bg-primary-foreground/95 active:bg-primary-foreground/60",
@@ -24,12 +23,11 @@ const buttonVariants = {
 const Button = ({
 	variant = "primaryStyle",
 	className = "",
+	loading = false,
 	type = "button",
 	onClick,
 	children,
 }) => {
-	const formContext = useFormContext();
-	const loading = formContext?.loading ?? false;
 
 	return (
 		<button
