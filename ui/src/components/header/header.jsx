@@ -25,14 +25,14 @@ export default function Header() {
 				</nav>
 
 				{/* Sign up sign in */}
-				<div className="flex items-center gap-4">
+				<div className="flex items-center gap-1">
 					{/* Login */}
 					<Button
 						variant="tertiaryAltStyle"
 						className="text-sm text-primary hover:border-b-primary"
 						onClick={() => navigate("/login")}>
 						Login
-						<LogIn />
+						<LogIn size={15}/>
 					</Button>
 
 					{/* Signup */}
