@@ -1,11 +1,12 @@
 import Main from "@layouts/main-content";
 import Header from "@components/header/header";
+import { SmoothScroll } from "@layout/smooth-scroll";
 
 export default function Layout({ children }) {
-  return (
-    <div>
-      <Header />
-      <Main>{children}</Main>
-    </div>
-  );
+	return (
+		<SmoothScroll>
+			<Header />
+			<Main>{children}</Main>
+		</SmoothScroll>
+	);
 }
