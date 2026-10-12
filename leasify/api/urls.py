@@ -3,6 +3,6 @@ from leasify.api import views
 
 app_name = "api"
 
-urlpatters = [
+urlpatterns = [
     path("health", views.HealthCheckView.as_view(), name="health")
 ]
