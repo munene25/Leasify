@@ -14,12 +14,7 @@ const Form = ({
 }) => {
 	return (
 		<FormContext.Provider value={{ form, handleChange, loading, errors }}>
-			<form
-				className={cn(
-					"px-8 py-4 border rounded-md shadow bg-primary",
-					className,
-				)}
-				onSubmit={handleSubmit}>
+			<form className={cn( "px-8 py-4 border rounded-md shadow bg-primary", className, )} onSubmit={handleSubmit}>
 				{/* Title and loader */}
 				<div className="flex items-center justify-between py-2">
 					<h2 className="capitalize text-primary-foreground">{title}</h2>
