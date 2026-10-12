@@ -2,7 +2,7 @@ import "@assets/styles/globals.css";
 
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
-import Layout from "@layouts/layout";
+import Layout from "@layout/layout";
 import HomePage from "@pages/home";
 import LoginPage from "@pages/login";
 import AmenitiesPage from "@pages/amenities";

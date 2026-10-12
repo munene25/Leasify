@@ -15,7 +15,7 @@ export default defineConfig({
 			"@context": path.resolve(import.meta.dirname, "./src/context"),
 			"@utils": path.resolve(import.meta.dirname, "./src/utils"),
 			"@assets": path.resolve(import.meta.dirname, "./src/assets"),
-			"@layouts": path.resolve(import.meta.dirname, "./src/layouts"),
+			"@layout": path.resolve(import.meta.dirname, "./src/layout"),
 			"@pages": path.resolve(import.meta.dirname, "./src/pages"),
 			"@styles": path.resolve(import.meta.dirname, "./src/styles"),
 			"@api": path.resolve(import.meta.dirname, "./src/api"),
