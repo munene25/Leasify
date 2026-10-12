@@ -28,7 +28,7 @@ const InputField = ({
 			{/* Icon and Field */}
 			<div
 				className={cn(
-					"flex items-center gap-1 rounded shadow-sm border bg-input px-2 py-1 focus-within:ring-2 focus-within:ring-ring/30 focus-within:border-transparent",
+					"flex items-center gap-1 rounded shadow-xs border bg-input px-2 py-1 focus-within:ring-2 focus-within:ring-ring/30 focus-within:border-transparent",
 					{ "border-destructive focus-within:ring-destructive/30": hasError },
 					{ "opacity-70": loading },
 				)}>
