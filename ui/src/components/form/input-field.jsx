@@ -28,7 +28,7 @@ const InputField = ({
 			{/* Icon and Field */}
 			<div
 				className={cn(
-					"flex items-center gap-1 rounded border bg-input px-2 py-1 focus-within:ring-2 focus-within:ring-ring/30 focus-within:border-transparent",
+					"flex items-center gap-1 rounded shadow-sm border bg-input px-2 py-1 focus-within:ring-2 focus-within:ring-ring/30 focus-within:border-transparent",
 					{ "border-destructive focus-within:ring-destructive/30": hasError },
 					{ "opacity-70": loading },
 				)}>
@@ -40,7 +40,7 @@ const InputField = ({
 					id={name}
 					name={name}
 					type={type}
-					value={form[name]}
+					value={form[name] ?? ""}
 					onChange={handleChange}
 					required={required}
 					placeholder={placeholder}
@@ -48,7 +48,7 @@ const InputField = ({
 					disabled={loading}
 					aria-invalid={hasError}
 					aria-describedby={hasError ? `${name}-error` : undefined}
-                    className="flex-1 min-w-0 px-2 py-1 text-sm rounded outline-none bg-none focus-within:bg-none text-foreground placeholder:text-muted-foreground"
+                    className="flex-1 min-w-0 px-2 py-1 text-sm border-none rounded outline-none bg-none focus-within:bg-none text-foreground placeholder:text-muted-foreground"
 				/>
 			</div>
 			<InputError errors={fieldErrors} loading={loading} />
