@@ -1,9 +1,20 @@
-const InputError = ({ errors, field, loading }) => {
-	if (!errors?.[field]?.length || loading) return null;
+import { CircleAlert } from "lucide-react";
+
+const InputError = ({ errors, loading }) => {
+	if (!errors.length || loading) return null;
 	return (
-		<div className="py-2 space-y-2">
-			{errors[field].map((msg) => (
-				<p className="px-4 py-2 text-xs font-light text-red-800 bg-red-100 border border-red-300 rounded-sm">{msg}</p>
+		<div className="space-y-1.5 pt-1">
+			{errors.map((msg, index) => (
+				<p
+					key={index}
+					className="inline-flex gap-1.5 text-xs font-medium text-destructive">
+					<CircleAlert
+						size={14}
+						className="mt-0.5 shrink-0"
+						aria-hidden="true"
+					/>
+					<span>{msg}</span>
+				</p>
 			))}
 		</div>
 	);

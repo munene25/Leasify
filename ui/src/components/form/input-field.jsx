@@ -1,42 +1,57 @@
+import { cn } from "cn";
+
+import { useFormContext } from "@context/form-context";
 import InputError from "@components/form/input-error";
-import { twMerge } from "cn";
 
 const InputField = ({
 	name,
 	type,
 	required,
-	onChange,
-	errors,
 	children,
 	label = "",
-	value = "",
+	autoComplete = "",
 	placeholder = "",
 }) => {
+	const { form, handleChange, loading, errors, } = useFormContext();
+
+	const fieldErrors = errors?.[name] ?? [];
+	const hasError = fieldErrors.length > 0;
+
 	return (
-		<div className={twMerge("w-full text-sm transition-all duration-100", !label && "pt-5")}>
+		<div className={cn("w-full space-y-1")}>
 			{/* Label if any*/}
-			<label htmlFor={name} className="font-medium text-secondary-foreground">
+			<label htmlFor={name} className="block text-sm font-medium text-foreground">
 				{label}
-				{required && <span className="pl-2 font-bold text-accent">*</span>}
+				{required && (<span className="ml-1 text-destructive" aria-hidden="true">*</span>)}
 			</label>
 
 			{/* Icon and Field */}
-			<span className="flex items-center gap-2 px-4 py-2 border rounded-md bg-input focus-within:ring-1">
-				{children}
+			<div
+				className={cn(
+					"flex items-center gap-1 rounded border bg-input px-2 py-1 focus-within:ring-2 focus-within:ring-ring/30 focus-within:border-transparent",
+					{ "border-destructive focus-within:ring-destructive/30": hasError },
+					{ "opacity-70": loading },
+				)}>
+				
+				{children && <span className="shrink-0 text-muted-foreground">{children}</span>}
+
 				{/* Input */}
 				<input
 					id={name}
 					name={name}
 					type={type}
-					value={value}
-					onChange={onChange}
+					value={form[name]}
+					onChange={handleChange}
 					required={required}
 					placeholder={placeholder}
-					autoComplete={name}
-					className="flex-1 outline-none bg-none placeholder:text-input-foreground/80 focus:outline-none"
+					autoComplete={autoComplete}
+					disabled={loading}
+					aria-invalid={hasError}
+					aria-describedby={hasError ? `${name}-error` : undefined}
+                    className="flex-1 min-w-0 px-2 py-1 text-sm rounded outline-none bg-none focus-within:bg-none text-foreground placeholder:text-muted-foreground"
 				/>
-			</span>
-			<InputError errors={errors} field={name} />
+			</div>
+			<InputError errors={fieldErrors} loading={loading} />
 		</div>
 	);
 };

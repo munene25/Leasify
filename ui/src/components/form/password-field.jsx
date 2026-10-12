@@ -3,7 +3,7 @@ import { Eye, EyeClosed, Lock } from "lucide-react";
 
 import InputField from "@components/form/input-field";
 
-const PasswordField = ({ form, onChange, errors, name = "password", label = "Password" }) => {
+const PasswordField = ({ name = "password", label = "Password", autoComplete="" }) => {
 	const [isPassword, setIsPassword] = useState(true);
 
 	return (
@@ -12,10 +12,8 @@ const PasswordField = ({ form, onChange, errors, name = "password", label = "Pas
 				name={name}
 				type={isPassword ? "password" : "text"}
 				required={false}
-				value={form[name]}
-				onChange={onChange}
-				errors={errors}
-				label={label}
+                label={label}
+                autoComplete={autoComplete}
 				placeholder="e.g., Doe">
 				<Lock size={15} />
 			</InputField>
