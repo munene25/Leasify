@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { parseErrors } from "@api/parse-errors";
 
-export default function useForm(handleSubmit) {
+export default function useForm(submitForm, validateForm = () => null) {
+
 	const [loading, setLoading] = useState(false);
 	const [errors, setErrors] = useState({});
 	const [form, setForm] = useState({});
@@ -14,13 +15,20 @@ export default function useForm(handleSubmit) {
 		}));
 	  };
 
-	const onSubmit = async (event) => {
-		event.preventDefault();
-		setLoading(true);
-		setErrors({});
+	const handleSubmit = async (event) => {
+        event.preventDefault();
+        setErrors({});
+        
+        const validationErrors = validateForm(form);
+        if (validationErrors) {
+            setErrors(validationErrors);
+            return;
+        }
 
+        setLoading(true);
+        
 		try {
-			await handleSubmit(form);
+			await submitForm(form);
 		} catch (err) {
 			console.log(err);
 			setErrors(parseErrors(err));
@@ -29,5 +37,5 @@ export default function useForm(handleSubmit) {
 		}
 	};
 
-	return { form, setForm, errors, setErrors, loading, handleChange, onSubmit };
+	return { form, setForm, errors, setErrors, loading, handleChange, handleSubmit };
 }
