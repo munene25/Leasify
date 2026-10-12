@@ -1,32 +1,34 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
+
 import { parseErrors } from "@api/parse-errors";
 
 export default function useForm(submitForm, validateForm = () => null) {
-
 	const [loading, setLoading] = useState(false);
 	const [errors, setErrors] = useState({});
 	const [form, setForm] = useState({});
 
 	const handleChange = (e) => {
-		// setErrors({});
 		setForm((prev) => ({
-		  ...prev,
-		  [e.target.name]: e.target.value,
+			...prev,
+			[e.target.name]: e.target.value,
 		}));
-	  };
+	};
 
 	const handleSubmit = async (event) => {
+		// Prevent navigation
         event.preventDefault();
         setErrors({});
         
-        const validationErrors = validateForm(form);
-        if (validationErrors) {
-            setErrors(validationErrors);
-            return;
-        }
-
-        setLoading(true);
+        // Check Validation
+		const validationErrors = validateForm(form);
+        if (Object.keys(validationErrors).length > 0) {
+			setErrors(validationErrors);
+			return;
+		}
         
+        // Form is valid so initialize loading
+		setLoading(true);
+
 		try {
 			await submitForm(form);
 		} catch (err) {
