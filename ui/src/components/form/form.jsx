@@ -1,14 +1,28 @@
-import { twMerge } from "tailwind-merge";
+import { cn } from "cn";
 import { MoonLoader } from "react-spinners";
+import { FormContext } from "@/context/form-context";
 
-const Form = ({ loading, onSubmit, children, title = "", description = "", className = "" }) => {
+const Form = ({
+	form,
+	loading,
+	errors,
+	handleSubmit,
+	handleChange,
+	children,
+	title = "",
+	className = "",
+}) => {
 	return (
-		<div className={twMerge("px-8 py-4 border rounded-md shadow bg-primary", className)}>
-			{/* Title and loader */}
-			<div className="py-4">
+		<FormContext.Provider value={{ form, handleChange, loading, errors }}>
+			<form
+				className={cn(
+					"px-8 py-4 border rounded-md shadow bg-primary",
+					className,
+				)}
+				onSubmit={handleSubmit}>
+				{/* Title and loader */}
 				<div className="flex items-center justify-between py-2">
-					<h3 className="text-primary-foreground">{title}</h3>
-					
+					<h2 className="capitalize text-primary-foreground">{title}</h2>
 					<MoonLoader
 						loading={loading}
 						color="var(--color-primary-foreground)"
@@ -16,14 +30,9 @@ const Form = ({ loading, onSubmit, children, title = "", description = "", class
 						size={22}
 					/>
 				</div>
-				<p className="text-sm text-secondary-foreground">{description}</p>
-			</div>
-
-			{/* Form Section */}
-			<form className="py-2 space-y-2" onSubmit={onSubmit}>
 				{children}
 			</form>
-		</div>
+		</FormContext.Provider>
 	);
 };
 
