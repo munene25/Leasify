@@ -1,59 +1,66 @@
-import { User } from "lucide-react";
+import { Mail } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
+import api from "@api/api";
 import Form from "@components/form/form";
 import InputField from "@components/form/input-field";
 import Button from "@components/button";
 import useForm from "@hooks/use-form";
-import waitFor from "@/test-form-response";
 import PasswordField from "@components/form/password-field";
+import Info from "@components/form/info";
 
 const LoginPage = () => {
-	const handleSubmit = async (form) => {
-		await waitFor(8000, false);
-		console.log(form);
+	const navigate = useNavigate();
+
+	const submitForm = async (form) => {
+		response = await api.post("auth/login", form);
+		console.log(response);
 	};
 
-	const { form, handleChange, onSubmit, loading, errors } = useForm(handleSubmit);
+	const validateForm = (form) => {
+		const errors = {};
+		const email = form.email ?? "";
+		if (!(email.includes(".") || !email.includes("@"))) {
+			errors.email = ["Please enter a valid email address"];
+		}
+		return errors;
+	};
+
+	const { form, handleChange, handleSubmit, loading, errors } = useForm(
+		submitForm,
+		validateForm,
+	);
 
 	return (
 		<div className="flex items-start justify-center w-screen h-screen pt-40">
 			<Form
-				className="min-w-xl"
-				title="Login"
-				description="Login to access your account"
+				form={form}
+				handleChange={handleChange}
+				handleSubmit={handleSubmit}
 				loading={loading}
-				onSubmit={onSubmit}>
-				<div className="flex items-start gap-4">
+				errors={errors}
+				title="login"
+				className="min-w-lg">
+				<p className="pb-4 text-sm text-secondary-foreground">
+					Login to continue.
+				</p>
+				<Info text="Please input the email and username." className="mb-2" />
+				<div className="space-y-2">
 					<InputField
-						name="first_name"
+						name="email"
 						type="text"
-						required={false}
-						value={form.first_name}
-						errors={errors}
-						onChange={handleChange}
-						label="Full name"
-						placeholder="First Name">
-						<User size={15} />
+						label="E-mail"
+						autoComplete="email"
+						required
+						placeholder="email@example.com">
+						<Mail size={16} />
 					</InputField>
-
-					<InputField
-						name="last_name"
-						type="text"
-						required={false}
-						errors={errors}
-						value={form.last_name}
-						onChange={handleChange}
-						placeholder="Last Name">
-						<User size={15} />
-					</InputField>
+					<PasswordField autoComplete="current-password"  />
 				</div>
-				<PasswordField onChange={handleChange} form={form} errors={errors} />
 
-				<div className="py-4">
-					<Button type="submit" className="w-full" loading={loading}>
-						Login
-					</Button>
-				</div>
+				<Button type="submit" className="w-full my-4" loading={loading}>
+					Login
+				</Button>
 			</Form>
 		</div>
 	);
