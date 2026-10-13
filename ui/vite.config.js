@@ -10,15 +10,16 @@ export default defineConfig({
 	resolve: {
 		alias: {
 			"@": path.resolve(import.meta.dirname, "./src"),
-			"@components": path.resolve(import.meta.dirname, "./src/components"),
-			"@hooks": path.resolve(import.meta.dirname, "./src/hooks"),
-			"@context": path.resolve(import.meta.dirname, "./src/context"),
-			"@utils": path.resolve(import.meta.dirname, "./src/utils"),
+			"@api": path.resolve(import.meta.dirname, "./src/api"),
 			"@assets": path.resolve(import.meta.dirname, "./src/assets"),
+			"@components": path.resolve(import.meta.dirname, "./src/components"),
+			"@context": path.resolve(import.meta.dirname, "./src/context"),
+			"@hooks": path.resolve(import.meta.dirname, "./src/hooks"),
 			"@layout": path.resolve(import.meta.dirname, "./src/layout"),
 			"@pages": path.resolve(import.meta.dirname, "./src/pages"),
+			"@providers": path.resolve(import.meta.dirname, "./src/providers"),
 			"@styles": path.resolve(import.meta.dirname, "./src/styles"),
-			"@api": path.resolve(import.meta.dirname, "./src/api"),
+			"@utils": path.resolve(import.meta.dirname, "./src/utils"),
 		},
 	},
 });
