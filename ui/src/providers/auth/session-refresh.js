@@ -58,8 +58,4 @@ const useSessionKeepAlive = (isAuthenticated, successRefresh, failRefresh) => {
 	}, [isAuthenticated]);
 };
 
-export {
-	markSessionStamp,
-	clearSessionStamp,
-	useSessionKeepAlive,
-};
+export { markSessionStamp, clearSessionStamp, useSessionKeepAlive };
